@@ -281,13 +281,7 @@ export default function CreatePasswordPage({ onBack, onSuccess }: CreatePassword
 
             // Straight to the success page — no banner on this screen
             successTimerRef.current = setTimeout(() => {
-                console.log("CreatePasswordPage: onSuccess timer fired!");
-                if (onSuccess) {
-                    console.log("CreatePasswordPage: calling onSuccess prop");
-                    onSuccess();
-                } else {
-                    console.log("CreatePasswordPage: onSuccess prop is undefined!");
-                }
+                onSuccess?.();
             }, 700);
         }, 1500);
     };

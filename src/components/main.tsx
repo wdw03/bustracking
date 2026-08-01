@@ -5,15 +5,28 @@ import ForgetPassword from "./forgetpassword";
 import OtpVerification from "./otp";
 import CreatePasswordPage from "./createpasswordpage";
 import PasswordSuccessPage from "./forgtrsucesssfull";
+import SignupRolePage, { SignupRole } from "./signupmethod";
+import RegisterNumberPage from "./signuisngnumber";
+import SchoolSignupPage from "./schoolsinuppage";
+import DriverSignupPage from "./driversignup";
+import ParentSignupPage from "./parents/partesinup";
 
 export default function MainComponent() {
   const [loading, setLoading] = useState(true);
-  const [currentRoute, setCurrentRoute] = useState<"login" | "forgetPassword" | "otp" | "createPassword" | "passwordSuccess">("login");
+  const [currentRoute, setCurrentRoute] = useState<
+    | "login"
+    | "signupMethod"
+    | "signupNumber"
+    | "schoolSignup"
+    | "driverSignup"
+    | "parentSignup"
+    | "forgetPassword"
+    | "otp"
+    | "createPassword"
+    | "passwordSuccess"
+  >("login");
   const [resetPhone, setResetPhone] = useState("");
-
-  useEffect(() => {
-    console.log("MainComponent route changed to:", currentRoute);
-  }, [currentRoute]);
+  const [selectedRole, setSelectedRole] = useState<SignupRole | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -25,6 +38,78 @@ export default function MainComponent() {
 
   if (loading) {
     return <Onboardingpage />;
+  }
+
+  if (currentRoute === "signupMethod") {
+    return (
+      <SignupRolePage
+        onLogin={() => setCurrentRoute("login")}
+        onSelectRole={(role) => {
+          setSelectedRole(role);
+          setCurrentRoute("signupNumber");
+        }}
+      />
+    );
+  }
+
+  if (currentRoute === "signupNumber") {
+    return (
+      <RegisterNumberPage
+        role={selectedRole}
+        onBack={() => setCurrentRoute("signupMethod")}
+        onLogin={() => setCurrentRoute("login")}
+        onSubmit={(phone) => {
+          console.log("Submitted mobile number for registration:", phone, "Role:", selectedRole);
+          setResetPhone(phone);
+          if (selectedRole === "school") {
+            setCurrentRoute("schoolSignup");
+          } else if (selectedRole === "driver") {
+            setCurrentRoute("driverSignup");
+          } else if (selectedRole === "parent") {
+            setCurrentRoute("parentSignup");
+          }
+        }}
+      />
+    );
+  }
+
+  if (currentRoute === "schoolSignup") {
+    return (
+      <SchoolSignupPage
+        onBack={() => setCurrentRoute("signupNumber")}
+        onSubmit={(data) => {
+          console.log("School Signup Complete:", data);
+          setResetPhone(data.adminMobile || data.schoolPhone || resetPhone || "9876543210");
+          setCurrentRoute("otp");
+        }}
+      />
+    );
+  }
+
+  if (currentRoute === "driverSignup") {
+    return (
+      <DriverSignupPage
+        onBack={() => setCurrentRoute("signupNumber")}
+        onSubmit={(data) => {
+          console.log("Driver Signup Complete:", data);
+          setResetPhone(resetPhone || "9876543210");
+          setCurrentRoute("otp");
+        }}
+      />
+    );
+  }
+
+  if (currentRoute === "parentSignup") {
+    return (
+      <ParentSignupPage
+        onBack={() => setCurrentRoute("signupNumber")}
+        onSubmit={(data) => {
+          console.log("Parent Signup Complete:", data);
+          setResetPhone(resetPhone || "9876543210");
+          setCurrentRoute("otp");
+        }}
+      />
+    );
   }
 
   if (currentRoute === "forgetPassword") {
@@ -44,8 +129,26 @@ export default function MainComponent() {
     return (
       <OtpVerification
         phoneNumber={resetPhone}
-        onBack={() => setCurrentRoute("forgetPassword")}
-        onVerified={() => setCurrentRoute("createPassword")}
+        onBack={() =>
+          setCurrentRoute(
+            selectedRole === "school"
+              ? "schoolSignup"
+              : selectedRole === "driver"
+                ? "driverSignup"
+                : selectedRole === "parent"
+                  ? "parentSignup"
+                  : selectedRole
+                    ? "signupNumber"
+                    : "forgetPassword",
+          )
+        }
+        onVerified={() => {
+          if (selectedRole === "school" || selectedRole === "driver" || selectedRole === "parent") {
+            setCurrentRoute("login");
+          } else {
+            setCurrentRoute("createPassword");
+          }
+        }}
         onResend={() => console.log("Resend API call placeholder")}
       />
     );
@@ -70,6 +173,7 @@ export default function MainComponent() {
 
   return (
     <Sinuplogin
+      onSignUp={() => setCurrentRoute("signupMethod")}
       onForgotPassword={() => setCurrentRoute("forgetPassword")}
     />
   );
