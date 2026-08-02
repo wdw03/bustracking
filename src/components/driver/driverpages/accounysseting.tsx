@@ -1,16 +1,33 @@
+/* ============================================================================
+   ACCOUNT SETTINGS — Driver — BusTracker
+   Copy to: src/components/driver/driverpages/accounysseting.tsx
+
+   Includes Logout AND Delete Account (with confirm dialog) —
+   Google Play requires an in-app account-deletion option.
+
+   Wire:
+     <AccountSettings
+        onBack={() => navigation.goBack()}
+        onChangePassword={() => navigation.navigate("ChangePassword")}
+        onNotificationSettings={() => navigation.navigate("NotificationSettings")}
+        onLogout={() => navigation.replace("Login")}
+        onDeleteAccount={() => {// call delete API then navigation.replace("Login")}}
+     />
+   ========================================================================== */
+
 import React, { useState } from "react";
 import { Alert, Dimensions, Linking, Pressable, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const ACCENT = "#FFD60A";
-const ACCENT_SOFT = "#FFF6CC";
-const ACCENT_DEEP = "#E6BC00";
-const INK = "#101010";
+const ACCENT = "#FFD500";
+const ACCENT_SOFT = "#FFF7CC";
+const ACCENT_DEEP = "#B99700";
+const INK = "#111827";
 const MUTED = "#6B7280";
 const FAINT = "#9CA3AF";
-const BORDER = "#ECEDF0";
+const BORDER = "#E5E7EB";
 const PAGE_BG = "#F8F9FB";
 const RED = "#DC2626";
 const RED_SOFT = "#FEE2E2";
@@ -36,26 +53,6 @@ type Props = {
     onDeleteAccount?: () => void;
 };
 
-function ArrowBadge({ color = INK, bg = "#F7F8FA" }: { color?: string; bg?: string }) {
-    return (
-        <View
-            style={{
-                width: ms(32),
-                height: ms(32),
-                borderRadius: 12,
-                borderTopLeftRadius: ms(15),
-                backgroundColor: bg,
-                alignItems: "center",
-                justifyContent: "center",
-                borderWidth: 1,
-                borderColor: "rgba(0,0,0,0.06)",
-            }}
-        >
-            <Ionicons name="arrow-forward" size={ms(14)} color={color} />
-        </View>
-    );
-}
-
 function Row({
     icon,
     label,
@@ -77,7 +74,6 @@ function Row({
 }) {
     return (
         <Pressable
-            android_ripple={null}
             onPress={() => {
                 Haptics.selectionAsync();
                 onPress?.();
@@ -93,7 +89,6 @@ function Row({
                 borderRadius: 16,
                 borderBottomWidth: last ? 0 : 1,
                 borderBottomColor: "#F3F4F6",
-                opacity: pressed ? 0.85 : 1,
             })}
         >
             <View
@@ -101,7 +96,6 @@ function Row({
                     width: ms(36),
                     height: ms(36),
                     borderRadius: 13,
-                    borderTopLeftRadius: ms(17),
                     backgroundColor: chipBg,
                     alignItems: "center",
                     justifyContent: "center",
@@ -110,7 +104,7 @@ function Row({
                 <Ionicons name={icon} size={ms(16)} color={chipColor} />
             </View>
             <Text style={{ flex: 1, fontFamily: FONT.semibold, fontSize: ms(14), color }}>{label}</Text>
-            {right ?? <ArrowBadge color={chipColor} bg={chipBg} />}
+            {right ?? <Ionicons name="chevron-forward" size={ms(16)} color={FAINT} />}
         </Pressable>
     );
 }
@@ -118,7 +112,6 @@ function Row({
 function Toggle({ value, onToggle }: { value: boolean; onToggle: () => void }) {
     return (
         <Pressable
-            android_ripple={null}
             onPress={onToggle}
             accessibilityRole="switch"
             accessibilityState={{ checked: value }}
@@ -174,6 +167,7 @@ export default function AccountSettings({
                     text: "Delete Forever",
                     style: "destructive",
                     onPress: () =>
+                        // second confirm — Play Store best practice for destructive actions
                         Alert.alert("Confirm Deletion", "Last chance — delete account permanently?", [
                             { text: "Keep My Account", style: "cancel" },
                             { text: "Yes, Delete", style: "destructive", onPress: () => onDeleteAccount?.() },
@@ -185,7 +179,7 @@ export default function AccountSettings({
 
     return (
         <View style={{ flex: 1, backgroundColor: PAGE_BG }}>
-            {/* Curved header backdrop */}
+            {/* curved header backdrop */}
             <View
                 pointerEvents="none"
                 style={{
@@ -200,7 +194,7 @@ export default function AccountSettings({
                 }}
             />
 
-            {/* Header */}
+            {/* header */}
             <View
                 style={{
                     paddingTop: insets.top + ms(10),
@@ -211,18 +205,13 @@ export default function AccountSettings({
                 }}
             >
                 <Pressable
-                    android_ripple={null}
                     onPress={onBack}
                     accessibilityLabel="Go back"
-                    style={({ pressed }) => ({
+                    style={{
                         width: ms(42),
                         height: ms(42),
-                        borderRadius: 16,
-                        borderTopLeftRadius: ms(20),
-                        borderBottomRightRadius: ms(20),
-                        backgroundColor: pressed ? ACCENT_SOFT : "#FFFFFF",
-                        borderWidth: 1.5,
-                        borderColor: BORDER,
+                        borderRadius: ms(15),
+                        backgroundColor: "#FFFFFF",
                         alignItems: "center",
                         justifyContent: "center",
                         shadowColor: "#0F172A",
@@ -230,10 +219,9 @@ export default function AccountSettings({
                         shadowRadius: 8,
                         shadowOffset: { width: 0, height: 3 },
                         elevation: 3,
-                        opacity: pressed ? 0.85 : 1,
-                    })}
+                    }}
                 >
-                    <Ionicons name="arrow-back" size={ms(20)} color={INK} />
+                    <Ionicons name="arrow-back" size={ms(19)} color={INK} />
                 </Pressable>
                 <Text style={{ fontFamily: FONT.displayHeavy, fontSize: ms(19), color: INK }}>Account Settings</Text>
             </View>
@@ -246,7 +234,7 @@ export default function AccountSettings({
                 <Text style={{ fontFamily: FONT.display, fontSize: ms(13), color: MUTED, marginTop: ms(20), marginBottom: ms(8), marginLeft: 4 }}>
                     SECURITY
                 </Text>
-                <View style={{ backgroundColor: "#FFFFFF", borderRadius: 22, borderTopLeftRadius: 26, borderWidth: 1.5, borderColor: BORDER, padding: ms(6) }}>
+                <View style={{ backgroundColor: "#FFFFFF", borderRadius: 22, borderWidth: 1, borderColor: BORDER, padding: ms(6) }}>
                     <Row icon="lock-closed-outline" label="Change Password" onPress={onChangePassword} last />
                 </View>
 
@@ -254,12 +242,12 @@ export default function AccountSettings({
                 <Text style={{ fontFamily: FONT.display, fontSize: ms(13), color: MUTED, marginTop: ms(20), marginBottom: ms(8), marginLeft: 4 }}>
                     PREFERENCES
                 </Text>
-                <View style={{ backgroundColor: "#FFFFFF", borderRadius: 22, borderTopLeftRadius: 26, borderWidth: 1.5, borderColor: BORDER, padding: ms(6) }}>
+                <View style={{ backgroundColor: "#FFFFFF", borderRadius: 22, borderWidth: 1, borderColor: BORDER, padding: ms(6) }}>
                     <Row icon="globe-outline" label="Language" chipBg={BLUE_SOFT} chipColor={BLUE}
                         right={
-                            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                                 <Text style={{ fontFamily: FONT.regular, fontSize: ms(12.5), color: MUTED }}>English</Text>
-                                <ArrowBadge color={BLUE} bg={BLUE_SOFT} />
+                                <Ionicons name="chevron-forward" size={ms(15)} color={FAINT} />
                             </View>
                         }
                         onPress={() => { }}
@@ -288,7 +276,7 @@ export default function AccountSettings({
                 <Text style={{ fontFamily: FONT.display, fontSize: ms(13), color: MUTED, marginTop: ms(20), marginBottom: ms(8), marginLeft: 4 }}>
                     SUPPORT
                 </Text>
-                <View style={{ backgroundColor: "#FFFFFF", borderRadius: 22, borderTopLeftRadius: 26, borderWidth: 1.5, borderColor: BORDER, padding: ms(6) }}>
+                <View style={{ backgroundColor: "#FFFFFF", borderRadius: 22, borderWidth: 1, borderColor: BORDER, padding: ms(6) }}>
                     <Row icon="help-circle-outline" label="Help & Support" onPress={() => { }} />
                     <Row icon="call-outline" label="Contact School" chipBg="#DCFCE7" chipColor={GREEN} onPress={() => Linking.openURL("tel:+911204567890")} last />
                 </View>
@@ -297,14 +285,14 @@ export default function AccountSettings({
                 <Text style={{ fontFamily: FONT.display, fontSize: ms(13), color: MUTED, marginTop: ms(20), marginBottom: ms(8), marginLeft: 4 }}>
                     LEGAL
                 </Text>
-                <View style={{ backgroundColor: "#FFFFFF", borderRadius: 22, borderTopLeftRadius: 26, borderWidth: 1.5, borderColor: BORDER, padding: ms(6) }}>
+                <View style={{ backgroundColor: "#FFFFFF", borderRadius: 22, borderWidth: 1, borderColor: BORDER, padding: ms(6) }}>
                     <Row icon="document-text-outline" label="Privacy Policy" onPress={() => { }} />
                     <Row icon="reader-outline" label="Terms & Conditions" onPress={() => { }} />
                     <Row icon="information-circle-outline" label="About App"
                         right={
-                            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                                 <Text style={{ fontFamily: FONT.regular, fontSize: ms(12.5), color: MUTED }}>v1.0.0</Text>
-                                <ArrowBadge color={ACCENT_DEEP} bg={ACCENT_SOFT} />
+                                <Ionicons name="chevron-forward" size={ms(15)} color={FAINT} />
                             </View>
                         }
                         onPress={() => { }}
@@ -312,11 +300,11 @@ export default function AccountSettings({
                     />
                 </View>
 
-                {/* Danger Zone */}
+                {/* Danger zone */}
                 <Text style={{ fontFamily: FONT.display, fontSize: ms(13), color: RED, marginTop: ms(20), marginBottom: ms(8), marginLeft: 4 }}>
                     DANGER ZONE
                 </Text>
-                <View style={{ backgroundColor: "#FFFFFF", borderRadius: 22, borderTopLeftRadius: 26, borderWidth: 1.5, borderColor: "#FECACA", padding: ms(6) }}>
+                <View style={{ backgroundColor: "#FFFFFF", borderRadius: 22, borderWidth: 1, borderColor: "#FECACA", padding: ms(6) }}>
                     <Row
                         icon="log-out-outline"
                         label="Logout"

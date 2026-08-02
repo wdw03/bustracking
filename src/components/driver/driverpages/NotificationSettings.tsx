@@ -4,13 +4,13 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const ACCENT = "#FFD60A";
-const ACCENT_SOFT = "#FFF6CC";
-const ACCENT_DEEP = "#E6BC00";
-const INK = "#101010";
+const ACCENT = "#FFD500";
+const ACCENT_SOFT = "#FFF7CC";
+const ACCENT_DEEP = "#B99700";
+const INK = "#111827";
 const MUTED = "#6B7280";
 const FAINT = "#9CA3AF";
-const BORDER = "#ECEDF0";
+const BORDER = "#E5E7EB";
 const PAGE_BG = "#F8F9FB";
 const GREEN = "#16A34A";
 const BLUE = "#2563EB";
@@ -40,7 +40,6 @@ const SETTINGS: { key: SettingKey; icon: any; chipBg: string; chipColor: string;
 function Toggle({ value, onToggle }: { value: boolean; onToggle: () => void }) {
     return (
         <Pressable
-            android_ripple={null}
             onPress={onToggle}
             accessibilityRole="switch"
             accessibilityState={{ checked: value }}
@@ -99,7 +98,6 @@ export default function NotificationSettings({ onBack }: { onBack?: () => void }
 
     return (
         <View style={{ flex: 1, backgroundColor: PAGE_BG }}>
-            {/* Header backdrop */}
             <View
                 pointerEvents="none"
                 style={{
@@ -114,7 +112,6 @@ export default function NotificationSettings({ onBack }: { onBack?: () => void }
                 }}
             />
 
-            {/* Header */}
             <View
                 style={{
                     paddingTop: insets.top + ms(10),
@@ -125,18 +122,13 @@ export default function NotificationSettings({ onBack }: { onBack?: () => void }
                 }}
             >
                 <Pressable
-                    android_ripple={null}
                     onPress={onBack}
                     accessibilityLabel="Go back"
-                    style={({ pressed }) => ({
+                    style={{
                         width: ms(42),
                         height: ms(42),
-                        borderRadius: 16,
-                        borderTopLeftRadius: ms(20),
-                        borderBottomRightRadius: ms(20),
-                        backgroundColor: pressed ? ACCENT_SOFT : "#FFFFFF",
-                        borderWidth: 1.5,
-                        borderColor: BORDER,
+                        borderRadius: ms(15),
+                        backgroundColor: "#FFFFFF",
                         alignItems: "center",
                         justifyContent: "center",
                         shadowColor: "#0F172A",
@@ -144,16 +136,14 @@ export default function NotificationSettings({ onBack }: { onBack?: () => void }
                         shadowRadius: 8,
                         shadowOffset: { width: 0, height: 3 },
                         elevation: 3,
-                        opacity: pressed ? 0.85 : 1,
-                    })}
+                    }}
                 >
-                    <Ionicons name="arrow-back" size={ms(20)} color={INK} />
+                    <Ionicons name="arrow-back" size={ms(19)} color={INK} />
                 </Pressable>
                 <Text style={{ flex: 1, fontFamily: FONT.displayHeavy, fontSize: ms(19), color: INK }}>Notifications</Text>
                 <Pressable
-                    android_ripple={null}
                     onPress={toggleAll}
-                    style={({ pressed }) => ({
+                    style={{
                         flexDirection: "row",
                         alignItems: "center",
                         gap: 5,
@@ -161,15 +151,12 @@ export default function NotificationSettings({ onBack }: { onBack?: () => void }
                         borderRadius: 999,
                         paddingHorizontal: ms(12),
                         paddingVertical: ms(8),
-                        borderWidth: 1.5,
-                        borderColor: BORDER,
                         shadowColor: "#0F172A",
                         shadowOpacity: 0.08,
                         shadowRadius: 8,
                         shadowOffset: { width: 0, height: 3 },
                         elevation: 3,
-                        opacity: pressed ? 0.85 : 1,
-                    })}
+                    }}
                 >
                     <Ionicons name={allOn ? "notifications" : "notifications-off"} size={ms(13)} color={allOn ? GREEN : FAINT} />
                     <Text style={{ fontFamily: FONT.semibold, fontSize: ms(12), color: INK }}>{allOn ? "All On" : "All Off"}</Text>
@@ -184,8 +171,7 @@ export default function NotificationSettings({ onBack }: { onBack?: () => void }
                     style={{
                         backgroundColor: "#FFFFFF",
                         borderRadius: 24,
-                        borderTopLeftRadius: 28,
-                        borderWidth: 1.5,
+                        borderWidth: 1,
                         borderColor: BORDER,
                         padding: ms(6),
                         marginTop: ms(18),
@@ -209,7 +195,6 @@ export default function NotificationSettings({ onBack }: { onBack?: () => void }
                                     width: ms(38),
                                     height: ms(38),
                                     borderRadius: 14,
-                                    borderTopLeftRadius: ms(18),
                                     backgroundColor: s.chipBg,
                                     alignItems: "center",
                                     justifyContent: "center",

@@ -4,13 +4,13 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const ACCENT = "#FFD60A";
-const ACCENT_SOFT = "#FFF6CC";
-const ACCENT_DEEP = "#E6BC00";
-const INK = "#101010";
+const ACCENT = "#FFD500";
+const ACCENT_SOFT = "#FFF7CC";
+const ACCENT_DEEP = "#B99700";
+const INK = "#111827";
 const MUTED = "#6B7280";
 const FAINT = "#9CA3AF";
-const BORDER = "#ECEDF0";
+const BORDER = "#E5E7EB";
 const PAGE_BG = "#F8F9FB";
 const GREEN = "#16A34A";
 const GREEN_SOFT = "#DCFCE7";
@@ -53,12 +53,9 @@ function InfoRow({ icon, label, value, last }: { icon: any; label: string; value
                     width: ms(36),
                     height: ms(36),
                     borderRadius: 13,
-                    borderTopLeftRadius: ms(17),
                     backgroundColor: ACCENT_SOFT,
                     alignItems: "center",
                     justifyContent: "center",
-                    borderWidth: 1,
-                    borderColor: "#F5E6A3",
                 }}
             >
                 <Ionicons name={icon} size={ms(16)} color={ACCENT_DEEP} />
@@ -87,7 +84,6 @@ export default function SchoolDetails({ onBack }: { onBack?: () => void }) {
 
     return (
         <View style={{ flex: 1, backgroundColor: PAGE_BG }}>
-            {/* Header backdrop */}
             <View
                 pointerEvents="none"
                 style={{
@@ -102,7 +98,6 @@ export default function SchoolDetails({ onBack }: { onBack?: () => void }) {
                 }}
             />
 
-            {/* Header */}
             <View
                 style={{
                     paddingTop: insets.top + ms(10),
@@ -113,18 +108,13 @@ export default function SchoolDetails({ onBack }: { onBack?: () => void }) {
                 }}
             >
                 <Pressable
-                    android_ripple={null}
                     onPress={onBack}
                     accessibilityLabel="Go back"
-                    style={({ pressed }) => ({
+                    style={{
                         width: ms(42),
                         height: ms(42),
-                        borderRadius: 16,
-                        borderTopLeftRadius: ms(20),
-                        borderBottomRightRadius: ms(20),
-                        backgroundColor: pressed ? ACCENT_SOFT : "#FFFFFF",
-                        borderWidth: 1.5,
-                        borderColor: BORDER,
+                        borderRadius: ms(15),
+                        backgroundColor: "#FFFFFF",
                         alignItems: "center",
                         justifyContent: "center",
                         shadowColor: "#0F172A",
@@ -132,10 +122,9 @@ export default function SchoolDetails({ onBack }: { onBack?: () => void }) {
                         shadowRadius: 8,
                         shadowOffset: { width: 0, height: 3 },
                         elevation: 3,
-                        opacity: pressed ? 0.85 : 1,
-                    })}
+                    }}
                 >
-                    <Ionicons name="arrow-back" size={ms(20)} color={INK} />
+                    <Ionicons name="arrow-back" size={ms(19)} color={INK} />
                 </Pressable>
                 <Text style={{ fontFamily: FONT.displayHeavy, fontSize: ms(19), color: INK }}>School Details</Text>
             </View>
@@ -144,14 +133,12 @@ export default function SchoolDetails({ onBack }: { onBack?: () => void }) {
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingHorizontal: ms(20), paddingBottom: insets.bottom + ms(30) }}
             >
-                {/* Logo + name card */}
                 <View
                     style={{
                         alignItems: "center",
                         backgroundColor: "#FFFFFF",
                         borderRadius: 24,
-                        borderTopLeftRadius: 28,
-                        borderWidth: 1.5,
+                        borderWidth: 1,
                         borderColor: BORDER,
                         paddingVertical: ms(24),
                         marginTop: ms(18),
@@ -167,7 +154,6 @@ export default function SchoolDetails({ onBack }: { onBack?: () => void }) {
                             width: ms(84),
                             height: ms(84),
                             borderRadius: ms(28),
-                            borderTopLeftRadius: ms(34),
                             backgroundColor: ACCENT_SOFT,
                             borderWidth: 2,
                             borderColor: ACCENT,
@@ -201,12 +187,10 @@ export default function SchoolDetails({ onBack }: { onBack?: () => void }) {
                         </Text>
                     </View>
 
-                    {/* Quick Action Buttons */}
                     <View style={{ flexDirection: "row", gap: 10, marginTop: ms(16) }}>
                         <Pressable
-                            android_ripple={null}
                             onPress={call}
-                            style={({ pressed }) => ({
+                            style={{
                                 flexDirection: "row",
                                 alignItems: "center",
                                 gap: 6,
@@ -214,16 +198,14 @@ export default function SchoolDetails({ onBack }: { onBack?: () => void }) {
                                 borderRadius: 999,
                                 paddingHorizontal: ms(16),
                                 paddingVertical: ms(9),
-                                opacity: pressed ? 0.85 : 1,
-                            })}
+                            }}
                         >
                             <Ionicons name="call" size={ms(14)} color={GREEN} />
                             <Text style={{ fontFamily: FONT.semibold, fontSize: ms(12.5), color: GREEN }}>Call School</Text>
                         </Pressable>
                         <Pressable
-                            android_ripple={null}
                             onPress={email}
-                            style={({ pressed }) => ({
+                            style={{
                                 flexDirection: "row",
                                 alignItems: "center",
                                 gap: 6,
@@ -231,8 +213,7 @@ export default function SchoolDetails({ onBack }: { onBack?: () => void }) {
                                 borderRadius: 999,
                                 paddingHorizontal: ms(16),
                                 paddingVertical: ms(9),
-                                opacity: pressed ? 0.85 : 1,
-                            })}
+                            }}
                         >
                             <Ionicons name="mail" size={ms(14)} color={BLUE} />
                             <Text style={{ fontFamily: FONT.semibold, fontSize: ms(12.5), color: BLUE }}>Email</Text>
@@ -240,13 +221,11 @@ export default function SchoolDetails({ onBack }: { onBack?: () => void }) {
                     </View>
                 </View>
 
-                {/* Info Card */}
                 <View
                     style={{
                         backgroundColor: "#FFFFFF",
                         borderRadius: 24,
-                        borderTopLeftRadius: 28,
-                        borderWidth: 1.5,
+                        borderWidth: 1,
                         borderColor: BORDER,
                         paddingHorizontal: ms(16),
                         paddingVertical: ms(4),

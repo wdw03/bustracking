@@ -24,6 +24,8 @@ const FONT = {
 const { width } = Dimensions.get("window");
 const ms = (s: number) => Math.round((width / 390) * s);
 
+const schoolBusIcon = require("../../../assets/expo.icon/Assets/3d-yellow-school-bus-vehicle-transport-icon-education-design-kids-passenger-transportation-school-elements-back-to-school-concept-3d-render-illustration-png.webp");
+
 const BUS = {
     number: "DL01AB1234",
     route: "Route A",
@@ -34,7 +36,7 @@ const BUS = {
     insuranceValid: "Mar 2027",
     fitnessValid: "Aug 2026",
     gpsDevice: "Installed & Active",
-    image: null as any,
+    image: schoolBusIcon,
 };
 
 function InfoRow({ icon, label, value, valueColor, last }: { icon: any; label: string; value: string; valueColor?: string; last?: boolean }) {
