@@ -327,7 +327,7 @@ export default function SignupRolePage({ onSelectRole, onLogin }: SignupRolePage
     const handleSelect = (role: SignupRole) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         setSelectedRole(role);
-        setTimeout(() => onSelectRole?.(role), 280);
+        onSelectRole?.(role);
     };
 
     return (

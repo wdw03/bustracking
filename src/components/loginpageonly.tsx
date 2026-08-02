@@ -348,33 +348,24 @@ export default function Sinuplogin({ onSignUp, onLoginSuccess, onForgotPassword 
         setBtnState("loading");
         Keyboard.dismiss();
 
-        btnWidthAnim.value = withTiming(0, { duration: 320, easing: Easing.out(Easing.exp) });
-        textOpacity.value = withTiming(0, { duration: 180 });
-        loadingOpacity.value = withDelay(100, withTiming(1, { duration: 280 }));
+        const registeredPassword = DEMO_ACCOUNTS[phoneNumber];
 
-        successTimerRef.current = setTimeout(() => {
-            const registeredPassword = DEMO_ACCOUNTS[phoneNumber];
+        if (registeredPassword === undefined) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            resetButtonToIdle();
+            showLoginError("notFound");
+            return;
+        }
+        if (password !== registeredPassword) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            resetButtonToIdle();
+            shake(passwordShake);
+            showLoginError("wrongPassword");
+            return;
+        }
 
-            if (registeredPassword === undefined) {
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-                resetButtonToIdle();
-                showLoginError("notFound");
-                return;
-            }
-            if (password !== registeredPassword) {
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-                resetButtonToIdle();
-                shake(passwordShake);
-                showLoginError("wrongPassword");
-                return;
-            }
-
-            setBtnState("success");
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            loadingOpacity.value = withTiming(0, { duration: 180 });
-            iconOpacity.value = withDelay(100, withTiming(1, { duration: 280 }));
-            onLoginSuccess?.();
-        }, 1800);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        onLoginSuccess?.();
     };
 
     /* ── Static styles ��─ */

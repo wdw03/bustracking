@@ -379,37 +379,19 @@ export default function OtpVerification({
         setBtnState("loading");
         Keyboard.dismiss();
 
-        Animated.timing(btnWidthAnim, { toValue: 0, duration: 320, easing: Easing.out(Easing.exp), useNativeDriver: false }).start();
-        Animated.parallel([
-            Animated.timing(textOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
-            Animated.timing(loadingOpacity, { toValue: 1, duration: 280, delay: 100, useNativeDriver: true }),
-        ]).start();
+        if (otpValue !== DEMO_CORRECT_OTP) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            setVerifyAttempts((a) => a + 1);
+            resetButtonToIdle();
+            shake(otpShake);
+            setDigits(Array(OTP_LENGTH).fill(""));
+            showError("wrong");
+            boxRefs.current[0]?.focus();
+            return;
+        }
 
-        // TODO: replace this timeout with your real "verify OTP" API call.
-        // On a real backend, 401/invalid-otp → wrong OTP flow below.
-        successTimerRef.current = setTimeout(() => {
-            if (otpValue !== DEMO_CORRECT_OTP) {
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-                setVerifyAttempts((a) => a + 1);
-                resetButtonToIdle();
-                shake(otpShake);
-                setDigits(Array(OTP_LENGTH).fill(""));
-                showError("wrong");
-                boxRefs.current[0]?.focus();
-                return;
-            }
-
-            setBtnState("success");
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            Animated.parallel([
-                Animated.timing(loadingOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
-                Animated.timing(iconOpacity, { toValue: 1, duration: 280, delay: 100, useNativeDriver: true }),
-            ]).start();
-
-            successTimerRef.current = setTimeout(() => {
-                onVerified?.(); // e.g. navigation.replace("ResetPassword")
-            }, 900);
-        }, 1600);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        onVerified?.();
     };
 
     const btnWidth = btnWidthAnim.interpolate({

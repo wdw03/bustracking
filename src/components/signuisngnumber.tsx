@@ -327,48 +327,31 @@ export default function RegisterNumberPage({
         textOpacity.value = withTiming(0, { duration: 180 });
         loadingOpacity.value = withDelay(100, withTiming(1, { duration: 280 }));
 
-        // Simulate backend check / API validation
-        successTimerRef.current = setTimeout(() => {
-            // A. Check Already Registered
-            if (ALREADY_REGISTERED_NUMBERS.has(phoneNumber)) {
-                resetButtonToIdle();
-                shake(phoneShake);
-                triggerException("alreadyRegistered");
-                return;
-            }
+        // A. Check Already Registered
+        if (ALREADY_REGISTERED_NUMBERS.has(phoneNumber)) {
+            shake(phoneShake);
+            triggerException("alreadyRegistered");
+            return;
+        }
 
-            // B. Driver Role Exception Check
-            if (role === "driver") {
-                if (!ASSIGNED_DRIVER_NUMBERS.has(phoneNumber)) {
-                    resetButtonToIdle();
-                    shake(phoneShake);
-                    triggerException("driverNotAssigned");
-                    return;
-                }
-            }
+        // B. Driver Role Exception Check
+        if (role === "driver" && !ASSIGNED_DRIVER_NUMBERS.has(phoneNumber)) {
+            shake(phoneShake);
+            triggerException("driverNotAssigned");
+            return;
+        }
 
-            // C. Parent Role Exception Check
-            if (role === "parent") {
-                if (!ASSIGNED_PARENT_NUMBERS.has(phoneNumber)) {
-                    resetButtonToIdle();
-                    shake(phoneShake);
-                    triggerException("parentNotAssigned");
-                    return;
-                }
-            }
+        // C. Parent Role Exception Check
+        if (role === "parent" && !ASSIGNED_PARENT_NUMBERS.has(phoneNumber)) {
+            shake(phoneShake);
+            triggerException("parentNotAssigned");
+            return;
+        }
 
-            // Success -> Proceed to Next Step
-            setBtnState("success");
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            loadingOpacity.value = withTiming(0, { duration: 180 });
-            iconOpacity.value = withDelay(100, withTiming(1, { duration: 280 }));
-
-            setTimeout(() => {
-                onSubmit?.(phoneNumber);
-                onOtpSent?.(phoneNumber);
-                resetButtonToIdle();
-            }, 1000);
-        }, 1200);
+        // Success -> Instant Proceed to Next Step
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        onSubmit?.(phoneNumber);
+        onOtpSent?.(phoneNumber);
     };
 
     /* ── Static input base styles ── */
