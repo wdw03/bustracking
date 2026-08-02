@@ -21,8 +21,12 @@ const FONT = {
     displayHeavy: "Sora-ExtraBold",
 };
 
+import { VideoView, useVideoPlayer } from "expo-video";
+
 const { width } = Dimensions.get("window");
 const ms = (s: number) => Math.round((width / 390) * s);
+
+const PROFILE_VIDEO = require("../../../../assets/expo.icon/Assets/male-profile-animation-gif-download-10059464.mp4");
 
 const INITIAL = {
     name: "Rajesh Kumar",
@@ -104,6 +108,12 @@ export default function PersonalDetail({ onBack }: { onBack?: () => void }) {
     const [editing, setEditing] = useState(false);
     const [data, setData] = useState(INITIAL);
     const [saved, setSaved] = useState(false);
+
+    const profilePlayer = useVideoPlayer(PROFILE_VIDEO, (p) => {
+        p.loop = true;
+        p.muted = true;
+        p.play();
+    });
 
     const set = (k: keyof typeof INITIAL) => (v: string) => setData((d) => ({ ...d, [k]: v }));
 
@@ -223,11 +233,13 @@ export default function PersonalDetail({ onBack }: { onBack?: () => void }) {
                             elevation: 5,
                         }}
                     >
-                        {data.profileImage ? (
-                            <Image source={data.profileImage} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
-                        ) : (
-                            <Ionicons name="person" size={ms(44)} color={ACCENT_DEEP} />
-                        )}
+                        <VideoView
+                            player={profilePlayer}
+                            style={{ width: "100%", height: "100%" }}
+                            contentFit="cover"
+                            nativeControls={false}
+                            allowsFullscreen={false}
+                        />
                     </View>
                     {editing && (
                         <Pressable
@@ -253,8 +265,14 @@ export default function PersonalDetail({ onBack }: { onBack?: () => void }) {
                     <Text style={{ fontFamily: FONT.displayHeavy, fontSize: ms(18), color: INK, marginTop: ms(10) }}>
                         {data.name}
                     </Text>
-                    <View style={{ backgroundColor: ACCENT_SOFT, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4, marginTop: 4, borderWidth: 1, borderColor: "#F5E6A3" }}>
-                        <Text style={{ fontFamily: FONT.semibold, fontSize: ms(11), color: ACCENT_DEEP }}>ID: {data.driverId}</Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 6 }}>
+                        <View style={{ backgroundColor: ACCENT_SOFT, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4, borderWidth: 1, borderColor: "#F5E6A3" }}>
+                            <Text style={{ fontFamily: FONT.semibold, fontSize: ms(11), color: ACCENT_DEEP }}>ID: {data.driverId}</Text>
+                        </View>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#DCFCE7", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: "#BBF7D0" }}>
+                            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: GREEN }} />
+                            <Text style={{ fontFamily: FONT.semibold, fontSize: ms(10.5), color: GREEN }}>DL Valid 2029</Text>
+                        </View>
                     </View>
                 </View>
 

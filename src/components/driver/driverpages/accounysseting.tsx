@@ -56,6 +56,7 @@ type Props = {
 function Row({
     icon,
     label,
+    desc,
     color = INK,
     chipBg = ACCENT_SOFT,
     chipColor = ACCENT_DEEP,
@@ -65,6 +66,7 @@ function Row({
 }: {
     icon: any;
     label: string;
+    desc?: string;
     color?: string;
     chipBg?: string;
     chipColor?: string;
@@ -78,33 +80,60 @@ function Row({
                 Haptics.selectionAsync();
                 onPress?.();
             }}
+            android_ripple={null}
             accessibilityRole="button"
-            style={({ pressed }) => ({
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 12,
-                paddingVertical: ms(13),
-                paddingHorizontal: ms(10),
-                backgroundColor: pressed ? PAGE_BG : "transparent",
-                borderRadius: 16,
-                borderBottomWidth: last ? 0 : 1,
-                borderBottomColor: "#F3F4F6",
-            })}
+            style={({ pressed }) => [{ opacity: pressed ? 0.92 : 1 }]}
         >
             <View
                 style={{
-                    width: ms(36),
-                    height: ms(36),
-                    borderRadius: 13,
-                    backgroundColor: chipBg,
+                    flexDirection: "row",
                     alignItems: "center",
-                    justifyContent: "center",
+                    paddingVertical: ms(12),
+                    paddingHorizontal: ms(10),
+                    borderBottomWidth: last ? 0 : 1,
+                    borderBottomColor: "#F3F4F6",
                 }}
             >
-                <Ionicons name={icon} size={ms(16)} color={chipColor} />
+                <View
+                    style={{
+                        width: ms(40),
+                        height: ms(40),
+                        borderRadius: ms(14),
+                        backgroundColor: chipBg,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        marginRight: ms(12),
+                    }}
+                >
+                    <Ionicons name={icon} size={ms(18)} color={chipColor} />
+                </View>
+                <View style={{ flex: 1, paddingRight: ms(8) }}>
+                    <Text style={{ fontFamily: FONT.semibold, fontSize: ms(14), color }} numberOfLines={1}>
+                        {label}
+                    </Text>
+                    {desc ? (
+                        <Text style={{ fontFamily: FONT.regular, fontSize: ms(11), color: MUTED, marginTop: 2 }} numberOfLines={1}>
+                            {desc}
+                        </Text>
+                    ) : null}
+                </View>
+                {right ?? (
+                    <View
+                        style={{
+                            width: ms(28),
+                            height: ms(28),
+                            borderRadius: ms(10),
+                            backgroundColor: PAGE_BG,
+                            alignItems: "center",
+                            justifyContent: "center",
+                            borderWidth: 1,
+                            borderColor: BORDER,
+                        }}
+                    >
+                        <Ionicons name="chevron-forward" size={ms(14)} color={INK} />
+                    </View>
+                )}
             </View>
-            <Text style={{ flex: 1, fontFamily: FONT.semibold, fontSize: ms(14), color }}>{label}</Text>
-            {right ?? <Ionicons name="chevron-forward" size={ms(16)} color={FAINT} />}
         </Pressable>
     );
 }
@@ -235,7 +264,13 @@ export default function AccountSettings({
                     SECURITY
                 </Text>
                 <View style={{ backgroundColor: "#FFFFFF", borderRadius: 22, borderWidth: 1, borderColor: BORDER, padding: ms(6) }}>
-                    <Row icon="lock-closed-outline" label="Change Password" onPress={onChangePassword} last />
+                    <Row
+                        icon="lock-closed-outline"
+                        label="Change Password"
+                        desc="Update login password & security PIN"
+                        onPress={onChangePassword}
+                        last
+                    />
                 </View>
 
                 {/* Preferences */}
@@ -243,11 +278,18 @@ export default function AccountSettings({
                     PREFERENCES
                 </Text>
                 <View style={{ backgroundColor: "#FFFFFF", borderRadius: 22, borderWidth: 1, borderColor: BORDER, padding: ms(6) }}>
-                    <Row icon="globe-outline" label="Language" chipBg={BLUE_SOFT} chipColor={BLUE}
+                    <Row
+                        icon="globe-outline"
+                        label="Language"
+                        desc="App interface display language"
+                        chipBg={BLUE_SOFT}
+                        chipColor={BLUE}
                         right={
-                            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                                 <Text style={{ fontFamily: FONT.regular, fontSize: ms(12.5), color: MUTED }}>English</Text>
-                                <Ionicons name="chevron-forward" size={ms(15)} color={FAINT} />
+                                <View style={{ width: ms(26), height: ms(26), borderRadius: ms(9), backgroundColor: PAGE_BG, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: BORDER }}>
+                                    <Ionicons name="chevron-forward" size={ms(13)} color={INK} />
+                                </View>
                             </View>
                         }
                         onPress={() => { }}
@@ -255,21 +297,34 @@ export default function AccountSettings({
                     <Row
                         icon="moon-outline"
                         label="Dark Mode"
+                        desc="Switch between light and dark color themes"
                         chipBg="#EEF2FF"
                         chipColor="#4F46E5"
                         right={<Toggle value={darkMode} onToggle={() => { Haptics.selectionAsync(); setDarkMode((v) => !v); }} />}
                         onPress={() => setDarkMode((v) => !v)}
                     />
-                    <Row icon="notifications-outline" label="Notification Settings" onPress={onNotificationSettings} />
+                    <Row
+                        icon="notifications-outline"
+                        label="Notification Settings"
+                        desc="Trip updates, route alerts & reminders"
+                        onPress={onNotificationSettings}
+                    />
                     <Row
                         icon="location-outline"
                         label="Location Permission"
+                        desc="GPS live tracking and trip sharing"
                         chipBg="#DCFCE7"
                         chipColor={GREEN}
                         right={<Toggle value={locationOn} onToggle={() => { Haptics.selectionAsync(); setLocationOn((v) => !v); }} />}
                         onPress={() => setLocationOn((v) => !v)}
                     />
-                    <Row icon="phone-portrait-outline" label="App Permissions" onPress={() => Linking.openSettings()} last />
+                    <Row
+                        icon="phone-portrait-outline"
+                        label="App Permissions"
+                        desc="Manage camera, storage & phone access"
+                        onPress={() => Linking.openSettings()}
+                        last
+                    />
                 </View>
 
                 {/* Support */}
@@ -277,8 +332,21 @@ export default function AccountSettings({
                     SUPPORT
                 </Text>
                 <View style={{ backgroundColor: "#FFFFFF", borderRadius: 22, borderWidth: 1, borderColor: BORDER, padding: ms(6) }}>
-                    <Row icon="help-circle-outline" label="Help & Support" onPress={() => { }} />
-                    <Row icon="call-outline" label="Contact School" chipBg="#DCFCE7" chipColor={GREEN} onPress={() => Linking.openURL("tel:+911204567890")} last />
+                    <Row
+                        icon="help-circle-outline"
+                        label="Help & Support"
+                        desc="FAQs, user guides and support chat"
+                        onPress={() => { }}
+                    />
+                    <Row
+                        icon="call-outline"
+                        label="Contact School"
+                        desc="Direct hotline to school administration"
+                        chipBg="#DCFCE7"
+                        chipColor={GREEN}
+                        onPress={() => Linking.openURL("tel:+911204567890")}
+                        last
+                    />
                 </View>
 
                 {/* Legal */}
@@ -286,13 +354,28 @@ export default function AccountSettings({
                     LEGAL
                 </Text>
                 <View style={{ backgroundColor: "#FFFFFF", borderRadius: 22, borderWidth: 1, borderColor: BORDER, padding: ms(6) }}>
-                    <Row icon="document-text-outline" label="Privacy Policy" onPress={() => { }} />
-                    <Row icon="reader-outline" label="Terms & Conditions" onPress={() => { }} />
-                    <Row icon="information-circle-outline" label="About App"
+                    <Row
+                        icon="document-text-outline"
+                        label="Privacy Policy"
+                        desc="How your data is protected & stored"
+                        onPress={() => { }}
+                    />
+                    <Row
+                        icon="reader-outline"
+                        label="Terms & Conditions"
+                        desc="Service terms and usage policies"
+                        onPress={() => { }}
+                    />
+                    <Row
+                        icon="information-circle-outline"
+                        label="About App"
+                        desc="Version details and release notes"
                         right={
-                            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                                 <Text style={{ fontFamily: FONT.regular, fontSize: ms(12.5), color: MUTED }}>v1.0.0</Text>
-                                <Ionicons name="chevron-forward" size={ms(15)} color={FAINT} />
+                                <View style={{ width: ms(26), height: ms(26), borderRadius: ms(9), backgroundColor: PAGE_BG, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: BORDER }}>
+                                    <Ionicons name="chevron-forward" size={ms(13)} color={INK} />
+                                </View>
                             </View>
                         }
                         onPress={() => { }}
@@ -308,6 +391,7 @@ export default function AccountSettings({
                     <Row
                         icon="log-out-outline"
                         label="Logout"
+                        desc="Sign out of your driver session"
                         color={RED}
                         chipBg={RED_SOFT}
                         chipColor={RED}
@@ -316,6 +400,7 @@ export default function AccountSettings({
                     <Row
                         icon="trash-outline"
                         label="Delete Account"
+                        desc="Permanently delete your account & data"
                         color={RED}
                         chipBg={RED_SOFT}
                         chipColor={RED}

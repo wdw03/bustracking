@@ -42,26 +42,29 @@ function InfoRow({ icon, label, value, last }: { icon: any; label: string; value
         <View
             style={{
                 flexDirection: "row",
-                gap: 12,
-                paddingVertical: ms(13),
+                alignItems: "center",
+                gap: ms(12),
+                paddingVertical: ms(12),
                 borderBottomWidth: last ? 0 : 1,
                 borderBottomColor: "#F3F4F6",
             }}
         >
             <View
                 style={{
-                    width: ms(36),
-                    height: ms(36),
-                    borderRadius: 13,
+                    width: ms(38),
+                    height: ms(38),
+                    borderRadius: ms(14),
                     backgroundColor: ACCENT_SOFT,
                     alignItems: "center",
                     justifyContent: "center",
+                    borderWidth: 1,
+                    borderColor: "#F5E6A3",
                 }}
             >
-                <Ionicons name={icon} size={ms(16)} color={ACCENT_DEEP} />
+                <Ionicons name={icon} size={ms(17)} color={ACCENT_DEEP} />
             </View>
             <View style={{ flex: 1 }}>
-                <Text style={{ fontFamily: FONT.semibold, fontSize: ms(11), color: FAINT }}>{label}</Text>
+                <Text style={{ fontFamily: FONT.semibold, fontSize: ms(11), color: FAINT, letterSpacing: 0.5 }}>{label}</Text>
                 <Text style={{ fontFamily: FONT.regular, fontSize: ms(14), color: INK, marginTop: 2, lineHeight: ms(19) }}>
                     {value}
                 </Text>

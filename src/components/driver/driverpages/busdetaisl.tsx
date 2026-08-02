@@ -24,7 +24,7 @@ const FONT = {
 const { width } = Dimensions.get("window");
 const ms = (s: number) => Math.round((width / 390) * s);
 
-const schoolBusIcon = require("../../../assets/expo.icon/Assets/3d-yellow-school-bus-vehicle-transport-icon-education-design-kids-passenger-transportation-school-elements-back-to-school-concept-3d-render-illustration-png.webp");
+const schoolBusIcon = require("../../../../assets/expo.icon/Assets/3d-yellow-school-bus-vehicle-transport-icon-education-design-kids-passenger-transportation-school-elements-back-to-school-concept-3d-render-illustration-png.webp");
 
 const BUS = {
     number: "DL01AB1234",
@@ -194,6 +194,62 @@ export default function BusDetails({ onBack }: { onBack?: () => void }) {
                         >
                             <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: GREEN }} />
                             <Text style={{ fontFamily: FONT.semibold, fontSize: ms(11), color: GREEN }}>GPS Active</Text>
+                        </View>
+                    </View>
+                </View>
+
+                {/* ── Live Speedometer & Telemetry Dashboard Widget ── */}
+                <View
+                    style={{
+                        marginTop: ms(16),
+                        backgroundColor: "#FFFFFF",
+                        borderRadius: 24,
+                        borderTopLeftRadius: ms(30),
+                        borderBottomRightRadius: ms(30),
+                        borderWidth: 1.5,
+                        borderColor: ACCENT_DEEP,
+                        padding: ms(14),
+                        shadowColor: "#0F172A",
+                        shadowOpacity: 0.06,
+                        shadowRadius: 12,
+                        shadowOffset: { width: 0, height: 4 },
+                        elevation: 3,
+                    }}
+                >
+                    {/* Header */}
+                    <View style={{ flexDirection: "row", alignItems: "center", marginBottom: ms(12) }}>
+                        <View style={{ width: ms(4), height: ms(16), borderRadius: 3, backgroundColor: ACCENT, marginRight: 8 }} />
+                        <Text style={{ flex: 1, fontFamily: FONT.display, fontSize: ms(14), color: INK }}>Live Bus Telemetry</Text>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: GREEN_SOFT, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 3 }}>
+                            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: GREEN }} />
+                            <Text style={{ fontFamily: FONT.semibold, fontSize: ms(10), color: GREEN }}>LIVE SENSORS</Text>
+                        </View>
+                    </View>
+
+                    {/* Speedometer & GPS Grid */}
+                    <View style={{ flexDirection: "row", gap: 10 }}>
+                        {/* Speedometer Card */}
+                        <View style={{ flex: 1, backgroundColor: PAGE_BG, borderRadius: 18, padding: ms(12), borderWidth: 1, borderColor: BORDER, alignItems: "center" }}>
+                            <View style={{ width: ms(38), height: ms(38), borderRadius: ms(13), backgroundColor: ACCENT_SOFT, alignItems: "center", justifyContent: "center" }}>
+                                <Ionicons name="speedometer" size={ms(20)} color={ACCENT_DEEP} />
+                            </View>
+                            <Text style={{ fontFamily: FONT.displayHeavy, fontSize: ms(20), color: INK, marginTop: ms(6) }}>42 <Text style={{ fontSize: ms(11), fontFamily: FONT.semibold, color: MUTED }}>km/h</Text></Text>
+                            <Text style={{ fontFamily: FONT.semibold, fontSize: ms(10.5), color: MUTED, marginTop: 2 }}>Current Speed ⚡</Text>
+                            <View style={{ backgroundColor: GREEN_SOFT, borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2, marginTop: 6 }}>
+                                <Text style={{ fontFamily: FONT.semibold, fontSize: ms(9.5), color: GREEN }}>Safe Speed 🟢</Text>
+                            </View>
+                        </View>
+
+                        {/* GPS Accuracy Card */}
+                        <View style={{ flex: 1, backgroundColor: PAGE_BG, borderRadius: 18, padding: ms(12), borderWidth: 1, borderColor: BORDER, alignItems: "center" }}>
+                            <View style={{ width: ms(38), height: ms(38), borderRadius: ms(13), backgroundColor: GREEN_SOFT, alignItems: "center", justifyContent: "center" }}>
+                                <Ionicons name="location" size={ms(18)} color={GREEN} />
+                            </View>
+                            <Text style={{ fontFamily: FONT.displayHeavy, fontSize: ms(17), color: INK, marginTop: ms(6) }}>High <Text style={{ fontSize: ms(10.5), fontFamily: FONT.regular, color: MUTED }}>(2m)</Text></Text>
+                            <Text style={{ fontFamily: FONT.semibold, fontSize: ms(10.5), color: MUTED, marginTop: 2 }}>GPS Signal 📍</Text>
+                            <View style={{ backgroundColor: GREEN_SOFT, borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2, marginTop: 6 }}>
+                                <Text style={{ fontFamily: FONT.semibold, fontSize: ms(9.5), color: GREEN }}>Strong 📡</Text>
+                            </View>
                         </View>
                     </View>
                 </View>

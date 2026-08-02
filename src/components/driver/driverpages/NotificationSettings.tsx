@@ -171,10 +171,15 @@ export default function NotificationSettings({ onBack }: { onBack?: () => void }
                     style={{
                         backgroundColor: "#FFFFFF",
                         borderRadius: 24,
-                        borderWidth: 1,
+                        borderWidth: 1.5,
                         borderColor: BORDER,
                         padding: ms(6),
                         marginTop: ms(18),
+                        shadowColor: "#0F172A",
+                        shadowOpacity: 0.04,
+                        shadowRadius: 10,
+                        shadowOffset: { width: 0, height: 3 },
+                        elevation: 2,
                     }}
                 >
                     {SETTINGS.map((s, i) => (
@@ -183,30 +188,33 @@ export default function NotificationSettings({ onBack }: { onBack?: () => void }
                             style={{
                                 flexDirection: "row",
                                 alignItems: "center",
-                                gap: 12,
-                                paddingVertical: ms(13),
+                                justifyContent: "space-between",
+                                width: "100%",
+                                paddingVertical: ms(12),
                                 paddingHorizontal: ms(10),
                                 borderBottomWidth: i < SETTINGS.length - 1 ? 1 : 0,
                                 borderBottomColor: "#F3F4F6",
                             }}
                         >
-                            <View
-                                style={{
-                                    width: ms(38),
-                                    height: ms(38),
-                                    borderRadius: 14,
-                                    backgroundColor: s.chipBg,
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                }}
-                            >
-                                <Ionicons name={s.icon} size={ms(17)} color={s.chipColor} />
-                            </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={{ fontFamily: FONT.semibold, fontSize: ms(14), color: INK }}>{s.title}</Text>
-                                <Text style={{ fontFamily: FONT.regular, fontSize: ms(11.5), color: MUTED, marginTop: 1, lineHeight: ms(16) }}>
-                                    {s.desc}
-                                </Text>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: ms(12), flex: 1, paddingRight: ms(8) }}>
+                                <View
+                                    style={{
+                                        width: ms(40),
+                                        height: ms(40),
+                                        borderRadius: ms(14),
+                                        backgroundColor: s.chipBg,
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                    }}
+                                >
+                                    <Ionicons name={s.icon} size={ms(18)} color={s.chipColor} />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={{ fontFamily: FONT.semibold, fontSize: ms(14), color: INK }}>{s.title}</Text>
+                                    <Text style={{ fontFamily: FONT.regular, fontSize: ms(11.5), color: MUTED, marginTop: 2, lineHeight: ms(16) }}>
+                                        {s.desc}
+                                    </Text>
+                                </View>
                             </View>
                             <Toggle value={values[s.key]} onToggle={() => toggle(s.key)} />
                         </View>

@@ -15,6 +15,7 @@ import ParentSignupPage from "./parents/partesinup";
 import DriverDashboard from "./driver/driverdashbaord";
 import PersonalDetail from "./driver/driverpages/personaldetail";
 import SchoolDetails from "./driver/driverpages/schooldetails";
+import SchoolDetailsForHerserds from "./driver/driverpages/schooldetailsforherserds";
 import BusDetails from "./driver/driverpages/busdetaisl";
 import AccountSettings from "./driver/driverpages/accounysseting";
 import NotificationSettings from "./driver/driverpages/NotificationSettings";
@@ -73,7 +74,7 @@ export default function MainComponent() {
   }
 
   if (currentRoute === "driverSchoolDetails") {
-    return <SchoolDetails onBack={() => setCurrentRoute("driverDashboard")} />;
+    return <SchoolDetailsForHerserds onBack={() => setCurrentRoute("driverDashboard")} />;
   }
 
   if (currentRoute === "driverBusDetails") {
