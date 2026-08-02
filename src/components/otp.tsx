@@ -379,19 +379,37 @@ export default function OtpVerification({
         setBtnState("loading");
         Keyboard.dismiss();
 
-        if (otpValue !== DEMO_CORRECT_OTP) {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-            setVerifyAttempts((a) => a + 1);
-            resetButtonToIdle();
-            shake(otpShake);
-            setDigits(Array(OTP_LENGTH).fill(""));
-            showError("wrong");
-            boxRefs.current[0]?.focus();
-            return;
-        }
+        Animated.timing(btnWidthAnim, { toValue: 0, duration: 320, easing: Easing.out(Easing.exp), useNativeDriver: false }).start();
+        Animated.parallel([
+            Animated.timing(textOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
+            Animated.timing(loadingOpacity, { toValue: 1, duration: 280, delay: 100, useNativeDriver: true }),
+        ]).start();
 
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        onVerified?.();
+        // TODO: replace this timeout with your real "verify OTP" API call.
+        // On a real backend, 401/invalid-otp → wrong OTP flow below.
+        successTimerRef.current = setTimeout(() => {
+            if (otpValue !== DEMO_CORRECT_OTP) {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                setVerifyAttempts((a) => a + 1);
+                resetButtonToIdle();
+                shake(otpShake);
+                setDigits(Array(OTP_LENGTH).fill(""));
+                showError("wrong");
+                boxRefs.current[0]?.focus();
+                return;
+            }
+
+            setBtnState("success");
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            Animated.parallel([
+                Animated.timing(loadingOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
+                Animated.timing(iconOpacity, { toValue: 1, duration: 280, delay: 100, useNativeDriver: true }),
+            ]).start();
+
+            successTimerRef.current = setTimeout(() => {
+                onVerified?.(); // e.g. navigation.replace("ResetPassword")
+            }, 900);
+        }, 1600);
     };
 
     const btnWidth = btnWidthAnim.interpolate({
@@ -777,8 +795,8 @@ export default function OtpVerification({
                             >
                                 <Ionicons
                                     name={
-                                        otpError === "noInternet" ? "wifi-outline" : 
-                                        otpError === "serverError" ? "server-outline" : "close-circle-outline"
+                                        otpError === "noInternet" ? "wifi-outline" :
+                                            otpError === "serverError" ? "server-outline" : "close-circle-outline"
                                     }
                                     size={ms(17)}
                                     color={DANGER}
@@ -787,17 +805,17 @@ export default function OtpVerification({
                             <View style={{ flex: 1 }}>
                                 <Text style={{ color: "#991B1B", fontFamily: FONT.semibold, fontSize: ms(13.5) }}>
                                     {otpError === "noInternet" ? "No internet connection" :
-                                     otpError === "serverError" ? "Server error" :
-                                     attemptsExhausted ? "Too many wrong attempts" : "Incorrect OTP"}
+                                        otpError === "serverError" ? "Server error" :
+                                            attemptsExhausted ? "Too many wrong attempts" : "Incorrect OTP"}
                                 </Text>
                                 <Text style={{ color: "#B91C1C", fontFamily: FONT.regular, fontSize: ms(12.5), lineHeight: ms(18), marginTop: 2 }}>
                                     {otpError === "noInternet"
                                         ? "Please check your network connection and try again."
                                         : otpError === "serverError"
-                                        ? "Something went wrong on our end. Please try again later."
-                                        : attemptsExhausted
-                                        ? "You've used all verification attempts. Please request a new OTP."
-                                        : `The code you entered is wrong. ${attemptsLeft} ${attemptsLeft === 1 ? "attempt" : "attempts"} left.`}
+                                            ? "Something went wrong on our end. Please try again later."
+                                            : attemptsExhausted
+                                                ? "You've used all verification attempts. Please request a new OTP."
+                                                : `The code you entered is wrong. ${attemptsLeft} ${attemptsLeft === 1 ? "attempt" : "attempts"} left.`}
                                 </Text>
                             </View>
                             <Pressable hitSlop={10} onPress={hideError} accessibilityLabel="Dismiss error">

@@ -444,8 +444,15 @@ export default function ParentSignupPage({ onBack, onSubmit }: ParentSignupPageP
             return;
         }
         Keyboard.dismiss();
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        onSubmit?.({ ...data, relation: relation as Relation });
+        setSubmitting(true);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+        submitTimerRef.current = setTimeout(() => {
+            setSubmitting(false);
+            setSubmitted(true);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            onSubmit?.({ ...data, relation: relation as Relation });
+        }, 1400);
     };
 
     const stepFields = STEP_FIELDS[step];

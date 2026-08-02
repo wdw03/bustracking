@@ -466,11 +466,20 @@ export default function SchoolSignupPage({ onBack, onSubmit }: SchoolSignupPageP
         if (!termsAccepted) {
             setTermsError(true);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            shake();
             return;
         }
         Keyboard.dismiss();
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        onSubmit?.(data);
+        setSubmitting(true);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+        // TODO: replace this timeout with your real "register school" API call
+        submitTimerRef.current = setTimeout(() => {
+            setSubmitting(false);
+            setSubmitted(true);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            onSubmit?.(data); // navigate to your success page here
+        }, 1600);
     };
 
     /* Focus chain: pressing "next" on the keyboard jumps to the next field */

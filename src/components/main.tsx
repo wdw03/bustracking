@@ -31,7 +31,7 @@ export default function MainComponent() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setLoading(false);
-    }, 1500); // Quick initial splash animation
+    }, 3000); // Wait for onboarding/splash
 
     return () => clearTimeout(timer);
   }, []);

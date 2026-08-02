@@ -257,8 +257,33 @@ export default function CreatePasswordPage({ onBack, onSuccess }: CreatePassword
         setBtnState("loading");
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        onSuccess?.();
+        Animated.timing(btnWidthAnim, { toValue: 0, duration: 320, easing: Easing.out(Easing.exp), useNativeDriver: false }).start();
+        Animated.parallel([
+            Animated.timing(textOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
+            Animated.timing(loadingOpacity, { toValue: 1, duration: 280, delay: 100, useNativeDriver: true }),
+        ]).start();
+
+        /* ── TODO: replace with your real "update password" API call.
+           In your catch block map failures to these exceptions:
+
+             if (!navigator/network)          → resetButtonToIdle(); showError("network");
+             if (response.status >= 500)      → resetButtonToIdle(); showError("server");
+
+           Success → brief green check on the button, then onSuccess()
+           (your new success page shows the confirmation — nothing here). */
+        successTimerRef.current = setTimeout(() => {
+            setBtnState("success");
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            Animated.parallel([
+                Animated.timing(loadingOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
+                Animated.timing(iconOpacity, { toValue: 1, duration: 280, delay: 100, useNativeDriver: true }),
+            ]).start();
+
+            // Straight to the success page — no banner on this screen
+            successTimerRef.current = setTimeout(() => {
+                onSuccess?.();
+            }, 700);
+        }, 1500);
     };
 
     const btnWidth = btnWidthAnim.interpolate({ inputRange: [0, 1], outputRange: [ms(56), containerWidth] });

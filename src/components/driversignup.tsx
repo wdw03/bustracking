@@ -408,8 +408,15 @@ export default function DriverSignupPage({ onBack, onSubmit }: DriverSignupPageP
             return;
         }
         Keyboard.dismiss();
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        onSubmit?.(data);
+        setSubmitting(true);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+        submitTimerRef.current = setTimeout(() => {
+            setSubmitting(false);
+            setSubmitted(true);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            onSubmit?.(data);
+        }, 1400);
     };
 
     const stepFields = STEPS[step].fields;
