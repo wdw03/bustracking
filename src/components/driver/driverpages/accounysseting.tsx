@@ -19,7 +19,6 @@ import React, { useState } from "react";
 import { Alert, Dimensions, Linking, Pressable, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import * as Location from "expo-location";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const ACCENT = "#FFD500";
@@ -185,14 +184,24 @@ export default function AccountSettings({
             return;
         }
 
-        try {
-            const { status } = await Location.requestForegroundPermissionsAsync();
-            if (status === "granted") {
-                setLocationOn(true);
-            } else {
-                setLocationOn(false);
-            }
-        } catch {
+        const requestPermission = (): Promise<boolean> => {
+            return new Promise((resolve) => {
+                Alert.alert(
+                    '"BusTracker" Would Like to Access Your Location',
+                    'Allow location access for live GPS tracking & trip sharing with parents.',
+                    [
+                        { text: "Don't Allow", style: "cancel", onPress: () => resolve(false) },
+                        { text: "Allow", style: "default", onPress: () => resolve(true) },
+                    ],
+                );
+            });
+        };
+
+        const granted = await requestPermission();
+        if (granted) {
+            setLocationOn(true);
+        } else {
+            // Denied -> silently keep OFF!
             setLocationOn(false);
         }
     };

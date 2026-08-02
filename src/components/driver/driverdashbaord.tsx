@@ -39,6 +39,7 @@
 
 import React, { useCallback, useRef, useState } from "react";
 import {
+    Alert,
     Animated,
     Dimensions,
     Easing,
@@ -55,7 +56,6 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import * as Location from "expo-location";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { VideoView, useVideoPlayer } from "expo-video";
 
@@ -450,16 +450,25 @@ export default function DriverDashboard({
             return;
         }
 
-        try {
-            const { status } = await Location.requestForegroundPermissionsAsync();
-            if (status === "granted") {
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                setSharing((s) => ({ ...s, [schoolId]: true }));
-            } else {
-                // Denied -> silently keep OFF!
-                setSharing((s) => ({ ...s, [schoolId]: false }));
-            }
-        } catch {
+        const requestPermission = (): Promise<boolean> => {
+            return new Promise((resolve) => {
+                Alert.alert(
+                    '"BusTracker" Would Like to Access Your Location',
+                    'Allow location access for live GPS tracking & trip sharing with parents.',
+                    [
+                        { text: "Don't Allow", style: "cancel", onPress: () => resolve(false) },
+                        { text: "Allow", style: "default", onPress: () => resolve(true) },
+                    ],
+                );
+            });
+        };
+
+        const granted = await requestPermission();
+        if (granted) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            setSharing((s) => ({ ...s, [schoolId]: true }));
+        } else {
+            // Denied -> silently keep OFF!
             setSharing((s) => ({ ...s, [schoolId]: false }));
         }
     };
