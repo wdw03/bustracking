@@ -19,6 +19,7 @@ import React, { useState } from "react";
 import { Alert, Dimensions, Linking, Pressable, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as Location from "expo-location";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const ACCENT = "#FFD500";
@@ -175,7 +176,26 @@ export default function AccountSettings({
 }: Props) {
     const insets = useSafeAreaInsets();
     const [darkMode, setDarkMode] = useState(false);
-    const [locationOn, setLocationOn] = useState(true);
+    const [locationOn, setLocationOn] = useState(false);
+
+    const toggleLocationPermission = async () => {
+        Haptics.selectionAsync();
+        if (locationOn) {
+            setLocationOn(false);
+            return;
+        }
+
+        try {
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            if (status === "granted") {
+                setLocationOn(true);
+            } else {
+                setLocationOn(false);
+            }
+        } catch {
+            setLocationOn(false);
+        }
+    };
 
     const confirmLogout = () => {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
@@ -315,8 +335,8 @@ export default function AccountSettings({
                         desc="GPS live tracking and trip sharing"
                         chipBg="#DCFCE7"
                         chipColor={GREEN}
-                        right={<Toggle value={locationOn} onToggle={() => { Haptics.selectionAsync(); setLocationOn((v) => !v); }} />}
-                        onPress={() => setLocationOn((v) => !v)}
+                        right={<Toggle value={locationOn} onToggle={toggleLocationPermission} />}
+                        onPress={toggleLocationPermission}
                     />
                     <Row
                         icon="phone-portrait-outline"

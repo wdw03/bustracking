@@ -55,6 +55,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import * as Location from "expo-location";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { VideoView, useVideoPlayer } from "expo-video";
 
@@ -442,11 +443,25 @@ export default function DriverDashboard({
             b.model.toLowerCase().includes(busSearchQuery.toLowerCase()),
     );
 
-    const toggleSharing = (schoolId: string) => {
-        Haptics.notificationAsync(
-            sharing[schoolId] ? Haptics.NotificationFeedbackType.Warning : Haptics.NotificationFeedbackType.Success,
-        );
-        setSharing((s) => ({ ...s, [schoolId]: !s[schoolId] }));
+    const toggleSharing = async (schoolId: string) => {
+        if (sharing[schoolId]) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            setSharing((s) => ({ ...s, [schoolId]: false }));
+            return;
+        }
+
+        try {
+            const { status } = await Location.requestForegroundPermissionsAsync();
+            if (status === "granted") {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                setSharing((s) => ({ ...s, [schoolId]: true }));
+            } else {
+                // Denied -> silently keep OFF!
+                setSharing((s) => ({ ...s, [schoolId]: false }));
+            }
+        } catch {
+            setSharing((s) => ({ ...s, [schoolId]: false }));
+        }
     };
 
     const activeShares = Object.values(sharing).filter(Boolean).length;
