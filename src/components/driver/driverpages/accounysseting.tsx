@@ -184,16 +184,7 @@ export default function AccountSettings({
             return;
         }
 
-        const requestPermission = async (): Promise<boolean> => {
-            try {
-                const Location = require("expo-location");
-                if (Location && typeof Location.requestForegroundPermissionsAsync === "function") {
-                    const { status } = await Location.requestForegroundPermissionsAsync();
-                    return status === "granted";
-                }
-            } catch {
-                // System UI dialog fallback
-            }
+        const requestPermission = (): Promise<boolean> => {
             return new Promise((resolve) => {
                 Alert.alert(
                     '"BusTracker" Would Like to Access Your Location',
