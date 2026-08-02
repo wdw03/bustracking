@@ -1,30 +1,3 @@
-/* ============================================================================
-   DRIVER DASHBOARD — BusTracker
-   Copy to: src/components/driver/driverdashbaord.tsx
-
-   DEMO ACCOUNT (use on the login page):
-     Phone    : 9876543210
-     Password : 1234
-     Driver   : Rajesh Kumar (DRV001)
-
-   MEDIA PLACEHOLDERS — replace these paths with your real assets:
-     PROFILE IMAGE : assets/expo.icon/Assets/driverprofile.png
-     BUS IMAGE     : assets/expo.icon/Assets/busimage.png
-     MAP PREVIEW   : assets/expo.icon/Assets/mappreview.png
-
-   Fonts: Sora (display) + Inter (body) — same as the auth pages.
-
-   Wire navigation via props:
-     <DriverDashboard
-        onOpenPersonalDetails={() => navigation.navigate("PersonalDetail")}
-        onOpenSchoolDetails={() => navigation.navigate("SchoolDetails")}
-        onOpenBusDetails={() => navigation.navigate("BusDetails")}
-        onOpenAccountSettings={() => navigation.navigate("AccountSettings")}
-        onOpenNotificationSettings={() => navigation.navigate("NotificationSettings")}
-        onLogout={() => navigation.replace("Login")}
-     />
-   ========================================================================== */
-
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
     Animated,
@@ -40,14 +13,14 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-/* ─────────────────────────── Theme ─────────────────────────── */
-const ACCENT = "#FFD500";
-const ACCENT_SOFT = "#FFF7CC";
-const ACCENT_DEEP = "#B99700";
-const INK = "#111827";
+/* ─────────────────────────── Theme Tokens ─────────────────────────── */
+const ACCENT = "#FFD60A";
+const ACCENT_SOFT = "#FFF6CC";
+const ACCENT_DEEP = "#E6BC00";
+const INK = "#101010";
 const MUTED = "#6B7280";
 const FAINT = "#9CA3AF";
-const BORDER = "#E5E7EB";
+const BORDER = "#ECEDF0";
 const CARD_BG = "#FFFFFF";
 const PAGE_BG = "#F8F9FB";
 const GREEN = "#16A34A";
@@ -76,7 +49,6 @@ const DRIVER = {
     driverId: "DRV001",
     phone: "+91 98765 43210",
     school: "Green Valley School",
-    // PLACEHOLDER — replace with require("../../assets/expo.icon/Assets/driverprofile.png")
     profileImage: null as any,
 };
 
@@ -101,7 +73,6 @@ const BUSES = [
     },
 ];
 
-/* ─────────────────────────── Props ─────────────────────────── */
 type Props = {
     onOpenPersonalDetails?: () => void;
     onOpenSchoolDetails?: () => void;
@@ -113,7 +84,7 @@ type Props = {
 
 type Tab = "home" | "route" | "notifications" | "profile";
 
-/* ─────────────────────────── Small building blocks ─────────────────────────── */
+/* ─────────────────────────── Premium Reusable Micro-Components ─────────────────────────── */
 
 function IconChip({
     name,
@@ -134,13 +105,68 @@ function IconChip({
                 width: ms(box),
                 height: ms(box),
                 borderRadius: ms(box) * 0.38,
+                borderTopLeftRadius: ms(box) * 0.48,
                 backgroundColor: bg,
                 alignItems: "center",
                 justifyContent: "center",
+                borderWidth: 1,
+                borderColor: "rgba(0,0,0,0.04)",
             }}
         >
             <Ionicons name={name} size={ms(size)} color={color} />
         </View>
+    );
+}
+
+function ArrowBadge({ color = INK, bg = "#F7F8FA" }: { color?: string; bg?: string }) {
+    return (
+        <View
+            style={{
+                width: ms(32),
+                height: ms(32),
+                borderRadius: 12,
+                borderTopLeftRadius: ms(15),
+                backgroundColor: bg,
+                alignItems: "center",
+                justifyContent: "center",
+                borderWidth: 1,
+                borderColor: "rgba(0,0,0,0.06)",
+            }}
+        >
+            <Ionicons name="arrow-forward" size={ms(14)} color={color} />
+        </View>
+    );
+}
+
+function BackButton({ onPress }: { onPress?: () => void }) {
+    return (
+        <Pressable
+            onPress={onPress}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            android_ripple={null}
+            hitSlop={8}
+            style={({ pressed }) => ({
+                width: ms(42),
+                height: ms(42),
+                borderRadius: 16,
+                borderTopLeftRadius: ms(20),
+                borderBottomRightRadius: ms(20),
+                backgroundColor: pressed ? ACCENT_SOFT : "#FFFFFF",
+                borderWidth: 1,
+                borderColor: BORDER,
+                alignItems: "center",
+                justifyContent: "center",
+                shadowColor: "#0F172A",
+                shadowOpacity: 0.08,
+                shadowRadius: 8,
+                shadowOffset: { width: 0, height: 3 },
+                elevation: 3,
+                opacity: pressed ? 0.85 : 1,
+            })}
+        >
+            <Ionicons name="arrow-back" size={ms(20)} color={INK} />
+        </Pressable>
     );
 }
 
@@ -151,11 +177,12 @@ function Card({ children, style }: { children: React.ReactNode; style?: any }) {
                 {
                     backgroundColor: CARD_BG,
                     borderRadius: 22,
-                    borderWidth: 1,
+                    borderTopLeftRadius: 26,
+                    borderWidth: 1.5,
                     borderColor: BORDER,
                     padding: ms(16),
                     shadowColor: "#0F172A",
-                    shadowOpacity: 0.05,
+                    shadowOpacity: 0.04,
                     shadowRadius: 12,
                     shadowOffset: { width: 0, height: 4 },
                     elevation: 2,
@@ -168,7 +195,7 @@ function Card({ children, style }: { children: React.ReactNode; style?: any }) {
     );
 }
 
-/* ─────────────────────────── Component ─────────────────────────── */
+/* ─────────────────────────── Main Dashboard ─────────────────────────── */
 
 export default function DriverDashboard({
     onOpenPersonalDetails,
@@ -176,7 +203,6 @@ export default function DriverDashboard({
     onOpenBusDetails,
     onOpenAccountSettings,
     onOpenNotificationSettings,
-    onLogout,
 }: Props) {
     const insets = useSafeAreaInsets();
 
@@ -229,7 +255,7 @@ export default function DriverDashboard({
         setOnline((o) => !o);
     };
 
-    /* Tab switch fade */
+    /* Smooth Tab transition */
     const tabAnim = useRef(new Animated.Value(1)).current;
     const switchTab = (next: Tab) => {
         if (next === tab) return;
@@ -251,7 +277,7 @@ export default function DriverDashboard({
         [],
     );
 
-    /* ─────────────── Screens per tab ─────────────── */
+    /* ─────────────── Tab Views ─────────────── */
 
     const renderHome = () => (
         <>
@@ -266,26 +292,28 @@ export default function DriverDashboard({
                         </Text>
                     </View>
                     <Pressable
+                        android_ripple={null}
                         hitSlop={8}
                         onPress={onOpenBusDetails}
-                        style={{
+                        style={({ pressed }) => ({
                             flexDirection: "row",
                             alignItems: "center",
-                            gap: 3,
-                            backgroundColor: PAGE_BG,
+                            gap: 5,
+                            backgroundColor: pressed ? ACCENT_SOFT : PAGE_BG,
                             borderRadius: 999,
-                            paddingHorizontal: ms(10),
-                            paddingVertical: 6,
-                            borderWidth: 1,
+                            paddingHorizontal: ms(12),
+                            paddingVertical: 7,
+                            borderWidth: 1.5,
                             borderColor: BORDER,
-                        }}
+                            opacity: pressed ? 0.85 : 1,
+                        })}
                     >
                         <Text style={{ fontFamily: FONT.semibold, fontSize: ms(11.5), color: INK }}>Details</Text>
-                        <Ionicons name="chevron-forward" size={ms(12)} color={INK} />
+                        <Ionicons name="arrow-forward" size={ms(12)} color={INK} />
                     </Pressable>
                 </View>
 
-                {/* quick stats */}
+                {/* Quick Stats */}
                 <View style={{ flexDirection: "row", gap: 10, marginTop: ms(14) }}>
                     {[
                         { icon: "flag-outline", label: `${BUSES[0].stops} Stops` },
@@ -314,21 +342,23 @@ export default function DriverDashboard({
                 </View>
             </Card>
 
-            {/* Start / Stop trip */}
+            {/* Start / Stop trip button */}
             <Animated.View style={{ transform: [{ scale: tripActive ? pulseScale : 1 }], marginTop: ms(16) }}>
                 <Pressable
+                    android_ripple={null}
                     onPress={toggleTrip}
                     accessibilityRole="button"
                     accessibilityLabel={tripActive ? "Stop trip" : "Start trip"}
                     style={({ pressed }) => ({
-                        height: ms(62),
+                        height: ms(60),
                         borderRadius: 22,
+                        borderTopLeftRadius: ms(26), borderBottomRightRadius: ms(26),
                         backgroundColor: tripActive ? RED : ACCENT,
                         alignItems: "center",
                         justifyContent: "center",
                         flexDirection: "row",
                         gap: 10,
-                        transform: [{ scale: pressed ? 0.98 : 1 }],
+                        opacity: pressed ? 0.9 : 1,
                         shadowColor: tripActive ? RED : ACCENT_DEEP,
                         shadowOpacity: 0.35,
                         shadowRadius: 14,
@@ -341,7 +371,7 @@ export default function DriverDashboard({
                             width: ms(34),
                             height: ms(34),
                             borderRadius: 17,
-                            backgroundColor: tripActive ? "#FFFFFF22" : "#11182722",
+                            backgroundColor: tripActive ? "#FFFFFF22" : "#10101022",
                             alignItems: "center",
                             justifyContent: "center",
                         }}
@@ -377,8 +407,8 @@ export default function DriverDashboard({
                             {gpsSharing ? "Sharing live location with parents & school" : "Location sharing is off"}
                         </Text>
                     </View>
-                    {/* custom switch */}
                     <Pressable
+                        android_ripple={null}
                         onPress={toggleGps}
                         accessibilityRole="switch"
                         accessibilityState={{ checked: gpsSharing }}
@@ -408,25 +438,23 @@ export default function DriverDashboard({
                     </Pressable>
                 </View>
 
-                {/* Map preview placeholder */}
+                {/* Map preview box */}
                 <View
                     style={{
                         marginTop: ms(14),
                         height: ms(120),
                         borderRadius: 16,
                         backgroundColor: PAGE_BG,
-                        borderWidth: 1,
+                        borderWidth: 1.5,
                         borderColor: BORDER,
                         alignItems: "center",
                         justifyContent: "center",
                         overflow: "hidden",
                     }}
                 >
-                    {/* PLACEHOLDER — replace with your map preview image or live MapView:
-                        <Image source={require("../../assets/expo.icon/Assets/mappreview.png")} style={{width:"100%",height:"100%"}} resizeMode="cover" /> */}
                     <Ionicons name="map-outline" size={ms(28)} color={FAINT} />
                     <Text style={{ fontFamily: FONT.regular, fontSize: ms(11.5), color: FAINT, marginTop: 4 }}>
-                        Map preview — add MapView or image here
+                        Live route map preview
                     </Text>
                 </View>
             </Card>
@@ -436,31 +464,38 @@ export default function DriverDashboard({
                 My Buses
             </Text>
             {BUSES.map((bus) => (
-                <Card key={bus.id} style={{ marginBottom: ms(10), padding: ms(13) }}>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                        <IconChip
-                            name="bus-outline"
-                            bg={bus.assigned ? ACCENT_SOFT : PAGE_BG}
-                            color={bus.assigned ? ACCENT_DEEP : FAINT}
-                            box={40}
-                            size={18}
-                        />
-                        <View style={{ flex: 1 }}>
-                            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                                <Text style={{ fontFamily: FONT.semibold, fontSize: ms(14), color: INK }}>{bus.number}</Text>
-                                {bus.assigned && (
-                                    <View style={{ backgroundColor: GREEN_SOFT, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 }}>
-                                        <Text style={{ fontFamily: FONT.semibold, fontSize: ms(10), color: GREEN }}>ASSIGNED</Text>
-                                    </View>
-                                )}
+                <Pressable
+                    key={bus.id}
+                    android_ripple={null}
+                    onPress={onOpenBusDetails}
+                    style={({ pressed }) => ({ opacity: pressed ? 0.9 : 1 })}
+                >
+                    <Card style={{ marginBottom: ms(10), padding: ms(13) }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                            <IconChip
+                                name="bus-outline"
+                                bg={bus.assigned ? ACCENT_SOFT : PAGE_BG}
+                                color={bus.assigned ? ACCENT_DEEP : FAINT}
+                                box={40}
+                                size={18}
+                            />
+                            <View style={{ flex: 1 }}>
+                                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                                    <Text style={{ fontFamily: FONT.semibold, fontSize: ms(14), color: INK }}>{bus.number}</Text>
+                                    {bus.assigned && (
+                                        <View style={{ backgroundColor: GREEN_SOFT, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 }}>
+                                            <Text style={{ fontFamily: FONT.semibold, fontSize: ms(10), color: GREEN }}>ASSIGNED</Text>
+                                        </View>
+                                    )}
+                                </View>
+                                <Text style={{ fontFamily: FONT.regular, fontSize: ms(12), color: MUTED, marginTop: 2 }}>
+                                    {bus.route} · {bus.stops} stops · {bus.students} students
+                                </Text>
                             </View>
-                            <Text style={{ fontFamily: FONT.regular, fontSize: ms(12), color: MUTED, marginTop: 2 }}>
-                                {bus.route} · {bus.stops} stops · {bus.students} students
-                            </Text>
+                            <ArrowBadge color={bus.assigned ? ACCENT_DEEP : FAINT} bg={bus.assigned ? ACCENT_SOFT : PAGE_BG} />
                         </View>
-                        <Ionicons name="chevron-forward" size={ms(16)} color={FAINT} />
-                    </View>
-                </Card>
+                    </Card>
+                </Pressable>
             ))}
         </>
     );
@@ -484,16 +519,15 @@ export default function DriverDashboard({
                         height: ms(170),
                         borderRadius: 16,
                         backgroundColor: PAGE_BG,
-                        borderWidth: 1,
+                        borderWidth: 1.5,
                         borderColor: BORDER,
                         alignItems: "center",
                         justifyContent: "center",
                     }}
                 >
-                    {/* PLACEHOLDER — put your MapView / route map image here */}
                     <Ionicons name="navigate-outline" size={ms(30)} color={FAINT} />
                     <Text style={{ fontFamily: FONT.regular, fontSize: ms(11.5), color: FAINT, marginTop: 4 }}>
-                        Route map — add MapView here
+                        Route Navigation Map
                     </Text>
                 </View>
             </Card>
@@ -509,7 +543,6 @@ export default function DriverDashboard({
                 { name: "Green Valley School", time: "7:50 AM", done: false },
             ].map((stop, i, arr) => (
                 <View key={stop.name} style={{ flexDirection: "row", gap: 12 }}>
-                    {/* timeline */}
                     <View style={{ alignItems: "center", width: ms(22) }}>
                         <View
                             style={{
@@ -549,7 +582,7 @@ export default function DriverDashboard({
     const renderNotifications = () => (
         <>
             <Text style={{ fontFamily: FONT.display, fontSize: ms(15), color: INK, marginTop: ms(16), marginBottom: ms(10) }}>
-                Recent
+                Recent Alerts
             </Text>
             {notifications.map((n) => (
                 <Card key={n.id} style={{ marginBottom: ms(10), padding: ms(13) }}>
@@ -566,11 +599,16 @@ export default function DriverDashboard({
                 </Card>
             ))}
             <Pressable
+                android_ripple={null}
                 onPress={onOpenNotificationSettings}
-                style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginTop: ms(6) }}
+                style={({ pressed }) => ({
+                    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
+                    marginTop: ms(6), paddingVertical: 8, opacity: pressed ? 0.8 : 1,
+                })}
             >
                 <Ionicons name="options-outline" size={ms(14)} color={ACCENT_DEEP} />
                 <Text style={{ fontFamily: FONT.semibold, fontSize: ms(13), color: ACCENT_DEEP }}>Notification Settings</Text>
+                <ArrowBadge color={ACCENT_DEEP} bg={ACCENT_SOFT} />
             </Pressable>
         </>
     );
@@ -591,8 +629,9 @@ export default function DriverDashboard({
                         width: ms(88),
                         height: ms(88),
                         borderRadius: ms(30),
+                        borderTopLeftRadius: ms(36),
                         backgroundColor: ACCENT_SOFT,
-                        borderWidth: 2,
+                        borderWidth: 2.5,
                         borderColor: ACCENT,
                         alignItems: "center",
                         justifyContent: "center",
@@ -602,7 +641,6 @@ export default function DriverDashboard({
                     {DRIVER.profileImage ? (
                         <Image source={DRIVER.profileImage} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
                     ) : (
-                        /* PLACEHOLDER — replace DRIVER.profileImage with require("...driverprofile.png") */
                         <Ionicons name="person" size={ms(40)} color={ACCENT_DEEP} />
                     )}
                 </View>
@@ -622,6 +660,7 @@ export default function DriverDashboard({
                 {profileMenu.map((item, i) => (
                     <Pressable
                         key={item.label}
+                        android_ripple={null}
                         onPress={() => {
                             Haptics.selectionAsync();
                             item.onPress?.();
@@ -637,11 +676,12 @@ export default function DriverDashboard({
                             borderRadius: 16,
                             borderBottomWidth: i < profileMenu.length - 1 ? 1 : 0,
                             borderBottomColor: "#F3F4F6",
+                            opacity: pressed ? 0.85 : 1,
                         })}
                     >
                         <IconChip name={item.icon} bg={item.bg} color={item.color} box={38} size={17} />
                         <Text style={{ flex: 1, fontFamily: FONT.semibold, fontSize: ms(14), color: INK }}>{item.label}</Text>
-                        <Ionicons name="chevron-forward" size={ms(16)} color={FAINT} />
+                        <ArrowBadge color={item.color} bg={item.bg} />
                     </Pressable>
                 ))}
             </Card>
@@ -652,13 +692,12 @@ export default function DriverDashboard({
         </>
     );
 
-    /* ─────────────── Header ─────────────── */
     const headerTitle =
         tab === "home" ? null : tab === "route" ? "Route" : tab === "notifications" ? "Notifications" : "Profile";
 
     return (
         <View style={{ flex: 1, backgroundColor: PAGE_BG }}>
-            {/* Curved accent header backdrop */}
+            {/* Curved background header */}
             <View
                 pointerEvents="none"
                 style={{
@@ -672,7 +711,6 @@ export default function DriverDashboard({
                     borderBottomRightRadius: ms(90),
                 }}
             />
-            {/* soft echo curve */}
             <View
                 pointerEvents="none"
                 style={{
@@ -687,21 +725,21 @@ export default function DriverDashboard({
                 }}
             />
 
-            {/* ── Header ── */}
+            {/* Header */}
             <View style={{ paddingTop: insets.top + ms(10), paddingHorizontal: ms(20) }}>
                 {tab === "home" ? (
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                        {/* avatar */}
                         <View
                             style={{
                                 width: ms(48),
                                 height: ms(48),
                                 borderRadius: ms(17),
+                                borderTopLeftRadius: ms(22),
                                 backgroundColor: "#FFFFFF",
                                 alignItems: "center",
                                 justifyContent: "center",
                                 borderWidth: 2,
-                                borderColor: "#11182715",
+                                borderColor: "#10101015",
                                 overflow: "hidden",
                             }}
                         >
@@ -717,8 +755,8 @@ export default function DriverDashboard({
                                 <Text style={{ fontFamily: FONT.semibold, fontSize: ms(11.5), color: "#7A6A00" }}>
                                     Driver ID: {DRIVER.driverId}
                                 </Text>
-                                {/* online pill */}
                                 <Pressable
+                                    android_ripple={null}
                                     onPress={toggleOnline}
                                     accessibilityRole="switch"
                                     accessibilityState={{ checked: online }}
@@ -746,14 +784,16 @@ export default function DriverDashboard({
                                 </Pressable>
                             </View>
                         </View>
-                        {/* bell */}
+
                         <Pressable
+                            android_ripple={null}
                             onPress={() => switchTab("notifications")}
                             accessibilityLabel="Notifications"
-                            style={{
+                            style={({ pressed }) => ({
                                 width: ms(42),
                                 height: ms(42),
                                 borderRadius: ms(15),
+                                borderTopLeftRadius: ms(19),
                                 backgroundColor: "#FFFFFF",
                                 alignItems: "center",
                                 justifyContent: "center",
@@ -762,10 +802,10 @@ export default function DriverDashboard({
                                 shadowRadius: 8,
                                 shadowOffset: { width: 0, height: 3 },
                                 elevation: 3,
-                            }}
+                                opacity: pressed ? 0.85 : 1,
+                            })}
                         >
                             <Ionicons name="notifications-outline" size={ms(19)} color={INK} />
-                            {/* badge */}
                             <View
                                 style={{
                                     position: "absolute",
@@ -783,32 +823,14 @@ export default function DriverDashboard({
                     </View>
                 ) : (
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                        <Pressable
-                            onPress={() => switchTab("home")}
-                            accessibilityLabel="Back to home"
-                            style={{
-                                width: ms(42),
-                                height: ms(42),
-                                borderRadius: ms(15),
-                                backgroundColor: "#FFFFFF",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                shadowColor: "#0F172A",
-                                shadowOpacity: 0.08,
-                                shadowRadius: 8,
-                                shadowOffset: { width: 0, height: 3 },
-                                elevation: 3,
-                            }}
-                        >
-                            <Ionicons name="arrow-back" size={ms(19)} color={INK} />
-                        </Pressable>
+                        <BackButton onPress={() => switchTab("home")} />
                         <Text style={{ fontFamily: FONT.displayHeavy, fontSize: ms(19), color: INK }}>{headerTitle}</Text>
                     </View>
                 )}
             </View>
 
-            {/* ── Content ── */}
-            <Animated.View style={{ flex: 1, opacity: tabAnim }}>
+            {/* Content */}
+            <Animated.View style={{ flex: 1, opacity: tabAnim, backgroundColor: PAGE_BG }}>
                 <ScrollView
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={{
@@ -824,7 +846,7 @@ export default function DriverDashboard({
                 </ScrollView>
             </Animated.View>
 
-            {/* ── Bottom navigation ── */}
+            {/* Bottom Tab Navigation */}
             <View
                 style={{
                     position: "absolute",
@@ -833,6 +855,7 @@ export default function DriverDashboard({
                     bottom: Math.max(insets.bottom, ms(12)),
                     backgroundColor: "#FFFFFF",
                     borderRadius: 26,
+                    borderTopLeftRadius: ms(32),
                     flexDirection: "row",
                     paddingVertical: ms(10),
                     paddingHorizontal: ms(8),
@@ -841,8 +864,8 @@ export default function DriverDashboard({
                     shadowRadius: 18,
                     shadowOffset: { width: 0, height: 8 },
                     elevation: 8,
-                    borderWidth: 1,
-                    borderColor: "#F3F4F6",
+                    borderWidth: 1.5,
+                    borderColor: BORDER,
                 }}
             >
                 {(
@@ -857,10 +880,16 @@ export default function DriverDashboard({
                     return (
                         <Pressable
                             key={t.key}
+                            android_ripple={null}
                             onPress={() => switchTab(t.key)}
                             accessibilityRole="tab"
                             accessibilityState={{ selected: active }}
-                            style={{ flex: 1, alignItems: "center", gap: 3 }}
+                            style={({ pressed }) => ({
+                                flex: 1,
+                                alignItems: "center",
+                                gap: 3,
+                                opacity: pressed ? 0.85 : 1,
+                            })}
                         >
                             <View
                                 style={{

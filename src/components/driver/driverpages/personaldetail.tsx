@@ -4,13 +4,13 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const ACCENT = "#FFD500";
-const ACCENT_SOFT = "#FFF7CC";
-const ACCENT_DEEP = "#B99700";
-const INK = "#111827";
+const ACCENT = "#FFD60A";
+const ACCENT_SOFT = "#FFF6CC";
+const ACCENT_DEEP = "#E6BC00";
+const INK = "#101010";
 const MUTED = "#6B7280";
 const FAINT = "#9CA3AF";
-const BORDER = "#E5E7EB";
+const BORDER = "#ECEDF0";
 const PAGE_BG = "#F8F9FB";
 const GREEN = "#16A34A";
 
@@ -52,43 +52,47 @@ function Field({
 }) {
     return (
         <View style={{ marginBottom: ms(12) }}>
-            <Text style={{ fontFamily: FONT.semibold, fontSize: ms(11.5), color: MUTED, marginBottom: 6, marginLeft: 2 }}>
+            <Text style={{ fontFamily: FONT.semibold, fontSize: ms(12), color: INK, marginBottom: ms(6), marginLeft: 2 }}>
                 {label}
             </Text>
             <View
                 style={{
                     flexDirection: "row",
                     alignItems: "center",
-                    gap: 10,
-                    backgroundColor: "#FFFFFF",
-                    borderRadius: 16,
+                    gap: ms(10),
+                    backgroundColor: editing ? "#FFFFFF" : "#F7F8FA",
+                    borderRadius: 19,
+                    borderTopLeftRadius: ms(24),
                     borderWidth: 1.5,
                     borderColor: editing ? ACCENT : BORDER,
-                    paddingHorizontal: ms(12),
-                    height: ms(52),
+                    paddingHorizontal: ms(11),
+                    height: ms(56),
                 }}
             >
                 <View
                     style={{
-                        width: ms(32),
-                        height: ms(32),
-                        borderRadius: 11,
-                        backgroundColor: ACCENT_SOFT,
+                        width: ms(36),
+                        height: ms(36),
+                        borderRadius: 13,
+                        borderTopLeftRadius: ms(17),
+                        backgroundColor: editing ? ACCENT_SOFT : "#FFFFFF",
                         alignItems: "center",
                         justifyContent: "center",
+                        borderWidth: 1,
+                        borderColor: "#F5E6A3",
                     }}
                 >
-                    <Ionicons name={icon} size={ms(15)} color={ACCENT_DEEP} />
+                    <Ionicons name={icon} size={ms(17)} color={ACCENT_DEEP} />
                 </View>
                 {editing ? (
                     <TextInput
                         value={value}
                         onChangeText={onChange}
                         keyboardType={keyboardType}
-                        style={{ flex: 1, fontFamily: FONT.regular, fontSize: ms(14), color: INK, paddingVertical: 0 }}
+                        style={{ flex: 1, fontFamily: FONT.regular, fontSize: ms(15), color: INK, paddingVertical: 0 }}
                     />
                 ) : (
-                    <Text style={{ flex: 1, fontFamily: FONT.regular, fontSize: ms(14), color: INK }}>{value}</Text>
+                    <Text style={{ flex: 1, fontFamily: FONT.regular, fontSize: ms(15), color: INK }}>{value}</Text>
                 )}
             </View>
         </View>
@@ -114,6 +118,7 @@ export default function PersonalDetail({ onBack }: { onBack?: () => void }) {
 
     return (
         <View style={{ flex: 1, backgroundColor: PAGE_BG }}>
+            {/* Header backdrop sweep */}
             <View
                 pointerEvents="none"
                 style={{
@@ -128,6 +133,7 @@ export default function PersonalDetail({ onBack }: { onBack?: () => void }) {
                 }}
             />
 
+            {/* Header */}
             <View
                 style={{
                     paddingTop: insets.top + ms(10),
@@ -138,13 +144,18 @@ export default function PersonalDetail({ onBack }: { onBack?: () => void }) {
                 }}
             >
                 <Pressable
+                    android_ripple={null}
                     onPress={onBack}
                     accessibilityLabel="Go back"
-                    style={{
+                    style={({ pressed }) => ({
                         width: ms(42),
                         height: ms(42),
-                        borderRadius: ms(15),
-                        backgroundColor: "#FFFFFF",
+                        borderRadius: 16,
+                        borderTopLeftRadius: ms(20),
+                        borderBottomRightRadius: ms(20),
+                        backgroundColor: pressed ? ACCENT_SOFT : "#FFFFFF",
+                        borderWidth: 1.5,
+                        borderColor: BORDER,
                         alignItems: "center",
                         justifyContent: "center",
                         shadowColor: "#0F172A",
@@ -152,30 +163,35 @@ export default function PersonalDetail({ onBack }: { onBack?: () => void }) {
                         shadowRadius: 8,
                         shadowOffset: { width: 0, height: 3 },
                         elevation: 3,
-                    }}
+                        opacity: pressed ? 0.85 : 1,
+                    })}
                 >
-                    <Ionicons name="arrow-back" size={ms(19)} color={INK} />
+                    <Ionicons name="arrow-back" size={ms(20)} color={INK} />
                 </Pressable>
                 <Text style={{ flex: 1, fontFamily: FONT.displayHeavy, fontSize: ms(19), color: INK }}>Personal Details</Text>
                 <Pressable
+                    android_ripple={null}
                     onPress={toggleEdit}
                     accessibilityLabel={editing ? "Save" : "Edit"}
-                    style={{
+                    style={({ pressed }) => ({
                         flexDirection: "row",
                         alignItems: "center",
-                        gap: 5,
+                        gap: 6,
                         backgroundColor: editing ? INK : "#FFFFFF",
                         borderRadius: 999,
-                        paddingHorizontal: ms(14),
+                        paddingHorizontal: ms(15),
                         paddingVertical: ms(8),
+                        borderWidth: 1.5,
+                        borderColor: editing ? INK : BORDER,
                         shadowColor: "#0F172A",
                         shadowOpacity: 0.08,
                         shadowRadius: 8,
                         shadowOffset: { width: 0, height: 3 },
                         elevation: 3,
-                    }}
+                        opacity: pressed ? 0.85 : 1,
+                    })}
                 >
-                    <Ionicons name={editing ? "checkmark" : "create-outline"} size={ms(14)} color={editing ? ACCENT : INK} />
+                    <Ionicons name={editing ? "checkmark" : "create-outline"} size={ms(15)} color={editing ? ACCENT : INK} />
                     <Text style={{ fontFamily: FONT.semibold, fontSize: ms(12.5), color: editing ? "#FFFFFF" : INK }}>
                         {editing ? "Save" : "Edit"}
                     </Text>
@@ -186,15 +202,17 @@ export default function PersonalDetail({ onBack }: { onBack?: () => void }) {
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingHorizontal: ms(20), paddingBottom: insets.bottom + ms(30) }}
             >
+                {/* Avatar Card */}
                 <View style={{ alignItems: "center", marginTop: ms(18) }}>
                     <View
                         style={{
                             width: ms(96),
                             height: ms(96),
                             borderRadius: ms(32),
+                            borderTopLeftRadius: ms(38),
                             backgroundColor: "#FFFFFF",
                             borderWidth: 3,
-                            borderColor: "#FFFFFF",
+                            borderColor: ACCENT,
                             alignItems: "center",
                             justifyContent: "center",
                             overflow: "hidden",
@@ -213,18 +231,20 @@ export default function PersonalDetail({ onBack }: { onBack?: () => void }) {
                     </View>
                     {editing && (
                         <Pressable
-                            style={{
+                            android_ripple={null}
+                            style={({ pressed }) => ({
                                 flexDirection: "row",
                                 alignItems: "center",
                                 gap: 5,
-                                marginTop: 8,
+                                marginTop: ms(8),
                                 backgroundColor: "#FFFFFF",
                                 borderRadius: 999,
-                                paddingHorizontal: 12,
-                                paddingVertical: 6,
-                                borderWidth: 1,
+                                paddingHorizontal: ms(12),
+                                paddingVertical: ms(6),
+                                borderWidth: 1.5,
                                 borderColor: BORDER,
-                            }}
+                                opacity: pressed ? 0.85 : 1,
+                            })}
                         >
                             <Ionicons name="camera-outline" size={ms(13)} color={INK} />
                             <Text style={{ fontFamily: FONT.semibold, fontSize: ms(11.5), color: INK }}>Change Photo</Text>
@@ -233,7 +253,7 @@ export default function PersonalDetail({ onBack }: { onBack?: () => void }) {
                     <Text style={{ fontFamily: FONT.displayHeavy, fontSize: ms(18), color: INK, marginTop: ms(10) }}>
                         {data.name}
                     </Text>
-                    <View style={{ backgroundColor: "#FFFFFF", borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3, marginTop: 4, borderWidth: 1, borderColor: BORDER }}>
+                    <View style={{ backgroundColor: ACCENT_SOFT, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4, marginTop: 4, borderWidth: 1, borderColor: "#F5E6A3" }}>
                         <Text style={{ fontFamily: FONT.semibold, fontSize: ms(11), color: ACCENT_DEEP }}>ID: {data.driverId}</Text>
                     </View>
                 </View>
@@ -256,6 +276,7 @@ export default function PersonalDetail({ onBack }: { onBack?: () => void }) {
                     </View>
                 )}
 
+                {/* Fields */}
                 <View style={{ marginTop: ms(18) }}>
                     <Field icon="person-outline" label="Driver Name" value={data.name} editing={editing} onChange={set("name")} />
                     <Field icon="call-outline" label="Phone Number" value={data.phone} editing={editing} onChange={set("phone")} keyboardType="phone-pad" />

@@ -3,13 +3,13 @@ import { Dimensions, Image, Pressable, ScrollView, Text, View } from "react-nati
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const ACCENT = "#FFD500";
-const ACCENT_SOFT = "#FFF7CC";
-const ACCENT_DEEP = "#B99700";
-const INK = "#111827";
+const ACCENT = "#FFD60A";
+const ACCENT_SOFT = "#FFF6CC";
+const ACCENT_DEEP = "#E6BC00";
+const INK = "#101010";
 const MUTED = "#6B7280";
 const FAINT = "#9CA3AF";
-const BORDER = "#E5E7EB";
+const BORDER = "#ECEDF0";
 const PAGE_BG = "#F8F9FB";
 const GREEN = "#16A34A";
 const GREEN_SOFT = "#DCFCE7";
@@ -54,9 +54,12 @@ function InfoRow({ icon, label, value, valueColor, last }: { icon: any; label: s
                     width: ms(36),
                     height: ms(36),
                     borderRadius: 13,
+                    borderTopLeftRadius: ms(17),
                     backgroundColor: ACCENT_SOFT,
                     alignItems: "center",
                     justifyContent: "center",
+                    borderWidth: 1,
+                    borderColor: "#F5E6A3",
                 }}
             >
                 <Ionicons name={icon} size={ms(16)} color={ACCENT_DEEP} />
@@ -74,6 +77,7 @@ export default function BusDetails({ onBack }: { onBack?: () => void }) {
 
     return (
         <View style={{ flex: 1, backgroundColor: PAGE_BG }}>
+            {/* Header backdrop */}
             <View
                 pointerEvents="none"
                 style={{
@@ -88,6 +92,7 @@ export default function BusDetails({ onBack }: { onBack?: () => void }) {
                 }}
             />
 
+            {/* Header */}
             <View
                 style={{
                     paddingTop: insets.top + ms(10),
@@ -98,13 +103,18 @@ export default function BusDetails({ onBack }: { onBack?: () => void }) {
                 }}
             >
                 <Pressable
+                    android_ripple={null}
                     onPress={onBack}
                     accessibilityLabel="Go back"
-                    style={{
+                    style={({ pressed }) => ({
                         width: ms(42),
                         height: ms(42),
-                        borderRadius: ms(15),
-                        backgroundColor: "#FFFFFF",
+                        borderRadius: 16,
+                        borderTopLeftRadius: ms(20),
+                        borderBottomRightRadius: ms(20),
+                        backgroundColor: pressed ? ACCENT_SOFT : "#FFFFFF",
+                        borderWidth: 1.5,
+                        borderColor: BORDER,
                         alignItems: "center",
                         justifyContent: "center",
                         shadowColor: "#0F172A",
@@ -112,9 +122,10 @@ export default function BusDetails({ onBack }: { onBack?: () => void }) {
                         shadowRadius: 8,
                         shadowOffset: { width: 0, height: 3 },
                         elevation: 3,
-                    }}
+                        opacity: pressed ? 0.85 : 1,
+                    })}
                 >
-                    <Ionicons name="arrow-back" size={ms(19)} color={INK} />
+                    <Ionicons name="arrow-back" size={ms(20)} color={INK} />
                 </Pressable>
                 <Text style={{ fontFamily: FONT.displayHeavy, fontSize: ms(19), color: INK }}>Bus Details</Text>
             </View>
@@ -123,12 +134,14 @@ export default function BusDetails({ onBack }: { onBack?: () => void }) {
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingHorizontal: ms(20), paddingBottom: insets.bottom + ms(30) }}
             >
+                {/* Bus Hero Card */}
                 <View
                     style={{
                         alignItems: "center",
                         backgroundColor: "#FFFFFF",
                         borderRadius: 24,
-                        borderWidth: 1,
+                        borderTopLeftRadius: 28,
+                        borderWidth: 1.5,
                         borderColor: BORDER,
                         paddingVertical: ms(22),
                         marginTop: ms(18),
@@ -144,6 +157,7 @@ export default function BusDetails({ onBack }: { onBack?: () => void }) {
                             width: ms(140),
                             height: ms(100),
                             borderRadius: ms(24),
+                            borderTopLeftRadius: ms(30),
                             backgroundColor: ACCENT_SOFT,
                             alignItems: "center",
                             justifyContent: "center",
@@ -186,7 +200,8 @@ export default function BusDetails({ onBack }: { onBack?: () => void }) {
                     style={{
                         backgroundColor: "#FFFFFF",
                         borderRadius: 24,
-                        borderWidth: 1,
+                        borderTopLeftRadius: 28,
+                        borderWidth: 1.5,
                         borderColor: BORDER,
                         paddingHorizontal: ms(16),
                         paddingVertical: ms(4),
@@ -208,7 +223,8 @@ export default function BusDetails({ onBack }: { onBack?: () => void }) {
                     style={{
                         backgroundColor: "#FFFFFF",
                         borderRadius: 24,
-                        borderWidth: 1,
+                        borderTopLeftRadius: 28,
+                        borderWidth: 1.5,
                         borderColor: BORDER,
                         paddingHorizontal: ms(16),
                         paddingVertical: ms(4),
