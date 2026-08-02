@@ -11,6 +11,14 @@ import SchoolSignupPage from "./schoolsinuppage";
 import DriverSignupPage from "./driversignup";
 import ParentSignupPage from "./parents/partesinup";
 
+// Driver Dashboard & Sub-pages
+import DriverDashboard from "./driver/driverdashbaord";
+import PersonalDetail from "./driver/driverpages/personaldetail";
+import SchoolDetails from "./driver/driverpages/schooldetails";
+import BusDetails from "./driver/driverpages/busdetaisl";
+import AccountSettings from "./driver/driverpages/accounysseting";
+import NotificationSettings from "./driver/driverpages/NotificationSettings";
+
 export default function MainComponent() {
   const [loading, setLoading] = useState(true);
   const [currentRoute, setCurrentRoute] = useState<
@@ -24,6 +32,12 @@ export default function MainComponent() {
     | "otp"
     | "createPassword"
     | "passwordSuccess"
+    | "driverDashboard"
+    | "driverPersonalDetails"
+    | "driverSchoolDetails"
+    | "driverBusDetails"
+    | "driverAccountSettings"
+    | "driverNotificationSettings"
   >("login");
   const [resetPhone, setResetPhone] = useState("");
   const [selectedRole, setSelectedRole] = useState<SignupRole | null>(null);
@@ -40,6 +54,49 @@ export default function MainComponent() {
     return <Onboardingpage />;
   }
 
+  /* ─────────────────────────── Driver Routes ─────────────────────────── */
+  if (currentRoute === "driverDashboard") {
+    return (
+      <DriverDashboard
+        onOpenPersonalDetails={() => setCurrentRoute("driverPersonalDetails")}
+        onOpenSchoolDetails={() => setCurrentRoute("driverSchoolDetails")}
+        onOpenBusDetails={() => setCurrentRoute("driverBusDetails")}
+        onOpenAccountSettings={() => setCurrentRoute("driverAccountSettings")}
+        onOpenNotificationSettings={() => setCurrentRoute("driverNotificationSettings")}
+        onLogout={() => setCurrentRoute("login")}
+      />
+    );
+  }
+
+  if (currentRoute === "driverPersonalDetails") {
+    return <PersonalDetail onBack={() => setCurrentRoute("driverDashboard")} />;
+  }
+
+  if (currentRoute === "driverSchoolDetails") {
+    return <SchoolDetails onBack={() => setCurrentRoute("driverDashboard")} />;
+  }
+
+  if (currentRoute === "driverBusDetails") {
+    return <BusDetails onBack={() => setCurrentRoute("driverDashboard")} />;
+  }
+
+  if (currentRoute === "driverAccountSettings") {
+    return (
+      <AccountSettings
+        onBack={() => setCurrentRoute("driverDashboard")}
+        onChangePassword={() => setCurrentRoute("createPassword")}
+        onNotificationSettings={() => setCurrentRoute("driverNotificationSettings")}
+        onLogout={() => setCurrentRoute("login")}
+        onDeleteAccount={() => setCurrentRoute("login")}
+      />
+    );
+  }
+
+  if (currentRoute === "driverNotificationSettings") {
+    return <NotificationSettings onBack={() => setCurrentRoute("driverDashboard")} />;
+  }
+
+  /* ─────────────────────────── Signup & Auth Routes ─────────────────────────── */
   if (currentRoute === "signupMethod") {
     return (
       <SignupRolePage
@@ -175,6 +232,10 @@ export default function MainComponent() {
     <Sinuplogin
       onSignUp={() => setCurrentRoute("signupMethod")}
       onForgotPassword={() => setCurrentRoute("forgetPassword")}
+      onLoginSuccess={(phone) => {
+        console.log("Login Success for:", phone);
+        setCurrentRoute("driverDashboard");
+      }}
     />
   );
 }

@@ -57,7 +57,7 @@ const DEMO_ACCOUNTS: Record<string, string> = {
 
 type SinuploginProps = {
     onSignUp?: () => void;
-    onLoginSuccess?: () => void;
+    onLoginSuccess?: (phone: string) => void;
     onForgotPassword?: () => void;
 };
 
@@ -373,7 +373,7 @@ export default function Sinuplogin({ onSignUp, onLoginSuccess, onForgotPassword 
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             loadingOpacity.value = withTiming(0, { duration: 180 });
             iconOpacity.value = withDelay(100, withTiming(1, { duration: 280 }));
-            onLoginSuccess?.();
+            onLoginSuccess?.(phoneNumber);
         }, 1800);
     };
 
