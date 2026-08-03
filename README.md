@@ -42,6 +42,65 @@ Use the pre-configured credentials below to test the **Driver Portal**:
 
 ---
 
+## 🧠 Codebase Architecture & File Purpose Guide (कौन सा Code किस Purpose के लिए है)
+
+Here is a detailed breakdown of every key file and directory in this repository, explaining its exact role and responsibility:
+
+### 📂 1. Expo Router & Root Entry (`src/app/`)
+- 📄 **`src/app/_layout.tsx`**: The top-level root layout wrapper. Configures safe area providers, loads custom fonts (Inter, Sora), initializes global gesture handlers, and sets up status bar styling.
+- 📄 **`src/app/index.tsx`**: The main entry screen component. Mounts `MainComponent` from `src/components/main.tsx`.
+
+---
+
+### 📂 2. Main Navigation & Core Auth Components (`src/components/`)
+- 📄 **`src/components/main.tsx`**: **The Navigation Brain.** Manages stack history (`history: RouteName[]`), handles instant screen switches (`navigateTo`, `goBack`, `resetTo`), listens to physical Android Back button presses, and remembers the driver's active tab (`initialTab`).
+- 📄 **`src/components/loginpageonly.tsx`**: **Login Screen.** Provides user login via Phone Number and Password for Drivers, School Authorities, and Parents.
+- 📄 **`src/components/signupmethod.tsx`**: **Registration Role Chooser.** Allows new users to select whether they are registering as a Driver, Parent, or School Authority.
+- 📄 **`src/components/signuisngnumber.tsx`**: **Phone Verification Screen.** Collects user phone numbers for OTP authentication during registration.
+- 📄 **`src/components/otp.tsx`**: **OTP Verification.** Renders a 4-digit PIN input with a live countdown timer and resend capability.
+- 📄 **`src/components/createpasswordpage.tsx`**: **Password Creation.** Allows users to set up a secure account password during registration.
+- 📄 **`src/components/forgetpassword.tsx`**: **Password Reset Request.** Handles password recovery prompts via SMS/OTP.
+- 📄 **`src/components/forgtrsucesssfull.tsx`**: **Password Reset Success.** Displays confirmation message after password update.
+- 📄 **`src/components/schoolsinuppage.tsx`**: **School Signup Form.** Collects school affiliation code, principal details, address, and official email.
+- 📄 **`src/components/driversignup.tsx`**: **Driver Signup Form.** Collects driver's DL (Driving License) number, phone, experience, and shift details.
+- 📄 **`src/components/loadter.tsx`**: **Animated Loader/Splash.** Renders initial loading animations during app startup.
+
+---
+
+### 📂 3. Driver Portal & Dashboard (`src/components/driver/`)
+- 📄 **`src/components/driver/driverdashbaord.tsx`**: **Driver Main Dashboard.** The primary hub for bus drivers featuring:
+  - **4 Bottom Tabs**: `Home`, `Schools`, `Bus`, `Profile`.
+  - **Video Hero Header Cards**: Dynamic native video clips for each tab (`useVideoPlayer`).
+  - **Location Switch**: Dedicated per-school live GPS location sharing toggle.
+  - **School & Bus Search**: Instant search filtering for assigned schools and buses.
+  - **Shimmer Skeleton Integration**: Automatically displays skeleton loading placeholders during data fetching.
+
+---
+
+### 📂 4. Driver Sub-Pages & Settings (`src/components/driver/driverpages/`)
+- 📄 **`src/components/driver/driverpages/personaldetail.tsx`**: Displays driver profile details (Full Name, Driver ID `DRV001`, License number `DL-0420110149646`, Phone number, Emergency contacts).
+- 📄 **`src/components/driver/driverpages/schooldetails.tsx`** & **`schooldetailsforherserds.tsx`**: Displays detailed information about assigned schools (School Name, Address, Principal Contact, Shift Timings, Assigned Buses).
+- 📄 **`src/components/driver/driverpages/busdetaisl.tsx`**: Displays bus specs, seating capacity, bus model (e.g. *Tata Starbus 32-Seater*), partner helper contacts, and live route telemetry.
+- 📄 **`src/components/driver/driverpages/accounysseting.tsx`**: Account settings panel featuring location permission switches, dark mode toggles, language preferences, and delete account option.
+- 📄 **`src/components/driver/driverpages/NotificationSettings.tsx`**: Manages push notification alerts, route update sounds, and vibration preferences.
+
+---
+
+### 📂 5. Parent Portal (`src/components/parents/`)
+- 📄 **`src/components/parents/partesinup.tsx`**: Parent registration portal for connecting student IDs to assigned school bus routes.
+
+---
+
+### 📂 6. Common Components & UI (`src/components/common/`)
+- 📄 **`src/components/common/Skeleton.tsx`**: **Shimmer Loader Module.** Exporting `SkeletonItem`, `SkeletonCard`, and `SkeletonList` components powered by animated opacity loops for dynamic loading states.
+
+---
+
+### 📂 7. Services & Infrastructure (`src/services/`)
+- 📄 **`src/services/locationService.ts`**: **GPS & Location Permission Service.** Safe native location service that handles device location permissions without crashing Metro bundler during development.
+
+---
+
 ## 🛠️ Technology Stack
 
 - **Framework**: [Expo](https://expo.dev) (v52+) with New Architecture
@@ -53,7 +112,7 @@ Use the pre-configured credentials below to test the **Driver Portal**:
 
 ---
 
-## 📁 Directory Structure
+## 📁 Directory Structure Summary
 
 ```
 BusTracker/
@@ -153,7 +212,7 @@ git status
 git add .
 
 # Commit changes with a descriptive message
-git commit -m "feat: Add skeleton loading and instant UI performance optimizations"
+git commit -m "docs: Add detailed file purpose and codebase guide to README"
 
 # Push to GitHub repository
 git push origin main
