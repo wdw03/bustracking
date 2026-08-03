@@ -62,7 +62,7 @@ export function Press({
             onPressIn={() => Animated.spring(scale, { toValue: 0.97, friction: 7, tension: 120, useNativeDriver: true }).start()}
             onPressOut={() => Animated.spring(scale, { toValue: 1, friction: 7, tension: 120, useNativeDriver: true }).start()}
             onPress={() => {
-                if (haptic) Haptics.selectionAsync().catch(() => {});
+                if (haptic) Haptics.selectionAsync();
                 onPress?.();
             }}
         >
@@ -246,9 +246,9 @@ export const RECENT_ACTIVITY = [
 
 export const busStatusColor = (s: DBus["status"]) =>
     s === "Running" ? { color: GREEN, soft: GREEN_SOFT } :
-    s === "Offline" ? { color: ORANGE, soft: ORANGE_SOFT } :
-    s === "Maintenance" ? { color: PURPLE, soft: PURPLE_SOFT } :
-    { color: RED, soft: RED_SOFT };
+        s === "Offline" ? { color: ORANGE, soft: ORANGE_SOFT } :
+            s === "Maintenance" ? { color: PURPLE, soft: PURPLE_SOFT } :
+                { color: RED, soft: RED_SOFT };
 
 export const driverForBus = (busId: string | null) => DRIVERS.find((d) => d.busId === busId);
 export const busById = (id: string | null) => BUSES.find((b) => b.id === id);

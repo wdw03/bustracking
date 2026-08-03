@@ -8,6 +8,7 @@
     "@expo-google-fonts/sora": "^0.4.2",
     "@expo/ui": "~57.0.7",
     "@expo/vector-icons": "^15.0.2",
+    "@maplibre/maplibre-react-native": "^11.3.6",
     "expo": "~57.0.8",
     "expo-constants": "~57.0.7",
     "expo-dev-client": "~57.0.9",
