@@ -20,6 +20,7 @@ import { Alert, Dimensions, Linking, Pressable, ScrollView, Text, View } from "r
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { requestDeviceLocationPermission } from "../../../services/locationService";
 
 const ACCENT = "#FFD500";
 const ACCENT_SOFT = "#FFF7CC";
@@ -178,26 +179,12 @@ export default function AccountSettings({
     const [locationOn, setLocationOn] = useState(false);
 
     const toggleLocationPermission = async () => {
-        Haptics.selectionAsync();
         if (locationOn) {
             setLocationOn(false);
             return;
         }
 
-        const requestPermission = (): Promise<boolean> => {
-            return new Promise((resolve) => {
-                Alert.alert(
-                    '"BusTracker" Would Like to Access Your Location',
-                    'Allow location access for live GPS tracking & trip sharing with parents.',
-                    [
-                        { text: "Don't Allow", style: "cancel", onPress: () => resolve(false) },
-                        { text: "Allow", style: "default", onPress: () => resolve(true) },
-                    ],
-                );
-            });
-        };
-
-        const granted = await requestPermission();
+        const granted = await requestDeviceLocationPermission();
         if (granted) {
             setLocationOn(true);
         } else {

@@ -37,7 +37,7 @@
      />
    ========================================================================== */
 
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
     Alert,
     Animated,
@@ -58,6 +58,8 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { VideoView, useVideoPlayer } from "expo-video";
+import { requestDeviceLocationPermission } from "../../services/locationService";
+import { SkeletonCard, SkeletonItem, SkeletonList } from "../common/Skeleton";
 
 /* ─────────────────────────── Theme ─────────────────────────── */
 const ACCENT = "#FFD500";
@@ -200,27 +202,31 @@ const SCHOOLS: School[] = [
             { id: "b6", number: "DL09KL2345", route: "Route F", model: "Force Traveller School", capacity: "26 seats", partner: "Sanjay Bisht", partnerPhone: "+91 94666 77889", pickupTime: "7:50 AM", stops: 7 },
         ],
     },
-    {
-        id: "s6",
-        name: "Modern Era School",
-        code: "MES-2024-092",
-        address: "Raj Nagar Extension, Ghaziabad, UP 201017",
-        principal: "Mrs. Anita Chauhan",
-        contact: "+91 120 887 7665",
-        email: "help@modernera.edu.in",
-        shift: "Morning · 7:00 AM – 1:00 PM",
-        route: "Route G",
-        buses: [
-            { id: "b7", number: "UP14MN6789", route: "Route G", model: "Tata Starbus 32-Seater", capacity: "32 seats", partner: "Prakash Joshi", partnerPhone: "+91 93777 88990", pickupTime: "7:05 AM", stops: 9 },
-        ],
-    },
+    // {
+    //     id: "s6",
+    //     name: "Modern Era School",
+    //     code: "MES-2024-092",
+    //     address: "Raj Nagar Extension, Ghaziabad, UP 201017",
+    //     principal: "Mrs. Anita Chauhan",
+    //     contact: "+91 120 887 7665",
+    //     email: "help@modernera.edu.in",
+    //     shift: "Morning · 7:00 AM – 1:00 PM",
+    //     route: "Route G",
+    //     buses: [
+    //         { id: "b7", number: "UP14MN6789", route: "Route G", model: "Tata Starbus 32-Seater", capacity: "32 seats", partner: "Prakash Joshi", partnerPhone: "+91 93777 88990", pickupTime: "7:05 AM", stops: 9 },
+    //     ],
+    // },
 ];
 
 const TOTAL_BUSES = SCHOOLS.reduce((n, s) => n + s.buses.length, 0);
 const ALL_BUSES = SCHOOLS.flatMap((s) => s.buses.map((b) => ({ ...b, school: s })));
 
 /* ─────────────────────────── Props ─────────────────────────── */
+export type Tab = "home" | "schools" | "bus" | "profile";
+
 type Props = {
+    initialTab?: Tab;
+    onTabChange?: (tab: Tab) => void;
     onOpenPersonalDetails?: () => void;
     onOpenSchoolDetails?: () => void;
     onOpenBusDetails?: () => void;
@@ -228,8 +234,6 @@ type Props = {
     onOpenNotificationSettings?: () => void;
     onLogout?: () => void;
 };
-
-type Tab = "home" | "schools" | "bus" | "profile";
 
 /* ─────────────────────────── Building blocks ─────────────────────────── */
 
@@ -250,10 +254,7 @@ function Press({
         Animated.spring(scale, { toValue: v, useNativeDriver: true, speed: 40, bounciness: 5 }).start();
     return (
         <Pressable
-            onPress={() => {
-                Haptics.selectionAsync();
-                onPress?.();
-            }}
+            onPress={onPress}
             onPressIn={() => animTo(0.97)}
             onPressOut={() => animTo(1)}
             android_ripple={null}
@@ -403,6 +404,8 @@ function LocationSwitch({ on, onToggle }: { on: boolean; onToggle: () => void })
 /* ─────────────────────────── Component ─────────────────────────── */
 
 export default function DriverDashboard({
+    initialTab = "home",
+    onTabChange,
     onOpenPersonalDetails,
     onOpenSchoolDetails,
     onOpenBusDetails,
@@ -418,8 +421,21 @@ export default function DriverDashboard({
     const busPlayer = useVideoPlayer(BUS_VIDEO, (p) => { p.loop = true; p.muted = true; p.play(); });
     const profilePlayer = useVideoPlayer(PROFILE_VIDEO, (p) => { p.loop = true; p.muted = true; p.play(); });
 
-    const [tab, setTab] = useState<Tab>("home");
+    const [tab, setTabState] = useState<Tab>(initialTab);
+
+    const setTab = useCallback((newTab: Tab) => {
+        setTabState(newTab);
+        onTabChange?.(newTab);
+    }, [onTabChange]);
+
     const [online, setOnline] = useState(true);
+    const [isLoadingData, setIsLoadingData] = useState(true);
+
+    useEffect(() => {
+        setIsLoadingData(true);
+        const timer = setTimeout(() => setIsLoadingData(false), 350);
+        return () => clearTimeout(timer);
+    }, [tab]);
     const [searchQuery, setSearchQuery] = useState("");
     const [busSearchQuery, setBusSearchQuery] = useState("");
     const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -450,20 +466,7 @@ export default function DriverDashboard({
             return;
         }
 
-        const requestPermission = (): Promise<boolean> => {
-            return new Promise((resolve) => {
-                Alert.alert(
-                    '"BusTracker" Would Like to Access Your Location',
-                    'Allow location access for live GPS tracking & trip sharing with parents.',
-                    [
-                        { text: "Don't Allow", style: "cancel", onPress: () => resolve(false) },
-                        { text: "Allow", style: "default", onPress: () => resolve(true) },
-                    ],
-                );
-            });
-        };
-
-        const granted = await requestPermission();
+        const granted = await requestDeviceLocationPermission();
         if (granted) {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             setSharing((s) => ({ ...s, [schoolId]: true }));
@@ -475,14 +478,13 @@ export default function DriverDashboard({
 
     const activeShares = Object.values(sharing).filter(Boolean).length;
 
-    /* Tab switch fade — short & smooth */
+    /* Tab switch fade — instant response + ultra-fast 120ms smooth fade */
     const tabAnim = useRef(new Animated.Value(1)).current;
     const animateTo = useCallback(
         (apply: () => void) => {
-            Animated.timing(tabAnim, { toValue: 0, duration: 100, easing: Easing.out(Easing.quad), useNativeDriver: true }).start(() => {
-                apply();
-                Animated.timing(tabAnim, { toValue: 1, duration: 150, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
-            });
+            apply();
+            tabAnim.setValue(0.9);
+            Animated.timing(tabAnim, { toValue: 1, duration: 100, easing: Easing.out(Easing.quad), useNativeDriver: true }).start();
         },
         [tabAnim],
     );
@@ -490,7 +492,6 @@ export default function DriverDashboard({
     const switchTab = useCallback(
         (next: Tab) => {
             if (next === tab) return;
-            Haptics.selectionAsync();
             animateTo(() => {
                 setTab(next);
                 setOpenSchool(null);
@@ -621,7 +622,9 @@ export default function DriverDashboard({
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={{ paddingBottom: ms(8) }}
                 >
-                    {filteredSchools.length === 0 ? (
+                    {isLoadingData ? (
+                        <SkeletonList count={3} />
+                    ) : filteredSchools.length === 0 ? (
                         <View style={{ paddingVertical: ms(20), alignItems: "center" }}>
                             <Ionicons name="school-outline" size={ms(26)} color={FAINT} />
                             <Text style={{ fontFamily: FONT.regular, fontSize: ms(11.5), color: MUTED, marginTop: 4 }}>
@@ -755,7 +758,9 @@ export default function DriverDashboard({
                         showsVerticalScrollIndicator={false}
                         contentContainerStyle={{ paddingBottom: ms(8) }}
                     >
-                        {filteredSchools.length === 0 ? (
+                        {isLoadingData ? (
+                            <SkeletonList count={3} />
+                        ) : filteredSchools.length === 0 ? (
                             <View style={{ paddingVertical: ms(20), alignItems: "center" }}>
                                 <Ionicons name="school-outline" size={ms(26)} color={FAINT} />
                                 <Text style={{ fontFamily: FONT.regular, fontSize: ms(11.5), color: MUTED, marginTop: 4 }}>
@@ -979,7 +984,9 @@ export default function DriverDashboard({
                         showsVerticalScrollIndicator={false}
                         contentContainerStyle={{ paddingBottom: ms(8) }}
                     >
-                        {filteredBuses.length === 0 ? (
+                        {isLoadingData ? (
+                            <SkeletonList count={3} />
+                        ) : filteredBuses.length === 0 ? (
                             <View style={{ paddingVertical: ms(20), alignItems: "center" }}>
                                 <Ionicons name="bus-outline" size={ms(26)} color={FAINT} />
                                 <Text style={{ fontFamily: FONT.regular, fontSize: ms(11.5), color: MUTED, marginTop: 4 }}>
@@ -1182,30 +1189,34 @@ export default function DriverDashboard({
             {/* menu with proper arrow chips */}
             <SectionTitle>Account</SectionTitle>
             <View style={{ backgroundColor: CARD_BG, borderRadius: 22, borderTopLeftRadius: 26, borderWidth: 1, borderColor: BORDER, padding: ms(6) }}>
-                {profileMenu.map((m, i) => (
-                    <Press key={m.title} onPress={m.onPress} label={m.title}>
-                        <View
-                            style={{
-                                flexDirection: "row",
-                                alignItems: "center",
-                                gap: 12,
-                                paddingVertical: ms(13),
-                                paddingHorizontal: ms(10),
-                                borderBottomWidth: i < profileMenu.length - 1 ? 1 : 0,
-                                borderBottomColor: "#F3F4F6",
-                            }}
-                        >
-                            <IconChip name={m.icon} bg={m.chipBg} color={m.chipColor} box={40} size={18} />
-                            <View style={{ flex: 1 }}>
-                                <Text style={{ fontFamily: FONT.semibold, fontSize: ms(14), color: INK }}>{m.title}</Text>
-                                <Text style={{ fontFamily: FONT.regular, fontSize: ms(11.5), color: MUTED, marginTop: 1 }}>{m.desc}</Text>
+                {isLoadingData ? (
+                    <SkeletonList count={4} />
+                ) : (
+                    profileMenu.map((m, i) => (
+                        <Press key={m.title} onPress={m.onPress} label={m.title}>
+                            <View
+                                style={{
+                                    flexDirection: "row",
+                                    alignItems: "center",
+                                    gap: 12,
+                                    paddingVertical: ms(13),
+                                    paddingHorizontal: ms(10),
+                                    borderBottomWidth: i < profileMenu.length - 1 ? 1 : 0,
+                                    borderBottomColor: "#F3F4F6",
+                                }}
+                            >
+                                <IconChip name={m.icon} bg={m.chipBg} color={m.chipColor} box={40} size={18} />
+                                <View style={{ flex: 1 }}>
+                                    <Text style={{ fontFamily: FONT.semibold, fontSize: ms(14), color: INK }}>{m.title}</Text>
+                                    <Text style={{ fontFamily: FONT.regular, fontSize: ms(11.5), color: MUTED, marginTop: 1 }}>{m.desc}</Text>
+                                </View>
+                                <View style={{ width: ms(28), height: ms(28), borderRadius: ms(10), backgroundColor: PAGE_BG, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: BORDER }}>
+                                    <Ionicons name="chevron-forward" size={ms(14)} color={INK} />
+                                </View>
                             </View>
-                            <View style={{ width: ms(28), height: ms(28), borderRadius: ms(10), backgroundColor: PAGE_BG, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: BORDER }}>
-                                <Ionicons name="chevron-forward" size={ms(14)} color={INK} />
-                            </View>
-                        </View>
-                    </Press>
-                ))}
+                        </Press>
+                    ))
+                )}
             </View>
 
             <View style={{ marginTop: ms(16) }}>

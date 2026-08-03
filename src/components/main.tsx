@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import { BackHandler } from "react-native";
 import Sinuplogin from "./loginpageonly";
 import Onboardingpage from "./loadter";
 import ForgetPassword from "./forgetpassword";
@@ -12,7 +13,7 @@ import DriverSignupPage from "./driversignup";
 import ParentSignupPage from "./parents/partesinup";
 
 // Driver Dashboard & Sub-pages
-import DriverDashboard from "./driver/driverdashbaord";
+import DriverDashboard, { Tab as DriverTab } from "./driver/driverdashbaord";
 import PersonalDetail from "./driver/driverpages/personaldetail";
 import SchoolDetails from "./driver/driverpages/schooldetails";
 import SchoolDetailsForHerserds from "./driver/driverpages/schooldetailsforherserds";
@@ -20,28 +21,68 @@ import BusDetails from "./driver/driverpages/busdetaisl";
 import AccountSettings from "./driver/driverpages/accounysseting";
 import NotificationSettings from "./driver/driverpages/NotificationSettings";
 
+export type RouteName =
+  | "login"
+  | "signupMethod"
+  | "signupNumber"
+  | "schoolSignup"
+  | "driverSignup"
+  | "parentSignup"
+  | "forgetPassword"
+  | "otp"
+  | "createPassword"
+  | "passwordSuccess"
+  | "driverDashboard"
+  | "driverPersonalDetails"
+  | "driverSchoolDetails"
+  | "driverBusDetails"
+  | "driverAccountSettings"
+  | "driverNotificationSettings";
+
 export default function MainComponent() {
   const [loading, setLoading] = useState(true);
-  const [currentRoute, setCurrentRoute] = useState<
-    | "login"
-    | "signupMethod"
-    | "signupNumber"
-    | "schoolSignup"
-    | "driverSignup"
-    | "parentSignup"
-    | "forgetPassword"
-    | "otp"
-    | "createPassword"
-    | "passwordSuccess"
-    | "driverDashboard"
-    | "driverPersonalDetails"
-    | "driverSchoolDetails"
-    | "driverBusDetails"
-    | "driverAccountSettings"
-    | "driverNotificationSettings"
-  >("login");
+  const [history, setHistory] = useState<RouteName[]>(["login"]);
   const [resetPhone, setResetPhone] = useState("");
   const [selectedRole, setSelectedRole] = useState<SignupRole | null>(null);
+
+  const [driverTab, setDriverTab] = useState<DriverTab>("home");
+
+  const currentRoute = history[history.length - 1] || "login";
+
+  // Push new route to history stack
+  const navigateTo = useCallback((route: RouteName) => {
+    setHistory((prev) => {
+      if (prev[prev.length - 1] === route) return prev;
+      return [...prev, route];
+    });
+  }, []);
+
+  // Pop top route to go back instantly to exact previous screen
+  const goBack = useCallback(() => {
+    setHistory((prev) => {
+      if (prev.length <= 1) return prev;
+      return prev.slice(0, -1);
+    });
+  }, []);
+
+  // Reset navigation history (e.g. on Login / Logout / Success)
+  const resetTo = useCallback((route: RouteName) => {
+    setHistory([route]);
+  }, []);
+
+  // Handle Android Physical / Gesture Back Button
+  useEffect(() => {
+    const onHardwareBack = () => {
+      if (history.length > 1) {
+        goBack();
+        return true; // Handled back action
+      }
+      return false; // Standard exit behavior at root
+    };
+
+    const subscription = BackHandler.addEventListener("hardwareBackPress", onHardwareBack);
+    return () => subscription.remove();
+  }, [history, goBack]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -59,52 +100,54 @@ export default function MainComponent() {
   if (currentRoute === "driverDashboard") {
     return (
       <DriverDashboard
-        onOpenPersonalDetails={() => setCurrentRoute("driverPersonalDetails")}
-        onOpenSchoolDetails={() => setCurrentRoute("driverSchoolDetails")}
-        onOpenBusDetails={() => setCurrentRoute("driverBusDetails")}
-        onOpenAccountSettings={() => setCurrentRoute("driverAccountSettings")}
-        onOpenNotificationSettings={() => setCurrentRoute("driverNotificationSettings")}
-        onLogout={() => setCurrentRoute("login")}
+        initialTab={driverTab}
+        onTabChange={(t) => setDriverTab(t)}
+        onOpenPersonalDetails={() => navigateTo("driverPersonalDetails")}
+        onOpenSchoolDetails={() => navigateTo("driverSchoolDetails")}
+        onOpenBusDetails={() => navigateTo("driverBusDetails")}
+        onOpenAccountSettings={() => navigateTo("driverAccountSettings")}
+        onOpenNotificationSettings={() => navigateTo("driverNotificationSettings")}
+        onLogout={() => resetTo("login")}
       />
     );
   }
 
   if (currentRoute === "driverPersonalDetails") {
-    return <PersonalDetail onBack={() => setCurrentRoute("driverDashboard")} />;
+    return <PersonalDetail onBack={goBack} />;
   }
 
   if (currentRoute === "driverSchoolDetails") {
-    return <SchoolDetailsForHerserds onBack={() => setCurrentRoute("driverDashboard")} />;
+    return <SchoolDetailsForHerserds onBack={goBack} />;
   }
 
   if (currentRoute === "driverBusDetails") {
-    return <BusDetails onBack={() => setCurrentRoute("driverDashboard")} />;
+    return <BusDetails onBack={goBack} />;
   }
 
   if (currentRoute === "driverAccountSettings") {
     return (
       <AccountSettings
-        onBack={() => setCurrentRoute("driverDashboard")}
-        onChangePassword={() => setCurrentRoute("createPassword")}
-        onNotificationSettings={() => setCurrentRoute("driverNotificationSettings")}
-        onLogout={() => setCurrentRoute("login")}
-        onDeleteAccount={() => setCurrentRoute("login")}
+        onBack={goBack}
+        onChangePassword={() => navigateTo("createPassword")}
+        onNotificationSettings={() => navigateTo("driverNotificationSettings")}
+        onLogout={() => resetTo("login")}
+        onDeleteAccount={() => resetTo("login")}
       />
     );
   }
 
   if (currentRoute === "driverNotificationSettings") {
-    return <NotificationSettings onBack={() => setCurrentRoute("driverDashboard")} />;
+    return <NotificationSettings onBack={goBack} />;
   }
 
   /* ─────────────────────────── Signup & Auth Routes ─────────────────────────── */
   if (currentRoute === "signupMethod") {
     return (
       <SignupRolePage
-        onLogin={() => setCurrentRoute("login")}
+        onLogin={() => resetTo("login")}
         onSelectRole={(role) => {
           setSelectedRole(role);
-          setCurrentRoute("signupNumber");
+          navigateTo("signupNumber");
         }}
       />
     );
@@ -114,17 +157,17 @@ export default function MainComponent() {
     return (
       <RegisterNumberPage
         role={selectedRole}
-        onBack={() => setCurrentRoute("signupMethod")}
-        onLogin={() => setCurrentRoute("login")}
+        onBack={goBack}
+        onLogin={() => resetTo("login")}
         onSubmit={(phone) => {
           console.log("Submitted mobile number for registration:", phone, "Role:", selectedRole);
           setResetPhone(phone);
           if (selectedRole === "school") {
-            setCurrentRoute("schoolSignup");
+            navigateTo("schoolSignup");
           } else if (selectedRole === "driver") {
-            setCurrentRoute("driverSignup");
+            navigateTo("driverSignup");
           } else if (selectedRole === "parent") {
-            setCurrentRoute("parentSignup");
+            navigateTo("parentSignup");
           }
         }}
       />
@@ -134,11 +177,11 @@ export default function MainComponent() {
   if (currentRoute === "schoolSignup") {
     return (
       <SchoolSignupPage
-        onBack={() => setCurrentRoute("signupNumber")}
+        onBack={goBack}
         onSubmit={(data) => {
           console.log("School Signup Complete:", data);
           setResetPhone(data.adminMobile || data.schoolPhone || resetPhone || "9876543210");
-          setCurrentRoute("otp");
+          navigateTo("otp");
         }}
       />
     );
@@ -147,11 +190,11 @@ export default function MainComponent() {
   if (currentRoute === "driverSignup") {
     return (
       <DriverSignupPage
-        onBack={() => setCurrentRoute("signupNumber")}
+        onBack={goBack}
         onSubmit={(data) => {
           console.log("Driver Signup Complete:", data);
           setResetPhone(resetPhone || "9876543210");
-          setCurrentRoute("otp");
+          navigateTo("otp");
         }}
       />
     );
@@ -160,11 +203,11 @@ export default function MainComponent() {
   if (currentRoute === "parentSignup") {
     return (
       <ParentSignupPage
-        onBack={() => setCurrentRoute("signupNumber")}
+        onBack={goBack}
         onSubmit={(data) => {
           console.log("Parent Signup Complete:", data);
           setResetPhone(resetPhone || "9876543210");
-          setCurrentRoute("otp");
+          navigateTo("otp");
         }}
       />
     );
@@ -173,12 +216,12 @@ export default function MainComponent() {
   if (currentRoute === "forgetPassword") {
     return (
       <ForgetPassword
-        onBack={() => setCurrentRoute("login")}
+        onBack={goBack}
         onOtpSent={(phone) => {
           setResetPhone(phone);
-          setCurrentRoute("otp");
+          navigateTo("otp");
         }}
-        onResetSuccess={() => setCurrentRoute("login")}
+        onResetSuccess={() => resetTo("login")}
       />
     );
   }
@@ -187,24 +230,12 @@ export default function MainComponent() {
     return (
       <OtpVerification
         phoneNumber={resetPhone}
-        onBack={() =>
-          setCurrentRoute(
-            selectedRole === "school"
-              ? "schoolSignup"
-              : selectedRole === "driver"
-                ? "driverSignup"
-                : selectedRole === "parent"
-                  ? "parentSignup"
-                  : selectedRole
-                    ? "signupNumber"
-                    : "forgetPassword",
-          )
-        }
+        onBack={goBack}
         onVerified={() => {
           if (selectedRole === "school" || selectedRole === "driver" || selectedRole === "parent") {
-            setCurrentRoute("login");
+            resetTo("login");
           } else {
-            setCurrentRoute("createPassword");
+            navigateTo("createPassword");
           }
         }}
         onResend={() => console.log("Resend API call placeholder")}
@@ -215,8 +246,8 @@ export default function MainComponent() {
   if (currentRoute === "createPassword") {
     return (
       <CreatePasswordPage
-        onBack={() => setCurrentRoute("login")}
-        onSuccess={() => setCurrentRoute("passwordSuccess")}
+        onBack={goBack}
+        onSuccess={() => resetTo("passwordSuccess")}
       />
     );
   }
@@ -224,18 +255,18 @@ export default function MainComponent() {
   if (currentRoute === "passwordSuccess") {
     return (
       <PasswordSuccessPage
-        onGetStarted={() => setCurrentRoute("login")}
+        onGetStarted={() => resetTo("login")}
       />
     );
   }
 
   return (
     <Sinuplogin
-      onSignUp={() => setCurrentRoute("signupMethod")}
-      onForgotPassword={() => setCurrentRoute("forgetPassword")}
+      onSignUp={() => navigateTo("signupMethod")}
+      onForgotPassword={() => navigateTo("forgetPassword")}
       onLoginSuccess={(phone) => {
         console.log("Login Success for:", phone);
-        setCurrentRoute("driverDashboard");
+        resetTo("driverDashboard");
       }}
     />
   );
