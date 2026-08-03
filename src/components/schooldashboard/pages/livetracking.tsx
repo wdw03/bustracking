@@ -7,7 +7,7 @@
    INSTALL (one time):
      npx expo install @maplibre/maplibre-react-native
    Then add to app.json plugins:  "@maplibre/maplibre-react-native"
-   and rebuild the dev client:    npx expo run:android
+   and rebuild the dev client:    eas build --platform android --profile development
 
    UI ONLY — dummy markers/speed/ETA. No GPS/backend logic. Ready to wire
    your driver locationService later (replace DUMMY coords with live data).
@@ -21,11 +21,11 @@
    ========================================================================== */
 
 import React, { useMemo, useRef, useState } from "react";
-import { Alert, Linking, ScrollView, Text, TextInput, View } from "react-native";
+import { Alert, Linking, ScrollView, Text, TextInput, View, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
-    MapView, Camera, PointAnnotation,
+    Map, Camera, Marker,
 } from "@maplibre/maplibre-react-native";
 
 import {
@@ -81,14 +81,14 @@ export default function LiveTrackingPage({ onBack }: { onBack: () => void }) {
                 <ScrollView contentContainerStyle={{ padding: ms(16), paddingBottom: ms(40) }} showsVerticalScrollIndicator={false}>
                     {/* Mini live map for THIS bus only */}
                     <View style={{ height: ms(190), borderRadius: ms(20), overflow: "hidden", borderWidth: 1, borderColor: BORDER, marginBottom: ms(14) }}>
-                        <MapView style={{ flex: 1 }} mapStyle={MAP_STYLE} logoEnabled={false} attributionEnabled={false}>
-                            <Camera centerCoordinate={BUS_COORDS[detail.id] ?? SCHOOL_COORD} zoomLevel={14.6} animationDuration={0} />
-                            <PointAnnotation id={`det-${detail.id}`} coordinate={BUS_COORDS[detail.id] ?? SCHOOL_COORD}>
+                        <Map style={{ flex: 1 }} mapStyle={MAP_STYLE} logo={false} attribution={false}>
+                            <Camera center={BUS_COORDS[detail.id] ?? SCHOOL_COORD} zoom={14.6} duration={0} />
+                            <Marker id={`det-${detail.id}`} lngLat={BUS_COORDS[detail.id] ?? SCHOOL_COORD}>
                                 <View style={{ width: ms(38), height: ms(38), borderRadius: ms(13), backgroundColor: detail.color, alignItems: "center", justifyContent: "center", borderWidth: 3, borderColor: "#FFFFFF" }}>
                                     <Ionicons name="bus" size={ms(18)} color="#FFFFFF" />
                                 </View>
-                            </PointAnnotation>
-                        </MapView>
+                            </Marker>
+                        </Map>
                     </View>
 
                     {/* Live stats grid */}
@@ -146,29 +146,29 @@ export default function LiveTrackingPage({ onBack }: { onBack: () => void }) {
     /* ── FULL-SCREEN MAP ── */
     return (
         <View style={{ flex: 1, backgroundColor: PAGE_BG }}>
-            <MapView style={{ flex: 1 }} mapStyle={MAP_STYLE} logoEnabled={false} attributionEnabled={false}>
-                <Camera key={camKey.current} centerCoordinate={center} zoomLevel={zoom} animationDuration={600} />
+            <Map style={{ flex: 1 }} mapStyle={MAP_STYLE} logo={false} attribution={false}>
+                <Camera key={camKey.current} center={center} zoom={zoom} duration={600} />
 
                 {/* School marker */}
-                <PointAnnotation id="school" coordinate={SCHOOL_COORD}>
+                <Marker id="school" lngLat={SCHOOL_COORD}>
                     <View style={{ alignItems: "center" }}>
                         <View style={{ width: ms(42), height: ms(42), borderRadius: ms(15), backgroundColor: ACCENT, alignItems: "center", justifyContent: "center", borderWidth: 3, borderColor: "#FFFFFF", shadowColor: "#000", shadowOpacity: 0.25, shadowRadius: 6, shadowOffset: { width: 0, height: 3 }, elevation: 6 }}>
                             <Ionicons name="school" size={ms(20)} color={INK} />
                         </View>
                     </View>
-                </PointAnnotation>
+                </Marker>
 
                 {/* Bus markers — each bus its own color */}
                 {visibleBuses.map((b) => (
-                    <PointAnnotation key={b.id} id={b.id} coordinate={BUS_COORDS[b.id] ?? SCHOOL_COORD} onSelected={() => focusBus(b)}>
-                        <View style={{ alignItems: "center" }}>
+                    <Marker key={b.id} id={b.id} lngLat={BUS_COORDS[b.id] ?? SCHOOL_COORD}>
+                        <Pressable onPress={() => focusBus(b)} style={{ alignItems: "center" }}>
                             <View style={{ width: ms(36), height: ms(36), borderRadius: ms(12), backgroundColor: b.color, alignItems: "center", justifyContent: "center", borderWidth: 3, borderColor: selected?.id === b.id ? ACCENT : "#FFFFFF", shadowColor: "#000", shadowOpacity: 0.25, shadowRadius: 5, shadowOffset: { width: 0, height: 3 }, elevation: 5 }}>
                                 <Ionicons name="bus" size={ms(16)} color="#FFFFFF" />
                             </View>
-                        </View>
-                    </PointAnnotation>
+                        </Pressable>
+                    </Marker>
                 ))}
-            </MapView>
+            </Map>
 
             {/* ── Top bar: back + glass search + filter (never overlaps map controls) ── */}
             <View style={{ position: "absolute", top: insets.top + ms(8), left: ms(14), right: ms(14), flexDirection: "row", gap: ms(8), alignItems: "center" }}>
