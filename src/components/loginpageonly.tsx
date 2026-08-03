@@ -53,6 +53,7 @@ const FONT = {
 /* ── DEMO ONLY — replace with your real login API. */
 const DEMO_ACCOUNTS: Record<string, string> = {
     "9876543210": "1234",
+    "8789968980": "1234",
 };
 
 type SinuploginProps = {

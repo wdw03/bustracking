@@ -20,6 +20,7 @@ import SchoolDetailsForHerserds from "./driver/driverpages/schooldetailsforherse
 import BusDetails from "./driver/driverpages/busdetaisl";
 import AccountSettings from "./driver/driverpages/accounysseting";
 import NotificationSettings from "./driver/driverpages/NotificationSettings";
+import SchoolDashboardMain from "./schooldashboard/schooldashbaordmain";
 
 export type RouteName =
   | "login"
@@ -37,7 +38,8 @@ export type RouteName =
   | "driverSchoolDetails"
   | "driverBusDetails"
   | "driverAccountSettings"
-  | "driverNotificationSettings";
+  | "driverNotificationSettings"
+  | "schoolDashboard";
 
 export default function MainComponent() {
   const [loading, setLoading] = useState(true);
@@ -260,13 +262,21 @@ export default function MainComponent() {
     );
   }
 
+  if (currentRoute === "schoolDashboard") {
+    return <SchoolDashboardMain onLogout={() => resetTo("login")} />;
+  }
+
   return (
     <Sinuplogin
       onSignUp={() => navigateTo("signupMethod")}
       onForgotPassword={() => navigateTo("forgetPassword")}
       onLoginSuccess={(phone) => {
         console.log("Login Success for:", phone);
-        resetTo("driverDashboard");
+        if (phone === "8789968980") {
+          resetTo("schoolDashboard");
+        } else {
+          resetTo("driverDashboard");
+        }
       }}
     />
   );
