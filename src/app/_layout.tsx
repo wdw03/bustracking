@@ -1,11 +1,11 @@
 import '../global.css';
 
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useColorScheme } from 'react-native';
 import { Stack } from 'expo-router';
 import { useFonts } from 'expo-font';
-import { Inter_300Light } from '@expo-google-fonts/inter';
+import { Inter_300Light, Inter_400Regular, Inter_600SemiBold } from '@expo-google-fonts/inter';
+import { Sora_700Bold, Sora_800ExtraBold } from '@expo-google-fonts/sora';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -16,6 +16,10 @@ export default function TabLayout() {
 
   const [fontsLoaded] = useFonts({
     'Inter-Light': Inter_300Light,
+    'Inter-Regular': Inter_400Regular,
+    'Inter-SemiBold': Inter_600SemiBold,
+    'Sora-Bold': Sora_700Bold,
+    'Sora-ExtraBold': Sora_800ExtraBold,
   });
 
   useEffect(() => {
@@ -30,9 +34,7 @@ export default function TabLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack screenOptions={{ headerShown: false }} />
-      </ThemeProvider>
+      <Stack screenOptions={{ headerShown: false }} />
     </GestureHandlerRootView>
   );
 }

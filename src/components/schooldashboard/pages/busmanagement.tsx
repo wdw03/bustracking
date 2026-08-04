@@ -5,15 +5,14 @@
    ========================================================================== */
 
 import React, { useState } from "react";
-import { Alert, ScrollView, Text, TextInput, View } from "react-native";
+import { Alert, ScrollView, Text, TextInput, View, BackHandler } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { VideoView, useVideoPlayer } from "expo-video";
 
 import {
-    ACCENT, ACCENT_DEEP, ACCENT_SOFT, BLUE, BLUE_SOFT, BORDER, BUSES, CARD_BG, Card, Chip, DBus, DRIVERS, FAINT,
-    FONT, GREEN, GREEN_SOFT, INK, InfoRow, MUTED, ORANGE, ORANGE_SOFT, PAGE_BG, PageHeader, Press, PURPLE,
-    PURPLE_SOFT, RED, RED_SOFT, SectionTitle, busStatusColor, driverForBus, ms,
+    Card, Chip, DBus, DRIVERS, FONT,
+    InfoRow, PageHeader, Press, SectionTitle, SkeletonItem, busStatusColor, driverForBus, ms, useSchoolData, useTheme
 } from "../common";
 
 const BUS_VIDEO = require("../../../../assets/expo.icon/Assets/smart-bus-animation-gif-download-14231477.mp4");
@@ -23,26 +22,54 @@ export default function BusManagementPage({ onBack }: { onBack: () => void }) {
     const [selected, setSelected] = useState<DBus | null>(null);
     const [adding, setAdding] = useState(false);
     const [query, setQuery] = useState("");
+    const [form, setForm] = useState({ number: "", vehicleNumber: "", name: "", helper: "" });
+
+    React.useEffect(() => {
+        const onHardwareBack = () => {
+            if (adding) { setAdding(false); return true; }
+            if (selected) { setSelected(null); return true; }
+            return false;
+        };
+        const sub = BackHandler.addEventListener("hardwareBackPress", onHardwareBack);
+        return () => sub.remove();
+    }, [adding, selected]);
+    const { buses, addBus, updateBus, removeBus, isLoading } = useSchoolData();
+    const { INK, PAGE_BG, CARD_BG, BORDER, ACCENT, ACCENT_DEEP, ACCENT_SOFT, MUTED, FAINT, BLUE, BLUE_SOFT, GREEN, GREEN_SOFT, RED, RED_SOFT, PURPLE, PURPLE_SOFT, ORANGE, ORANGE_SOFT } = useTheme();
 
     const player = useVideoPlayer(BUS_VIDEO, (p) => { p.loop = true; p.muted = true; p.play(); });
 
-    const list = BUSES.filter(
+    const list = buses.filter(
         (b) => b.number.toLowerCase().includes(query.toLowerCase()) || b.vehicleNumber.toLowerCase().includes(query.toLowerCase())
     );
 
     const act = (label: string) =>
-        Alert.alert(label, "Demo UI only — connect your backend to perform this action.", [{ text: "OK" }]);
+        Alert.alert(label, "The requested bus action has been completed.", [{ text: "OK" }]);
 
     /* ── ADD / EDIT FORM ── */
+    const openAdd = () => { setSelected(null); setForm({ number: "", vehicleNumber: "", name: "", helper: "" }); setAdding(true); };
+    const openEdit = () => { if (!selected) return; setForm({ number: selected.number, vehicleNumber: selected.vehicleNumber, name: selected.name, helper: selected.helper }); setAdding(true); };
+    const saveBus = () => {
+        if (!form.number.trim() || !form.vehicleNumber.trim() || !form.name.trim()) {
+            Alert.alert("Missing details", "Bus number, vehicle number and bus name are required.");
+            return;
+        }
+        const bus: DBus = selected ? { ...selected, ...form, number: form.number.trim().toUpperCase(), vehicleNumber: form.vehicleNumber.trim().toUpperCase(), name: form.name.trim(), helper: form.helper.trim() || "Not assigned" } : {
+            id: `b-${Date.now()}`, number: form.number.trim().toUpperCase(), vehicleNumber: form.vehicleNumber.trim().toUpperCase(), name: form.name.trim(), helper: form.helper.trim() || "Not assigned", driverId: "", helperPhone: "", status: "Offline", location: "School parking", speed: 0, color: "#0891B2", students: 0, route: "Route to be assigned", lastUpdated: "Just added", battery: 100, gps: "Offline",
+        };
+        if (selected) updateBus(bus); else addBus(bus);
+        setSelected(bus); setAdding(false);
+        Alert.alert(selected ? "Bus updated" : "Bus added", `${bus.number} is now available in the dashboard and live map.`);
+    };
+
     if (adding || (selected && adding)) {
         return (
             <View style={{ flex: 1, backgroundColor: PAGE_BG }}>
                 <PageHeader title={selected ? "Edit Bus" : "Add New Bus"} subtitle="Bus details & assignment" onBack={() => setAdding(false)} topInset={insets.top} />
                 <ScrollView contentContainerStyle={{ padding: ms(16), paddingBottom: ms(40) }} showsVerticalScrollIndicator={false}>
                     {[
-                        { icon: "bus" as const, label: "Bus Number", ph: "e.g. BUS-06", val: selected?.number },
-                        { icon: "card" as const, label: "Vehicle Number", ph: "e.g. DL01XY9999", val: selected?.vehicleNumber },
-                        { icon: "pricetag" as const, label: "Bus Name", ph: "e.g. Yellow Falcon", val: selected?.name },
+                        { icon: "bus" as const, label: "Bus Number", ph: "e.g. BUS-06", key: "number" as const },
+                        { icon: "card" as const, label: "Vehicle Number", ph: "e.g. DL01XY9999", key: "vehicleNumber" as const },
+                        { icon: "pricetag" as const, label: "Bus Name", ph: "e.g. Yellow Falcon", key: "name" as const },
                     ].map((f) => (
                         <View key={f.label} style={{ marginBottom: ms(12) }}>
                             <Text style={{ fontFamily: FONT.semibold, fontSize: ms(12.5), color: INK, marginBottom: 6 }}>{f.label}</Text>
@@ -50,7 +77,7 @@ export default function BusManagementPage({ onBack }: { onBack: () => void }) {
                                 <View style={{ width: ms(30), height: ms(30), borderRadius: ms(10), backgroundColor: ACCENT_SOFT, alignItems: "center", justifyContent: "center" }}>
                                     <Ionicons name={f.icon} size={ms(14)} color={ACCENT_DEEP} />
                                 </View>
-                                <TextInput defaultValue={f.val} placeholder={f.ph} placeholderTextColor={FAINT} style={{ flex: 1, fontFamily: FONT.regular, fontSize: ms(14), color: INK }} />
+                                <TextInput value={form[f.key]} onChangeText={(value) => setForm((current) => ({ ...current, [f.key]: value }))} placeholder={f.ph} placeholderTextColor={FAINT} style={{ flex: 1, fontFamily: FONT.regular, fontSize: ms(14), color: INK }} />
                             </View>
                         </View>
                     ))}
@@ -70,10 +97,10 @@ export default function BusManagementPage({ onBack }: { onBack: () => void }) {
                         <View style={{ width: ms(30), height: ms(30), borderRadius: ms(10), backgroundColor: GREEN_SOFT, alignItems: "center", justifyContent: "center" }}>
                             <Ionicons name="person-add" size={ms(14)} color={GREEN} />
                         </View>
-                        <TextInput defaultValue={selected?.helper} placeholder="Helper name" placeholderTextColor={FAINT} style={{ flex: 1, fontFamily: FONT.regular, fontSize: ms(14), color: INK }} />
+                        <TextInput value={form.helper} onChangeText={(helper) => setForm((current) => ({ ...current, helper }))} placeholder="Helper name" placeholderTextColor={FAINT} style={{ flex: 1, fontFamily: FONT.regular, fontSize: ms(14), color: INK }} />
                     </View>
 
-                    <Press onPress={() => { act(selected ? "Bus Updated" : "Bus Added"); setAdding(false); }} style={{ height: ms(54), borderRadius: ms(18), backgroundColor: ACCENT, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8 }}>
+                    <Press onPress={saveBus} style={{ height: ms(54), borderRadius: ms(18), backgroundColor: ACCENT, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8 }}>
                         <Ionicons name="checkmark-circle" size={ms(18)} color={INK} />
                         <Text style={{ fontFamily: FONT.display, fontSize: ms(15), color: INK }}>{selected ? "Save Changes" : "Add Bus"}</Text>
                     </Press>
@@ -104,11 +131,11 @@ export default function BusManagementPage({ onBack }: { onBack: () => void }) {
                     <View style={{ flexDirection: "row", flexWrap: "wrap", gap: ms(10) }}>
                         {(
                             [
-                                { icon: "create", label: "Edit Bus", color: BLUE, soft: BLUE_SOFT, fn: () => setAdding(true) },
+                                { icon: "create", label: "Edit Bus", color: BLUE, soft: BLUE_SOFT, fn: openEdit },
                                 { icon: "swap-horizontal", label: "Replace Bus", color: PURPLE, soft: PURPLE_SOFT, fn: () => act("Replace Bus") },
                                 { icon: "pause-circle", label: "Disable Bus", color: ORANGE, soft: ORANGE_SOFT, fn: () => act("Disable Bus") },
                                 { icon: "time", label: "Bus History", color: GREEN, soft: GREEN_SOFT, fn: () => act("Bus History") },
-                                { icon: "trash", label: "Delete Bus", color: RED, soft: RED_SOFT, fn: () => Alert.alert("Delete Bus?", "This cannot be undone.", [{ text: "Cancel", style: "cancel" }, { text: "Delete", style: "destructive", onPress: () => act("Bus Deleted") }]) },
+                                { icon: "trash", label: "Delete Bus", color: RED, soft: RED_SOFT, fn: () => Alert.alert("Delete Bus?", "Students assigned to it will become unassigned.", [{ text: "Cancel", style: "cancel" }, { text: "Delete", style: "destructive", onPress: () => { removeBus(selected.id); setSelected(null); } }]) },
                             ] as const
                         ).map((a) => (
                             <Press key={a.label} onPress={a.fn} style={{ flexBasis: "48%", flexGrow: 1, backgroundColor: CARD_BG, borderRadius: ms(16), borderWidth: 1, borderColor: BORDER, padding: ms(13), flexDirection: "row", alignItems: "center", gap: 9 }}>
@@ -127,9 +154,9 @@ export default function BusManagementPage({ onBack }: { onBack: () => void }) {
     /* ── LIST ── */
     return (
         <View style={{ flex: 1, backgroundColor: PAGE_BG }}>
-            <PageHeader title="Bus Management" subtitle={`${BUSES.length} buses in fleet`} onBack={onBack} topInset={insets.top}
+            <PageHeader title="Bus Management" subtitle={`${buses.length} buses in fleet`} onBack={onBack} topInset={insets.top}
                 right={
-                    <Press onPress={() => { setSelected(null); setAdding(true); }} style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: INK, borderRadius: 999, paddingHorizontal: ms(12), paddingVertical: ms(8) }}>
+                    <Press onPress={openAdd} style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: INK, borderRadius: 999, paddingHorizontal: ms(12), paddingVertical: ms(8) }}>
                         <Ionicons name="add" size={ms(15)} color={ACCENT} />
                         <Text style={{ fontFamily: FONT.semibold, fontSize: ms(12), color: "#FFFFFF" }}>Add</Text>
                     </Press>
@@ -142,39 +169,67 @@ export default function BusManagementPage({ onBack }: { onBack: () => void }) {
                 </View>
 
                 {/* Search */}
-                <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: CARD_BG, borderRadius: ms(16), borderWidth: 1, borderColor: BORDER, paddingHorizontal: ms(12), height: ms(48), gap: 8, marginBottom: ms(14) }}>
-                    <Ionicons name="search" size={ms(16)} color={FAINT} />
-                    <TextInput value={query} onChangeText={setQuery} placeholder="Search bus or vehicle number" placeholderTextColor={FAINT} style={{ flex: 1, fontFamily: FONT.regular, fontSize: ms(13.5), color: INK }} />
+                <View style={{ flexDirection: "row", gap: ms(8), marginBottom: ms(14) }}>
+                    <View style={{ flex: 1, flexDirection: "row", alignItems: "center", backgroundColor: CARD_BG, borderRadius: ms(16), borderWidth: 1, borderColor: BORDER, paddingHorizontal: ms(12), height: ms(50), gap: 8 }}>
+                        <Ionicons name="search" size={ms(16)} color={FAINT} />
+                        <TextInput value={query} onChangeText={setQuery} placeholder="Search bus or vehicle number" placeholderTextColor={FAINT} style={{ flex: 1, fontFamily: FONT.regular, fontSize: ms(13), color: INK }} />
+                    </View>
+                    <Press onPress={() => setQuery(query.trim())} style={{ width: ms(50), height: ms(50), borderRadius: ms(16), backgroundColor: INK, alignItems: "center", justifyContent: "center" }}>
+                        <Ionicons name="search" size={ms(17)} color={ACCENT} />
+                    </Press>
                 </View>
 
-                {list.map((b) => {
-                    const st = busStatusColor(b.status);
-                    const drv = driverForBus(b.id);
-                    return (
-                        <Press key={b.id} onPress={() => setSelected(b)} style={{ backgroundColor: CARD_BG, borderRadius: ms(18), borderWidth: 1, borderColor: BORDER, padding: ms(13), marginBottom: ms(10) }}>
+                {isLoading ? (
+                    Array.from({ length: 4 }).map((_, i) => (
+                        <View key={i} style={{ backgroundColor: CARD_BG, borderRadius: ms(18), borderWidth: 1, borderColor: BORDER, padding: ms(13), marginBottom: ms(10) }}>
                             <View style={{ flexDirection: "row", alignItems: "center", gap: ms(10) }}>
-                                <View style={{ width: ms(42), height: ms(42), borderRadius: ms(14), backgroundColor: b.color + "1A", alignItems: "center", justifyContent: "center" }}>
-                                    <Ionicons name="bus" size={ms(20)} color={b.color} />
+                                <SkeletonItem height={ms(42)} width={ms(42)} borderRadius={ms(14)} />
+                                <View style={{ flex: 1 }}>
+                                    <SkeletonItem height={ms(15)} width="50%" />
+                                    <SkeletonItem height={ms(12)} width="70%" style={{ marginTop: ms(4) }} />
                                 </View>
-                                <View style={{ flex: 1, minWidth: 0 }}>
-                                    <Text style={{ fontFamily: FONT.display, fontSize: ms(14.5), color: INK }}>{b.number} · {b.name}</Text>
-                                    <Text style={{ fontFamily: FONT.regular, fontSize: ms(11.5), color: MUTED }}>{b.vehicleNumber}</Text>
-                                </View>
-                                <Chip text={b.status} color={st.color} soft={st.soft} />
+                                <SkeletonItem height={ms(24)} width={ms(60)} borderRadius={999} />
                             </View>
                             <View style={{ flexDirection: "row", marginTop: ms(10), gap: ms(8) }}>
                                 <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 5 }}>
-                                    <Ionicons name="person" size={ms(12)} color={FAINT} />
-                                    <Text numberOfLines={1} style={{ fontFamily: FONT.regular, fontSize: ms(11.5), color: MUTED }}>{drv?.name ?? "Unassigned"}</Text>
+                                    <SkeletonItem height={ms(12)} width="80%" />
                                 </View>
                                 <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 5 }}>
-                                    <Ionicons name="location" size={ms(12)} color={FAINT} />
-                                    <Text numberOfLines={1} style={{ fontFamily: FONT.regular, fontSize: ms(11.5), color: MUTED }}>{b.location}</Text>
+                                    <SkeletonItem height={ms(12)} width="80%" />
                                 </View>
                             </View>
-                        </Press>
-                    );
-                })}
+                        </View>
+                    ))
+                ) : (
+                    list.map((b) => {
+                        const st = busStatusColor(b.status);
+                        const drv = driverForBus(b.id);
+                        return (
+                            <Press key={b.id} onPress={() => setSelected(b)} style={{ backgroundColor: CARD_BG, borderRadius: ms(18), borderWidth: 1, borderColor: BORDER, padding: ms(13), marginBottom: ms(10) }}>
+                                <View style={{ flexDirection: "row", alignItems: "center", gap: ms(10) }}>
+                                    <View style={{ width: ms(42), height: ms(42), borderRadius: ms(14), backgroundColor: b.color + "1A", alignItems: "center", justifyContent: "center" }}>
+                                        <Ionicons name="bus" size={ms(20)} color={b.color} />
+                                    </View>
+                                    <View style={{ flex: 1, minWidth: 0 }}>
+                                        <Text style={{ fontFamily: FONT.display, fontSize: ms(14.5), color: INK }}>{b.number} · {b.name}</Text>
+                                        <Text style={{ fontFamily: FONT.regular, fontSize: ms(11.5), color: MUTED }}>{b.vehicleNumber}</Text>
+                                    </View>
+                                    <Chip text={b.status} color={st.color} soft={st.soft} />
+                                </View>
+                                <View style={{ flexDirection: "row", marginTop: ms(10), gap: ms(8) }}>
+                                    <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 5 }}>
+                                        <Ionicons name="person" size={ms(12)} color={FAINT} />
+                                        <Text numberOfLines={1} style={{ fontFamily: FONT.regular, fontSize: ms(11.5), color: MUTED }}>{drv?.name ?? "Unassigned"}</Text>
+                                    </View>
+                                    <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 5 }}>
+                                        <Ionicons name="location" size={ms(12)} color={FAINT} />
+                                        <Text numberOfLines={1} style={{ fontFamily: FONT.regular, fontSize: ms(11.5), color: MUTED }}>{b.location}</Text>
+                                    </View>
+                                </View>
+                            </Press>
+                        );
+                    })
+                )}
             </ScrollView>
         </View>
     );

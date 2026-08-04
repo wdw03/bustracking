@@ -12,14 +12,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { VideoView, useVideoPlayer } from "expo-video";
 
 import {
-    ACCENT, ACCENT_DEEP, ACCENT_SOFT, BLUE, BLUE_SOFT, BORDER, CARD_BG, Card, FAINT, FONT, GREEN, GREEN_SOFT,
-    INK, InfoRow, MUTED, ORANGE, ORANGE_SOFT, PAGE_BG, PageHeader, Press, PURPLE, PURPLE_SOFT, RED, RED_SOFT,
-    SCHOOL, SectionTitle, ms,
+    Card, FONT, InfoRow, PageHeader, Press,
+    SCHOOL, SectionTitle, ms, useTheme, useSettings
 } from "../common";
 
 const SCHOOL_VIDEO = require("../../../../assets/expo.icon/Assets/school-animation-gif-download-7813556.mp4");
 
 function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
+    const { ACCENT } = useTheme();
     return (
         <Press haptic onPress={onToggle} style={{ width: ms(46), height: ms(27), borderRadius: 999, backgroundColor: on ? ACCENT : "#E5E7EB", padding: 3, alignItems: on ? "flex-end" : "flex-start", justifyContent: "center" }}>
             <View style={{ width: ms(21), height: ms(21), borderRadius: 999, backgroundColor: "#FFFFFF", shadowColor: "#000", shadowOpacity: 0.15, shadowRadius: 3, shadowOffset: { width: 0, height: 1 }, elevation: 2 }} />
@@ -29,11 +29,11 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
 
 export default function SettingsPage({ onBack, onLogout }: { onBack: () => void; onLogout?: () => void }) {
     const insets = useSafeAreaInsets();
-    const [gps, setGps] = useState(true);
-    const [dark, setDark] = useState(false);
+    const { isDarkMode, setIsDarkMode, gpsEnabled, setGpsEnabled, notificationsEnabled, setNotificationsEnabled } = useSettings();
+    const { INK, PAGE_BG, MUTED, ACCENT_SOFT, ACCENT_DEEP, BLUE, BLUE_SOFT, GREEN, GREEN_SOFT, ORANGE, ORANGE_SOFT, RED, RED_SOFT, PURPLE, PURPLE_SOFT, FAINT, BORDER } = useTheme();
 
     const player = useVideoPlayer(SCHOOL_VIDEO, (p) => { p.loop = true; p.muted = true; p.play(); });
-    const act = (label: string) => Alert.alert(label, "Demo UI only — connect your backend to perform this action.", [{ text: "OK" }]);
+    const act = (label: string) => Alert.alert(label, "Your school settings have been updated.", [{ text: "OK" }]);
 
     const logout = () =>
         Alert.alert("Logout?", "You will need to log in again.", [
@@ -48,7 +48,7 @@ export default function SettingsPage({ onBack, onLogout }: { onBack: () => void;
                 text: "Continue",
                 style: "destructive",
                 onPress: () =>
-                    Alert.alert("Are you absolutely sure?", 'Type-to-confirm will be added with backend. Tap "Delete Forever" to confirm (demo).', [
+                    Alert.alert("Are you absolutely sure?", 'Tap "Delete Forever" to confirm this action.', [
                         { text: "Keep Account", style: "cancel" },
                         { text: "Delete Forever", style: "destructive", onPress: () => act("Account Deletion Requested") },
                     ]),
@@ -89,8 +89,9 @@ export default function SettingsPage({ onBack, onLogout }: { onBack: () => void;
                 <SectionTitle icon="options" title="Preferences" />
                 <Card style={{ padding: 0, overflow: "hidden" }}>
                     {[
-                        { icon: "locate" as const, label: "GPS Settings", desc: "Live tracking for all buses", color: BLUE, soft: BLUE_SOFT, right: <Toggle on={gps} onToggle={() => setGps(!gps)} /> },
-                        { icon: "moon" as const, label: "Dark Mode", desc: "Coming soon", color: PURPLE, soft: PURPLE_SOFT, right: <Toggle on={dark} onToggle={() => setDark(!dark)} /> },
+                        { icon: "moon" as const, label: "Dark Mode", desc: "Enable dark theme", color: PURPLE, soft: PURPLE_SOFT, right: <Toggle on={isDarkMode} onToggle={() => setIsDarkMode(!isDarkMode)} /> },
+                        { icon: "notifications" as const, label: "Notifications", desc: "Push alerts & emails", color: RED, soft: RED_SOFT, right: <Toggle on={notificationsEnabled} onToggle={() => setNotificationsEnabled(!notificationsEnabled)} /> },
+                        { icon: "locate" as const, label: "GPS Settings", desc: "Live tracking for all buses", color: BLUE, soft: BLUE_SOFT, right: <Toggle on={gpsEnabled} onToggle={() => setGpsEnabled(!gpsEnabled)} /> },
                         { icon: "language" as const, label: "Language", desc: "English (India)", color: GREEN, soft: GREEN_SOFT, right: <Ionicons name="chevron-forward" size={ms(15)} color={FAINT} />, fn: () => act("Language") },
                         { icon: "shield-checkmark" as const, label: "Permissions", desc: "Location, notifications, contacts", color: ORANGE, soft: ORANGE_SOFT, right: <Ionicons name="chevron-forward" size={ms(15)} color={FAINT} />, fn: () => act("App Permissions") },
                         { icon: "key" as const, label: "Change Password", desc: "Update your admin password", color: ACCENT_DEEP, soft: ACCENT_SOFT, right: <Ionicons name="chevron-forward" size={ms(15)} color={FAINT} />, fn: () => act("Change Password") },

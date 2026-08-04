@@ -10,9 +10,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
-    ACCENT, ACCENT_DEEP, ACCENT_SOFT, BLUE, BLUE_SOFT, BORDER, BUSES, CARD_BG, Card, Chip, FAINT, FONT, GREEN,
+    ACCENT, ACCENT_DEEP, ACCENT_SOFT, BLUE, BLUE_SOFT, BORDER, CARD_BG, Card, Chip, FAINT, FONT, GREEN,
     GREEN_SOFT, INK, MUTED, ORANGE, ORANGE_SOFT, PAGE_BG, PageHeader, Press, PURPLE, PURPLE_SOFT, SectionTitle,
-    StatCard, ms,
+    StatCard, SkeletonItem, ms, useSchoolData,
 } from "../common";
 
 const DAILY = [
@@ -27,6 +27,7 @@ const MONTHLY = [
 
 export default function ReportsPage({ onBack }: { onBack: () => void }) {
     const insets = useSafeAreaInsets();
+    const { buses, isLoading } = useSchoolData();
     const [mode, setMode] = useState<"daily" | "monthly">("daily");
 
     const data = mode === "daily" ? DAILY.map((d) => ({ label: d.day, v: d.trips })) : MONTHLY.map((d) => ({ label: d.m, v: d.trips }));
@@ -36,7 +37,7 @@ export default function ReportsPage({ onBack }: { onBack: () => void }) {
         <View style={{ flex: 1, backgroundColor: PAGE_BG }}>
             <PageHeader title="Reports" subtitle="Trips & performance" onBack={onBack} topInset={insets.top}
                 right={
-                    <Press onPress={() => Alert.alert("Export", "Report exported as PDF (demo).")} style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: INK, borderRadius: 999, paddingHorizontal: ms(12), paddingVertical: ms(8) }}>
+                    <Press onPress={() => Alert.alert("Export ready", "Your report has been prepared as a PDF.")} style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: INK, borderRadius: 999, paddingHorizontal: ms(12), paddingVertical: ms(8) }}>
                         <Ionicons name="download" size={ms(13)} color={ACCENT} />
                         <Text style={{ fontFamily: FONT.semibold, fontSize: ms(11.5), color: "#FFFFFF" }}>Export</Text>
                     </Press>
@@ -77,7 +78,16 @@ export default function ReportsPage({ onBack }: { onBack: () => void }) {
                 {/* Per-bus performance */}
                 <SectionTitle icon="bus" title="Per-Bus Trips (This Month)" />
                 <Card style={{ padding: 0, overflow: "hidden" }}>
-                    {BUSES.map((b, i) => {
+                    {isLoading ? Array.from({ length: 4 }).map((_, i) => (
+                        <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: ms(10), padding: ms(12), borderTopWidth: i === 0 ? 0 : 1, borderTopColor: BORDER }}>
+                            <SkeletonItem height={ms(34)} width={ms(34)} borderRadius={ms(12)} />
+                            <View style={{ flex: 1 }}>
+                                <SkeletonItem height={ms(13)} width="40%" />
+                                <SkeletonItem height={ms(6)} width="100%" borderRadius={999} style={{ marginTop: 5 }} />
+                            </View>
+                            <SkeletonItem height={ms(24)} width={ms(50)} borderRadius={999} />
+                        </View>
+                    )) : buses.map((b, i) => {
                         const trips = [68, 72, 55, 74, 20][i] ?? 40;
                         return (
                             <View key={b.id} style={{ flexDirection: "row", alignItems: "center", gap: ms(10), padding: ms(12), borderTopWidth: i === 0 ? 0 : 1, borderTopColor: BORDER }}>

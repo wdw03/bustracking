@@ -1,19 +1,24 @@
 /* ============================================================================
-   SCHOOL DASHBOARD — SHARED CORE (theme, components, demo data)
+   SCHOOL DASHBOARD — SHARED CORE (theme, components, local starter data)
    Copy to: src/components/schooldashboard/common.tsx
    Every school-dashboard page imports from this file.
    ========================================================================== */
 
-import React, { useRef } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Dimensions, Pressable, Text, View, ViewStyle } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { SkeletonItem } from "../common/Skeleton";
+
+export { SkeletonItem };
 
 /* ─────────────── Theme ─────────────── */
 export const ACCENT = "#FFD500";
 export const ACCENT_SOFT = "#FFF7CC";
 export const ACCENT_DEEP = "#B99700";
 export const ACCENT_LINE = "#F5E6A3";
+
+// Fallback constants to prevent breaking during migration
 export const INK = "#111827";
 export const MUTED = "#6B7280";
 export const FAINT = "#9CA3AF";
@@ -30,6 +35,63 @@ export const ORANGE = "#EA580C";
 export const ORANGE_SOFT = "#FFEDD5";
 export const PURPLE = "#7C3AED";
 export const PURPLE_SOFT = "#EDE9FE";
+
+export type Theme = {
+    isDark: boolean;
+    INK: string; MUTED: string; FAINT: string; BORDER: string; CARD_BG: string; PAGE_BG: string;
+    GREEN: string; GREEN_SOFT: string; RED: string; RED_SOFT: string;
+    BLUE: string; BLUE_SOFT: string; ORANGE: string; ORANGE_SOFT: string;
+    PURPLE: string; PURPLE_SOFT: string;
+    ACCENT: string; ACCENT_SOFT: string; ACCENT_DEEP: string;
+}
+
+export const lightTheme: Theme = {
+    isDark: false,
+    INK: "#111827", MUTED: "#6B7280", FAINT: "#9CA3AF", BORDER: "#E5E7EB", CARD_BG: "#FFFFFF", PAGE_BG: "#F8F9FB",
+    GREEN: "#16A34A", GREEN_SOFT: "#DCFCE7", RED: "#DC2626", RED_SOFT: "#FEE2E2",
+    BLUE: "#2563EB", BLUE_SOFT: "#DBEAFE", ORANGE: "#EA580C", ORANGE_SOFT: "#FFEDD5",
+    PURPLE: "#7C3AED", PURPLE_SOFT: "#EDE9FE",
+    ACCENT, ACCENT_SOFT, ACCENT_DEEP
+};
+
+export const darkTheme: Theme = {
+    isDark: true,
+    INK: "#F9FAFB", MUTED: "#9CA3AF", FAINT: "#4B5563", BORDER: "#1F2937", CARD_BG: "#111827", PAGE_BG: "#030712",
+    GREEN: "#22C55E", GREEN_SOFT: "rgba(34,197,94,0.15)", RED: "#EF4444", RED_SOFT: "rgba(239,68,68,0.15)",
+    BLUE: "#3B82F6", BLUE_SOFT: "rgba(59,130,246,0.15)", ORANGE: "#F97316", ORANGE_SOFT: "rgba(249,115,22,0.15)",
+    PURPLE: "#8B5CF6", PURPLE_SOFT: "rgba(139,92,246,0.15)",
+    ACCENT, ACCENT_SOFT: "rgba(255,213,0,0.15)", ACCENT_DEEP: "#E6C200"
+};
+
+type SettingsContextType = {
+    isDarkMode: boolean; setIsDarkMode: (v: boolean) => void;
+    gpsEnabled: boolean; setGpsEnabled: (v: boolean) => void;
+    notificationsEnabled: boolean; setNotificationsEnabled: (v: boolean) => void;
+    biometricsEnabled: boolean; setBiometricsEnabled: (v: boolean) => void;
+    mapStyle: string; setMapStyle: (v: string) => void;
+    theme: Theme;
+};
+export const SettingsContext = createContext<SettingsContextType | null>(null);
+export const useSettings = () => {
+    const ctx = useContext(SettingsContext);
+    if (!ctx) throw new Error("useSettings must be used within SettingsProvider");
+    return ctx;
+};
+export const useTheme = () => useSettings().theme;
+
+export function SettingsProvider({ children }: { children: React.ReactNode }) {
+    const [isDarkMode, setIsDarkMode] = useState(false);
+    const [gpsEnabled, setGpsEnabled] = useState(true);
+    const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+    const [biometricsEnabled, setBiometricsEnabled] = useState(false);
+    const [mapStyle, setMapStyle] = useState("Standard");
+    const theme = isDarkMode ? darkTheme : lightTheme;
+    return (
+        <SettingsContext.Provider value={{ isDarkMode, setIsDarkMode, gpsEnabled, setGpsEnabled, notificationsEnabled, setNotificationsEnabled, biometricsEnabled, setBiometricsEnabled, mapStyle, setMapStyle, theme }}>
+            {children}
+        </SettingsContext.Provider>
+    );
+}
 
 export const FONT = {
     regular: "Inter-Regular",
@@ -85,20 +147,27 @@ export function PageHeader({
     topInset: number;
     right?: React.ReactNode;
 }) {
+    const { ACCENT, INK, isDark } = useTheme();
     return (
         <View
             style={{
                 backgroundColor: ACCENT,
+                zIndex: 10,
+                elevation: 8,
                 paddingTop: topInset + ms(8),
                 paddingBottom: ms(16),
                 paddingHorizontal: ms(16),
                 borderBottomLeftRadius: ms(26),
                 borderBottomRightRadius: ms(26),
+                shadowColor: "#8B7300",
+                shadowOpacity: 0.12,
+                shadowRadius: 10,
+                shadowOffset: { width: 0, height: 4 },
             }}
         >
             <View style={{ flexDirection: "row", alignItems: "center", gap: ms(10) }}>
                 {onBack ? (
-                    <Press onPress={onBack} style={{ width: ms(38), height: ms(38), borderRadius: ms(13), backgroundColor: "rgba(255,255,255,0.55)", alignItems: "center", justifyContent: "center" }}>
+                    <Press onPress={onBack} style={{ width: ms(38), height: ms(38), borderRadius: ms(13), backgroundColor: isDark ? "rgba(0,0,0,0.15)" : "rgba(255,255,255,0.55)", alignItems: "center", justifyContent: "center" }}>
                         <Ionicons name="chevron-back" size={ms(20)} color={INK} />
                     </Press>
                 ) : null}
@@ -107,7 +176,7 @@ export function PageHeader({
                         {title}
                     </Text>
                     {subtitle ? (
-                        <Text numberOfLines={1} style={{ fontFamily: FONT.regular, fontSize: ms(12), color: "#6B5900", marginTop: 1 }}>
+                        <Text numberOfLines={1} style={{ fontFamily: FONT.regular, fontSize: ms(12), color: isDark ? "rgba(0,0,0,0.6)" : "#6B5900", marginTop: 1 }}>
                             {subtitle}
                         </Text>
                     ) : null}
@@ -120,6 +189,7 @@ export function PageHeader({
 
 /* ─────────────── Small building blocks ─────────────── */
 export function SectionTitle({ icon, title, right }: { icon: keyof typeof Ionicons.glyphMap; title: string; right?: React.ReactNode }) {
+    const { ACCENT_SOFT, ACCENT_DEEP, INK } = useTheme();
     return (
         <View style={{ flexDirection: "row", alignItems: "center", marginTop: ms(18), marginBottom: ms(10), gap: 8 }}>
             <View style={{ width: ms(28), height: ms(28), borderRadius: ms(10), backgroundColor: ACCENT_SOFT, alignItems: "center", justifyContent: "center" }}>
@@ -132,22 +202,26 @@ export function SectionTitle({ icon, title, right }: { icon: keyof typeof Ionico
 }
 
 export function StatCard({ icon, label, value, color, soft }: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string; color: string; soft: string }) {
+    const { CARD_BG, INK, MUTED, BORDER } = useTheme();
     return (
-        <View style={{ flexBasis: "48%", flexGrow: 1, backgroundColor: CARD_BG, borderRadius: ms(18), borderWidth: 1, borderColor: BORDER, padding: ms(13) }}>
-            <View style={{ width: ms(34), height: ms(34), borderRadius: ms(12), backgroundColor: soft, alignItems: "center", justifyContent: "center" }}>
-                <Ionicons name={icon} size={ms(17)} color={color} />
+        <View style={{ backgroundColor: CARD_BG, borderRadius: ms(16), borderWidth: 1, borderColor: BORDER, padding: ms(10), shadowColor: color, shadowOpacity: 0.05, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 1, alignItems: "center" }}>
+            <View style={{ width: ms(32), height: ms(32), borderRadius: ms(10), backgroundColor: soft, alignItems: "center", justifyContent: "center", marginBottom: ms(6) }}>
+                <Ionicons name={icon} size={ms(16)} color={color} />
             </View>
-            <Text style={{ fontFamily: FONT.displayHeavy, fontSize: ms(20), color: INK, marginTop: ms(8) }}>{value}</Text>
-            <Text numberOfLines={1} style={{ fontFamily: FONT.regular, fontSize: ms(11.5), color: MUTED, marginTop: 1 }}>{label}</Text>
+            <Text style={{ fontFamily: FONT.displayHeavy, fontSize: ms(15), color: INK }}>{value}</Text>
+            <Text numberOfLines={1} style={{ fontFamily: FONT.regular, fontSize: ms(10), color: MUTED, marginTop: 2 }}>{label}</Text>
         </View>
     );
 }
 
-export function InfoRow({ icon, label, value, color = ACCENT_DEEP, soft = ACCENT_SOFT }: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string; color?: string; soft?: string }) {
+export function InfoRow({ icon, label, value, color, soft }: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string; color?: string; soft?: string }) {
+    const { ACCENT_DEEP, ACCENT_SOFT, FAINT, INK } = useTheme();
+    const c = color ?? ACCENT_DEEP;
+    const s = soft ?? ACCENT_SOFT;
     return (
         <View style={{ flexDirection: "row", alignItems: "center", gap: ms(10), paddingVertical: ms(8) }}>
-            <View style={{ width: ms(32), height: ms(32), borderRadius: ms(11), backgroundColor: soft, alignItems: "center", justifyContent: "center" }}>
-                <Ionicons name={icon} size={ms(15)} color={color} />
+            <View style={{ width: ms(32), height: ms(32), borderRadius: ms(11), backgroundColor: s, alignItems: "center", justifyContent: "center" }}>
+                <Ionicons name={icon} size={ms(15)} color={c} />
             </View>
             <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={{ fontFamily: FONT.regular, fontSize: ms(11), color: FAINT }}>{label}</Text>
@@ -166,12 +240,13 @@ export function Chip({ text, color, soft }: { text: string; color: string; soft:
 }
 
 export function Card({ children, style }: { children: React.ReactNode; style?: ViewStyle }) {
+    const { CARD_BG, BORDER } = useTheme();
     return (
         <View style={[{ backgroundColor: CARD_BG, borderRadius: ms(18), borderWidth: 1, borderColor: BORDER, padding: ms(14) }, style]}>{children}</View>
     );
 }
 
-/* ─────────────── Demo data (single source of truth) ─────────────── */
+/* ─────────────── Local starter data (single source of truth) ─────────────── */
 export const SCHOOL = {
     name: "Green Valley School",
     code: "GVS-2024-113",
@@ -235,6 +310,71 @@ export const PARENTS: DParent[] = [
     { id: "p4", name: "Suresh Iyer", father: "Suresh Iyer", mother: "Lakshmi Iyer", phone: "+91 98400 44556", email: "suresh.i@gmail.com", address: "D-78, Sector 45, Gurugram", studentIds: ["st4"], subscription: "Expired" },
     { id: "p5", name: "Manish Gupta", father: "Manish Gupta", mother: "Ritu Gupta", phone: "+91 98500 55667", email: "manish.g@gmail.com", address: "E-23, Raj Nagar, Ghaziabad", studentIds: ["st5", "st6"], subscription: "Active" },
 ];
+
+/* In-memory dashboard data.  This deliberately lives only while the app is open:
+   it makes the prototype behave like a real product without introducing a backend. */
+type SchoolData = {
+    buses: DBus[];
+    drivers: DDriver[];
+    students: DStudent[];
+    parents: DParent[];
+    addStudent: (student: DStudent) => void;
+    updateStudent: (student: DStudent) => void;
+    removeStudent: (id: string) => void;
+    assignStudentToBus: (studentId: string, busId: string | null) => void;
+    addBus: (bus: DBus) => void;
+    updateBus: (bus: DBus) => void;
+    removeBus: (id: string) => void;
+    addDriver: (driver: DDriver) => void;
+    removeDriver: (id: string) => void;
+    isLoading: boolean;
+};
+
+const SchoolDataContext = createContext<SchoolData | null>(null);
+
+export function SchoolDataProvider({ children }: { children: React.ReactNode }) {
+    const [isLoading, setIsLoading] = useState(true);
+    const [buses, setBuses] = useState<DBus[]>(() => BUSES.map((bus) => ({ ...bus })));
+    const [drivers, setDrivers] = useState<DDriver[]>(() => DRIVERS.map((driver) => ({ ...driver })));
+    const [students, setStudents] = useState<DStudent[]>(() => STUDENTS.map((student) => ({ ...student })));
+    const [parents] = useState<DParent[]>(() => PARENTS.map((parent) => ({ ...parent, studentIds: [...parent.studentIds] })));
+
+    useEffect(() => {
+        // Simulate network delay for skeleton loading
+        const timer = setTimeout(() => {
+            setIsLoading(false);
+        }, 1500);
+        return () => clearTimeout(timer);
+    }, []);
+
+    const value = useMemo<SchoolData>(() => ({
+        buses,
+        drivers,
+        students,
+        parents,
+        isLoading,
+        addStudent: (student) => setStudents((current) => [student, ...current]),
+        updateStudent: (student) => setStudents((current) => current.map((item) => item.id === student.id ? student : item)),
+        removeStudent: (id) => setStudents((current) => current.filter((student) => student.id !== id)),
+        assignStudentToBus: (studentId, busId) => setStudents((current) => current.map((student) => student.id === studentId ? { ...student, busId } : student)),
+        addBus: (bus) => setBuses((current) => [bus, ...current]),
+        updateBus: (bus) => setBuses((current) => current.map((item) => item.id === bus.id ? bus : item)),
+        removeBus: (id) => {
+            setBuses((current) => current.filter((bus) => bus.id !== id));
+            setStudents((current) => current.map((student) => student.busId === id ? { ...student, busId: null } : student));
+        },
+        addDriver: (driver) => setDrivers((current) => [driver, ...current]),
+        removeDriver: (id) => setDrivers((current) => current.filter((driver) => driver.id !== id)),
+    }), [buses, drivers, students, parents, isLoading]);
+
+    return <SchoolDataContext.Provider value={value}>{children}</SchoolDataContext.Provider>;
+}
+
+export function useSchoolData() {
+    const data = useContext(SchoolDataContext);
+    if (!data) throw new Error("useSchoolData must be used inside SchoolDataProvider");
+    return data;
+}
 
 export const RECENT_ACTIVITY = [
     { id: "a1", icon: "bus" as const, color: GREEN, soft: GREEN_SOFT, text: "BUS-01 started Route A trip", time: "2 min ago" },

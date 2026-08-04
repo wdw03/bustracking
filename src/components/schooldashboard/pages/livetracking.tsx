@@ -3,25 +3,10 @@
    Copy to: src/components/schooldashboard/pages/livetracking.tsx
 
    MAP PROVIDER: MapLibre + OpenFreeMap (OpenStreetMap tiles) — FREE, no key.
-
-   INSTALL (one time):
-     npx expo install @maplibre/maplibre-react-native
-   Then add to app.json plugins:  "@maplibre/maplibre-react-native"
-   and rebuild the dev client:    eas build --platform android --profile development
-
-   UI ONLY — dummy markers/speed/ETA. No GPS/backend logic. Ready to wire
-   your driver locationService later (replace DUMMY coords with live data).
-
-   Includes:
-   - Full-screen MapLibre map (OpenFreeMap "liberty" style)
-   - 5 colored bus markers + 1 school marker
-   - Search bar, route filter, fullscreen btn, my-location, zoom +/-
-   - Bottom sliding glass panel with bus info + actions
-   - Tap bus → full Bus Detail screen (per-bus dedicated live view)
    ========================================================================== */
 
 import React, { useMemo, useRef, useState } from "react";
-import { Alert, Linking, ScrollView, Text, TextInput, View, Pressable } from "react-native";
+import { Alert, Linking, ScrollView, Text, TextInput, View, Pressable, BackHandler } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -29,9 +14,8 @@ import {
 } from "@maplibre/maplibre-react-native";
 
 import {
-    ACCENT, ACCENT_DEEP, ACCENT_SOFT, BLUE, BLUE_SOFT, BORDER, BUSES, CARD_BG, Card, Chip, DBus, FAINT, FONT,
-    GREEN, GREEN_SOFT, INK, InfoRow, MUTED, ORANGE, ORANGE_SOFT, PAGE_BG, PageHeader, Press, PURPLE, PURPLE_SOFT,
-    RED, RED_SOFT, SectionTitle, busStatusColor, driverForBus, ms,
+    Card, Chip, DBus, FONT,
+    InfoRow, PageHeader, Press, SectionTitle, busStatusColor, driverForBus, ms, useSchoolData, useTheme
 } from "../common";
 
 /* Free vector style — OpenFreeMap (OpenStreetMap data), no API key */
@@ -47,26 +31,64 @@ const BUS_COORDS: Record<string, [number, number]> = {
     b5: [77.346, 28.635],
 };
 
-export default function LiveTrackingPage({ onBack }: { onBack: () => void }) {
+export default function LiveTrackingPage({ onBack, initialBusId }: { onBack: () => void; initialBusId?: string | null }) {
     const insets = useSafeAreaInsets();
     const [selected, setSelected] = useState<DBus | null>(null);
     const [detail, setDetail] = useState<DBus | null>(null);
     const [query, setQuery] = useState("");
-    const [zoom, setZoom] = useState(13.2);
-    const [center, setCenter] = useState<[number, number]>(SCHOOL_COORD);
-    const camKey = useRef(0);
-
-    const act = (label: string) => Alert.alert(label, "Demo UI only — connect your backend/GPS later.", [{ text: "OK" }]);
-
-    const visibleBuses = useMemo(
-        () => BUSES.filter((b) => b.number.toLowerCase().includes(query.toLowerCase()) || b.vehicleNumber.toLowerCase().includes(query.toLowerCase())),
-        [query]
+    const [singleBusMode, setSingleBusMode] = useState(!!initialBusId);
+    const [zoom, setZoom] = useState(initialBusId ? 15 : 13.2);
+    const [center, setCenter] = useState<[number, number]>(
+        initialBusId && BUS_COORDS[initialBusId] ? BUS_COORDS[initialBusId] : SCHOOL_COORD
     );
+    const camKey = useRef(0);
+    const { buses } = useSchoolData();
+    const { INK, PAGE_BG, CARD_BG, BORDER, ACCENT, ACCENT_DEEP, ACCENT_SOFT, MUTED, FAINT, BLUE, BLUE_SOFT, GREEN, GREEN_SOFT, RED, RED_SOFT, PURPLE, PURPLE_SOFT, ORANGE, ORANGE_SOFT } = useTheme();
+
+    /* If initialBusId is set, auto-select that bus */
+    const initialBus = initialBusId ? buses.find(b => b.id === initialBusId) ?? null : null;
+    const [autoSelected] = useState(initialBus);
+
+    // Set the selected bus if we came from fleet status
+    if (autoSelected && !selected && !detail) {
+        // Use setTimeout to avoid setState during render
+        setTimeout(() => setSelected(autoSelected), 0);
+    }
+
+    React.useEffect(() => {
+        const onHardwareBack = () => {
+            if (detail) { setDetail(null); return true; }
+            if (selected) { setSelected(null); return true; }
+            return false;
+        };
+        const sub = BackHandler.addEventListener("hardwareBackPress", onHardwareBack);
+        return () => sub.remove();
+    }, [detail, selected]);
+
+    const act = (label: string) => Alert.alert(label, "Your request has been recorded for this trip.", [{ text: "OK" }]);
+
+    const visibleBuses = useMemo(() => {
+        let filtered = buses.filter((b) =>
+            b.number.toLowerCase().includes(query.toLowerCase()) ||
+            b.vehicleNumber.toLowerCase().includes(query.toLowerCase())
+        );
+        if (singleBusMode && initialBusId) {
+            filtered = filtered.filter(b => b.id === initialBusId);
+        }
+        return filtered;
+    }, [buses, query, singleBusMode, initialBusId]);
 
     const focusBus = (b: DBus) => {
         setSelected(b);
         setCenter(BUS_COORDS[b.id] ?? SCHOOL_COORD);
         setZoom(14.5);
+        camKey.current += 1;
+    };
+
+    const showAllBuses = () => {
+        setSingleBusMode(false);
+        setCenter(SCHOOL_COORD);
+        setZoom(13.2);
         camKey.current += 1;
     };
 
@@ -158,19 +180,67 @@ export default function LiveTrackingPage({ onBack }: { onBack: () => void }) {
                     </View>
                 </Marker>
 
-                {/* Bus markers — each bus its own color */}
-                {visibleBuses.map((b) => (
-                    <Marker key={b.id} id={b.id} lngLat={BUS_COORDS[b.id] ?? SCHOOL_COORD}>
-                        <Pressable onPress={() => focusBus(b)} style={{ alignItems: "center" }}>
-                            <View style={{ width: ms(36), height: ms(36), borderRadius: ms(12), backgroundColor: b.color, alignItems: "center", justifyContent: "center", borderWidth: 3, borderColor: selected?.id === b.id ? ACCENT : "#FFFFFF", shadowColor: "#000", shadowOpacity: 0.25, shadowRadius: 5, shadowOffset: { width: 0, height: 3 }, elevation: 5 }}>
-                                <Ionicons name="bus" size={ms(16)} color="#FFFFFF" />
-                            </View>
-                        </Pressable>
-                    </Marker>
-                ))}
+                {/* Bus markers — each bus its own color, with info popup */}
+                {visibleBuses.map((b) => {
+                    const drv = driverForBus(b.id);
+                    const isSelected = selected?.id === b.id;
+                    return (
+                        <Marker key={b.id} id={b.id} lngLat={BUS_COORDS[b.id] ?? SCHOOL_COORD}>
+                            <Pressable onPress={() => focusBus(b)} style={{ alignItems: "center" }}>
+                                {/* Google Maps style info bubble — shown when selected */}
+                                {isSelected && (
+                                    <View style={{
+                                        backgroundColor: "#FFFFFF",
+                                        borderRadius: ms(14),
+                                        paddingHorizontal: ms(10),
+                                        paddingVertical: ms(7),
+                                        marginBottom: ms(6),
+                                        borderWidth: 1,
+                                        borderColor: "rgba(0,0,0,0.08)",
+                                        shadowColor: "#000",
+                                        shadowOpacity: 0.15,
+                                        shadowRadius: 8,
+                                        shadowOffset: { width: 0, height: 4 },
+                                        elevation: 6,
+                                        maxWidth: ms(180),
+                                        minWidth: ms(120),
+                                    }}>
+                                        <Text style={{ fontFamily: FONT.display, fontSize: ms(12), color: INK }} numberOfLines={1}>{b.name}</Text>
+                                        <Text style={{ fontFamily: FONT.regular, fontSize: ms(10), color: MUTED }} numberOfLines={1}>
+                                            {drv?.name ?? "No Driver"} · {b.speed} km/h
+                                        </Text>
+                                        <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 3 }}>
+                                            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: b.status === "Running" ? GREEN : RED }} />
+                                            <Text style={{ fontFamily: FONT.semibold, fontSize: ms(9), color: b.status === "Running" ? GREEN : RED }}>{b.status}</Text>
+                                            <Text style={{ fontFamily: FONT.regular, fontSize: ms(9), color: FAINT }}> · {b.location}</Text>
+                                        </View>
+                                        {/* small triangle pointer */}
+                                        <View style={{
+                                            position: "absolute",
+                                            bottom: -ms(6),
+                                            left: "50%",
+                                            marginLeft: -ms(6),
+                                            width: 0,
+                                            height: 0,
+                                            borderLeftWidth: ms(6),
+                                            borderRightWidth: ms(6),
+                                            borderTopWidth: ms(6),
+                                            borderLeftColor: "transparent",
+                                            borderRightColor: "transparent",
+                                            borderTopColor: "#FFFFFF",
+                                        }} />
+                                    </View>
+                                )}
+                                <View style={{ width: ms(36), height: ms(36), borderRadius: ms(12), backgroundColor: b.color, alignItems: "center", justifyContent: "center", borderWidth: 3, borderColor: isSelected ? ACCENT : "#FFFFFF", shadowColor: "#000", shadowOpacity: 0.25, shadowRadius: 5, shadowOffset: { width: 0, height: 3 }, elevation: 5 }}>
+                                    <Ionicons name="bus" size={ms(16)} color="#FFFFFF" />
+                                </View>
+                            </Pressable>
+                        </Marker>
+                    );
+                })}
             </Map>
 
-            {/* ── Top bar: back + glass search + filter (never overlaps map controls) ── */}
+            {/* ── Top bar: back + glass search + filter ── */}
             <View style={{ position: "absolute", top: insets.top + ms(8), left: ms(14), right: ms(14), flexDirection: "row", gap: ms(8), alignItems: "center" }}>
                 <Press onPress={onBack} style={{ width: ms(44), height: ms(44), borderRadius: ms(15), backgroundColor: "rgba(255,255,255,0.92)", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(0,0,0,0.06)", shadowColor: "#000", shadowOpacity: 0.12, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 5 }}>
                     <Ionicons name="chevron-back" size={ms(20)} color={INK} />
@@ -183,6 +253,16 @@ export default function LiveTrackingPage({ onBack }: { onBack: () => void }) {
                     <Ionicons name="filter" size={ms(17)} color={INK} />
                 </Press>
             </View>
+
+            {/* Show All Buses toggle (when in single bus mode) */}
+            {singleBusMode && (
+                <View style={{ position: "absolute", top: insets.top + ms(60), left: ms(14), right: ms(14), alignItems: "center" }}>
+                    <Press onPress={showAllBuses} style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: INK, borderRadius: 999, paddingHorizontal: ms(14), paddingVertical: ms(9), shadowColor: "#000", shadowOpacity: 0.2, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 6 }}>
+                        <Ionicons name="layers" size={ms(15)} color={ACCENT} />
+                        <Text style={{ fontFamily: FONT.semibold, fontSize: ms(12), color: "#FFFFFF" }}>Show All Buses</Text>
+                    </Press>
+                </View>
+            )}
 
             {/* ── Right floating controls ── */}
             <View style={{ position: "absolute", right: ms(14), top: insets.top + ms(66), gap: ms(8) }}>
@@ -204,7 +284,7 @@ export default function LiveTrackingPage({ onBack }: { onBack: () => void }) {
             <View style={{ position: "absolute", left: 0, right: 0, bottom: 0 }}>
                 {/* Bus chips scroller */}
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: ms(14), gap: ms(8), paddingBottom: ms(10) }}>
-                    {BUSES.map((b) => (
+                    {buses.map((b) => (
                         <Press key={b.id} onPress={() => focusBus(b)} style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: selected?.id === b.id ? INK : "rgba(255,255,255,0.94)", borderRadius: 999, paddingHorizontal: ms(13), paddingVertical: ms(9), borderWidth: 1, borderColor: "rgba(0,0,0,0.06)", shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 6, shadowOffset: { width: 0, height: 3 }, elevation: 4 }}>
                             <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: b.color }} />
                             <Text style={{ fontFamily: FONT.semibold, fontSize: ms(12), color: selected?.id === b.id ? "#FFFFFF" : INK }}>{b.number}</Text>

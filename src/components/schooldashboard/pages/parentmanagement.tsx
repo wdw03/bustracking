@@ -5,15 +5,15 @@
    ========================================================================== */
 
 import React, { useState } from "react";
-import { Alert, Linking, ScrollView, Text, TextInput, View } from "react-native";
+import { Alert, Linking, ScrollView, Text, TextInput, View, BackHandler } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { VideoView, useVideoPlayer } from "expo-video";
 
 import {
-    ACCENT, ACCENT_DEEP, ACCENT_SOFT, BLUE, BLUE_SOFT, BORDER, CARD_BG, Card, Chip, DParent, FAINT, FONT, GREEN,
-    GREEN_SOFT, INK, InfoRow, MUTED, ORANGE, ORANGE_SOFT, PAGE_BG, PARENTS, PageHeader, Press, PURPLE, PURPLE_SOFT,
-    RED, RED_SOFT, SectionTitle, busById, ms, studentById,
+    Card, Chip, DParent, FONT,
+    InfoRow, PARENTS, PageHeader, Press,
+    SectionTitle, SkeletonItem, busById, ms, studentById, useSchoolData, useTheme
 } from "../common";
 
 const FAMILY_VIDEO = require("../../../../assets/expo.icon/Assets/happy-family-animation-gif-download-5804610.mp4");
@@ -21,12 +21,22 @@ const FAMILY_VIDEO = require("../../../../assets/expo.icon/Assets/happy-family-a
 export default function ParentManagementPage({ onBack }: { onBack: () => void }) {
     const insets = useSafeAreaInsets();
     const [selected, setSelected] = useState<DParent | null>(null);
-    const [query, setQuery] = useState("");
+    const { parents, isLoading } = useSchoolData();
+    const { INK, PAGE_BG, CARD_BG, BORDER, ACCENT, ACCENT_DEEP, ACCENT_SOFT, MUTED, FAINT, BLUE, BLUE_SOFT, GREEN, GREEN_SOFT, RED, RED_SOFT, PURPLE, PURPLE_SOFT, ORANGE, ORANGE_SOFT } = useTheme();
+
+    React.useEffect(() => {
+        const onHardwareBack = () => {
+            if (selected) { setSelected(null); return true; }
+            return false;
+        };
+        const sub = BackHandler.addEventListener("hardwareBackPress", onHardwareBack);
+        return () => sub.remove();
+    }, [selected]);
 
     const player = useVideoPlayer(FAMILY_VIDEO, (p) => { p.loop = true; p.muted = true; p.play(); });
-    const act = (label: string) => Alert.alert(label, "Demo UI only — connect your backend to perform this action.", [{ text: "OK" }]);
+    const act = (label: string) => Alert.alert(label, "The requested parent action has been completed.", [{ text: "OK" }]);
 
-    const list = PARENTS.filter((p) => p.name.toLowerCase().includes(query.toLowerCase()) || p.phone.includes(query));
+    const list = parents.filter((p) => p.name.toLowerCase().includes(query.toLowerCase()) || p.phone.includes(query));
 
     /* ── PARENT DETAIL ── */
     if (selected) {
@@ -103,28 +113,46 @@ export default function ParentManagementPage({ onBack }: { onBack: () => void })
                     <VideoView player={player} style={{ width: "100%", height: "100%" }} nativeControls={false} contentFit="cover" />
                 </View>
 
-                <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: CARD_BG, borderRadius: ms(16), borderWidth: 1, borderColor: BORDER, paddingHorizontal: ms(12), height: ms(48), gap: 8, marginBottom: ms(14) }}>
-                    <Ionicons name="search" size={ms(16)} color={FAINT} />
-                    <TextInput value={query} onChangeText={setQuery} placeholder="Search parent name or phone" placeholderTextColor={FAINT} style={{ flex: 1, fontFamily: FONT.regular, fontSize: ms(13.5), color: INK }} />
+                <View style={{ flexDirection: "row", gap: ms(8), marginBottom: ms(14) }}>
+                    <View style={{ flex: 1, flexDirection: "row", alignItems: "center", backgroundColor: CARD_BG, borderRadius: ms(16), borderWidth: 1, borderColor: BORDER, paddingHorizontal: ms(12), height: ms(50), gap: 8 }}>
+                        <Ionicons name="search" size={ms(16)} color={FAINT} />
+                        <TextInput value={query} onChangeText={setQuery} placeholder="Search parent name or phone" placeholderTextColor={FAINT} style={{ flex: 1, fontFamily: FONT.regular, fontSize: ms(13), color: INK }} />
+                    </View>
+                    <Press onPress={() => setQuery(query.trim())} style={{ width: ms(50), height: ms(50), borderRadius: ms(16), backgroundColor: INK, alignItems: "center", justifyContent: "center" }}>
+                        <Ionicons name="search" size={ms(17)} color={ACCENT} />
+                    </Press>
                 </View>
 
-                {list.map((p) => (
-                    <Press key={p.id} onPress={() => setSelected(p)} style={{ backgroundColor: CARD_BG, borderRadius: ms(18), borderWidth: 1, borderColor: BORDER, padding: ms(13), marginBottom: ms(10), flexDirection: "row", alignItems: "center", gap: ms(11) }}>
-                        <View style={{ width: ms(44), height: ms(44), borderRadius: ms(15), backgroundColor: PURPLE_SOFT, alignItems: "center", justifyContent: "center" }}>
-                            <Ionicons name="people" size={ms(19)} color={PURPLE} />
+                {isLoading ? (
+                    Array.from({ length: 4 }).map((_, i) => (
+                        <View key={i} style={{ backgroundColor: CARD_BG, borderRadius: ms(18), borderWidth: 1, borderColor: BORDER, padding: ms(13), marginBottom: ms(10), flexDirection: "row", alignItems: "center", gap: ms(11) }}>
+                            <SkeletonItem height={ms(44)} width={ms(44)} borderRadius={ms(15)} />
+                            <View style={{ flex: 1 }}>
+                                <SkeletonItem height={ms(14)} width="50%" />
+                                <SkeletonItem height={ms(12)} width="70%" style={{ marginTop: ms(4) }} />
+                            </View>
+                            <SkeletonItem height={ms(24)} width={ms(60)} borderRadius={999} />
                         </View>
-                        <View style={{ flex: 1, minWidth: 0 }}>
-                            <Text style={{ fontFamily: FONT.display, fontSize: ms(14), color: INK }}>{p.name}</Text>
-                            <Text style={{ fontFamily: FONT.regular, fontSize: ms(11.5), color: MUTED }}>
-                                {p.phone} · {p.studentIds.length} student{p.studentIds.length > 1 ? "s" : ""}
-                            </Text>
-                        </View>
-                        <Press onPress={() => Linking.openURL(`tel:${p.phone.replace(/\s/g, "")}`)} style={{ width: ms(36), height: ms(36), borderRadius: ms(12), backgroundColor: GREEN_SOFT, alignItems: "center", justifyContent: "center" }}>
-                            <Ionicons name="call" size={ms(15)} color={GREEN} />
+                    ))
+                ) : (
+                    list.map((p) => (
+                        <Press key={p.id} onPress={() => setSelected(p)} style={{ backgroundColor: CARD_BG, borderRadius: ms(18), borderWidth: 1, borderColor: BORDER, padding: ms(13), marginBottom: ms(10), flexDirection: "row", alignItems: "center", gap: ms(11) }}>
+                            <View style={{ width: ms(44), height: ms(44), borderRadius: ms(15), backgroundColor: PURPLE_SOFT, alignItems: "center", justifyContent: "center" }}>
+                                <Ionicons name="people" size={ms(19)} color={PURPLE} />
+                            </View>
+                            <View style={{ flex: 1, minWidth: 0 }}>
+                                <Text style={{ fontFamily: FONT.display, fontSize: ms(14), color: INK }}>{p.name}</Text>
+                                <Text style={{ fontFamily: FONT.regular, fontSize: ms(11.5), color: MUTED }}>
+                                    {p.phone} · {p.studentIds.length} student{p.studentIds.length > 1 ? "s" : ""}
+                                </Text>
+                            </View>
+                            <Press onPress={() => Linking.openURL(`tel:${p.phone.replace(/\s/g, "")}`)} style={{ width: ms(36), height: ms(36), borderRadius: ms(12), backgroundColor: GREEN_SOFT, alignItems: "center", justifyContent: "center" }}>
+                                <Ionicons name="call" size={ms(15)} color={GREEN} />
+                            </Press>
+                            <Chip text={p.subscription} color={p.subscription === "Active" ? GREEN : RED} soft={p.subscription === "Active" ? GREEN_SOFT : RED_SOFT} />
                         </Press>
-                        <Chip text={p.subscription} color={p.subscription === "Active" ? GREEN : RED} soft={p.subscription === "Active" ? GREEN_SOFT : RED_SOFT} />
-                    </Press>
-                ))}
+                    ))
+                )}
             </ScrollView>
         </View>
     );

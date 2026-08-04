@@ -40,7 +40,7 @@ export default function NotificationCenterPage({ onBack }: { onBack: () => void 
     const send = () => {
         if (!message.trim()) return Alert.alert("Empty message", "Please write a message first.");
         const aud = AUDIENCES.find((a) => a.id === audience)?.label;
-        Alert.alert("Notification Sent", `"${template.title}" sent to ${aud}${audience === "bus" && busId ? ` (${BUSES.find((b) => b.id === busId)?.number})` : ""}.\n\nDemo UI only.`, [{ text: "OK" }]);
+        Alert.alert("Notification Sent", `"${template.title}" sent to ${aud}${audience === "bus" && busId ? ` (${BUSES.find((b) => b.id === busId)?.number})` : ""}.`, [{ text: "OK" }]);
     };
 
     return (

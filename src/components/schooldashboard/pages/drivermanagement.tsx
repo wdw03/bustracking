@@ -1,120 +1,44 @@
-/* ============================================================================
-   DRIVER MANAGEMENT — School Admin
-   Copy to: src/components/schooldashboard/pages/drivermanagement.tsx
-   Add / Edit / Remove / Suspend / Activate / Bus Change / Call / Live Location.
-   ========================================================================== */
-
-import React, { useState } from "react";
-import { Alert, Linking, ScrollView, Text, TextInput, View } from "react-native";
+import React, { useMemo, useState } from "react";
+import { Alert, KeyboardAvoidingView, Linking, Platform, ScrollView, Text, TextInput, View, BackHandler } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { VideoView, useVideoPlayer } from "expo-video";
+import { Card, Chip, DDriver, FONT, InfoRow, PageHeader, Press, SectionTitle, SkeletonItem, ms, useSchoolData, useTheme } from "../common";
 
-import {
-    ACCENT, ACCENT_DEEP, ACCENT_SOFT, BLUE, BLUE_SOFT, BORDER, CARD_BG, Card, Chip, DDriver, DRIVERS, FAINT, FONT,
-    GREEN, GREEN_SOFT, INK, InfoRow, MUTED, ORANGE, ORANGE_SOFT, PAGE_BG, PageHeader, Press, PURPLE, PURPLE_SOFT,
-    RED, RED_SOFT, SectionTitle, busById, ms,
-} from "../common";
-
-const DRIVER_VIDEO = require("../../../../assets/expo.icon/Assets/driver-navigation-animation-gif-download-9531985.mp4");
+type DriverForm = { name: string; phone: string; license: string; experience: string; busId: string | null };
+const emptyForm: DriverForm = { name: "", phone: "", license: "", experience: "", busId: null };
 
 export default function DriverManagementPage({ onBack }: { onBack: () => void }) {
     const insets = useSafeAreaInsets();
+    const { buses, drivers, addDriver, removeDriver, isLoading } = useSchoolData();
     const [selected, setSelected] = useState<DDriver | null>(null);
+    const [adding, setAdding] = useState(false);
     const [query, setQuery] = useState("");
+    const [form, setForm] = useState<DriverForm>(emptyForm);
+    const { INK, PAGE_BG, CARD_BG, BORDER, ACCENT, MUTED, FAINT, BLUE, BLUE_SOFT, GREEN, GREEN_SOFT, RED, RED_SOFT, PURPLE, PURPLE_SOFT } = useTheme();
+    const list = useMemo(() => drivers.filter((driver) => !query.trim() || driver.name.toLowerCase().includes(query.trim().toLowerCase()) || driver.driverId.toLowerCase().includes(query.trim().toLowerCase()) || driver.phone.includes(query.trim())), [drivers, query]);
+    const busFor = (id: string | null) => buses.find((bus) => bus.id === id);
 
-    const player = useVideoPlayer(DRIVER_VIDEO, (p) => { p.loop = true; p.muted = true; p.play(); });
+    React.useEffect(() => {
+        const onHardwareBack = () => {
+            if (adding) { setAdding(false); return true; }
+            if (selected) { setSelected(null); return true; }
+            return false;
+        };
+        const sub = BackHandler.addEventListener("hardwareBackPress", onHardwareBack);
+        return () => sub.remove();
+    }, [adding, selected]);
 
-    const act = (label: string) => Alert.alert(label, "Demo UI only — connect your backend to perform this action.", [{ text: "OK" }]);
+    const save = () => {
+        if (!form.name.trim() || !form.phone.trim() || !form.license.trim()) return Alert.alert("Missing details", "Driver name, phone number and license number are required.");
+        const driver: DDriver = { id: `d-${Date.now()}`, name: form.name.trim(), driverId: `DRV${String(drivers.length + 1).padStart(3, "0")}`, phone: form.phone.trim(), license: form.license.trim().toUpperCase(), busId: form.busId, status: "Active", experience: form.experience.trim() || "New", trips: 0, rating: 5 };
+        addDriver(driver); setAdding(false); setSelected(driver); Alert.alert("Driver added", `${driver.name} is ready for assignments.`);
+    };
 
-    const list = DRIVERS.filter((d) => d.name.toLowerCase().includes(query.toLowerCase()) || d.driverId.toLowerCase().includes(query.toLowerCase()));
+    if (adding) return <KeyboardAvoidingView style={{ flex: 1, backgroundColor: PAGE_BG }} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={insets.top}><PageHeader title="Add Driver" subtitle="Driver details and bus assignment" onBack={() => setAdding(false)} topInset={insets.top} /><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: ms(16), paddingBottom: ms(40) + insets.bottom }}><Card style={{ gap: ms(13) }}><Input label="Driver name *" icon="person" value={form.name} onChangeText={(name) => setForm((old) => ({ ...old, name }))} placeholder="e.g. Rahul Verma" autoCapitalize="words" /><Input label="Mobile number *" icon="call" value={form.phone} onChangeText={(phone) => setForm((old) => ({ ...old, phone }))} placeholder="10-digit mobile number" keyboardType="phone-pad" /><Input label="Driving license *" icon="card" value={form.license} onChangeText={(license) => setForm((old) => ({ ...old, license }))} placeholder="e.g. DL-0420110149646" autoCapitalize="characters" /><Input label="Experience" icon="ribbon" value={form.experience} onChangeText={(experience) => setForm((old) => ({ ...old, experience }))} placeholder="e.g. 5 yrs" /></Card><SectionTitle icon="bus" title="Assign bus" right={<Chip text={form.busId ? "Selected" : "Optional"} color={form.busId ? GREEN : MUTED} soft={form.busId ? GREEN_SOFT : PAGE_BG} />} /><View style={{ gap: ms(8) }}><Press onPress={() => setForm((old) => ({ ...old, busId: null }))} style={{ padding: ms(12), borderRadius: ms(15), borderWidth: 1.5, borderColor: form.busId === null ? RED : BORDER, backgroundColor: form.busId === null ? RED_SOFT : CARD_BG, flexDirection: "row", alignItems: "center", gap: 9 }}><Ionicons name="close-circle" size={ms(18)} color={RED} /><Text style={{ flex: 1, fontFamily: FONT.semibold, color: INK }}>Assign later</Text>{form.busId === null && <Ionicons name="checkmark-circle" size={ms(18)} color={RED} />}</Press>{buses.map((bus) => <Press key={bus.id} onPress={() => setForm((old) => ({ ...old, busId: bus.id }))} style={{ padding: ms(12), borderRadius: ms(15), borderWidth: 1.5, borderColor: form.busId === bus.id ? BLUE : BORDER, backgroundColor: form.busId === bus.id ? BLUE_SOFT : CARD_BG, flexDirection: "row", alignItems: "center", gap: 9 }}><Ionicons name="bus" size={ms(18)} color={bus.color} /><View style={{ flex: 1 }}><Text style={{ fontFamily: FONT.semibold, color: INK }}>{bus.number} · {bus.vehicleNumber}</Text><Text style={{ fontFamily: FONT.regular, color: MUTED, fontSize: ms(11) }}>{bus.route}</Text></View>{form.busId === bus.id && <Ionicons name="checkmark-circle" size={ms(18)} color={BLUE} />}</Press>)}</View><Press onPress={save} style={{ height: ms(54), borderRadius: ms(18), backgroundColor: ACCENT, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8, marginTop: ms(22) }}><Ionicons name="person-add" size={ms(18)} color={INK} /><Text style={{ fontFamily: FONT.display, fontSize: ms(15), color: INK }}>Add driver</Text></Press></ScrollView></KeyboardAvoidingView>;
 
-    /* ── DRIVER DETAIL ── */
-    if (selected) {
-        const bus = busById(selected.busId);
-        const suspended = selected.status === "Suspended";
-        return (
-            <View style={{ flex: 1, backgroundColor: PAGE_BG }}>
-                <PageHeader title={selected.name} subtitle={selected.driverId} onBack={() => setSelected(null)} topInset={insets.top}
-                    right={<Chip text={selected.status} color={suspended ? RED : GREEN} soft={suspended ? RED_SOFT : GREEN_SOFT} />} />
-                <ScrollView contentContainerStyle={{ padding: ms(16), paddingBottom: ms(40) }} showsVerticalScrollIndicator={false}>
-                    <Card>
-                        <InfoRow icon="call" label="Phone Number" value={selected.phone} color={GREEN} soft={GREEN_SOFT} />
-                        <InfoRow icon="card" label="Driving License" value={selected.license} color={BLUE} soft={BLUE_SOFT} />
-                        <InfoRow icon="bus" label="Assigned Bus" value={bus ? `${bus.number} · ${bus.vehicleNumber}` : "Not assigned"} />
-                        <InfoRow icon="ribbon" label="Experience" value={`${selected.experience} · ${selected.trips} trips · ★ ${selected.rating}`} color={PURPLE} soft={PURPLE_SOFT} />
-                    </Card>
+    if (selected) { const bus = busFor(selected.busId); return <View style={{ flex: 1, backgroundColor: PAGE_BG }}><PageHeader title={selected.name} subtitle={selected.driverId} onBack={() => setSelected(null)} topInset={insets.top} right={<Chip text={selected.status} color={GREEN} soft={GREEN_SOFT} />} /><ScrollView contentContainerStyle={{ padding: ms(16), paddingBottom: ms(40) }}><Card><InfoRow icon="call" label="Phone number" value={selected.phone} color={GREEN} soft={GREEN_SOFT} /><InfoRow icon="card" label="Driving license" value={selected.license} color={BLUE} soft={BLUE_SOFT} /><InfoRow icon="bus" label="Assigned bus" value={bus ? `${bus.number} · ${bus.vehicleNumber}` : "Not assigned"} /><InfoRow icon="ribbon" label="Experience" value={`${selected.experience} · ${selected.trips} trips · ★ ${selected.rating}`} color={PURPLE} soft={PURPLE_SOFT} /></Card><SectionTitle icon="options" title="Actions" /><View style={{ flexDirection: "row", gap: ms(10) }}><Press onPress={() => Linking.openURL(`tel:${selected.phone.replace(/\s/g, "")}`)} style={{ width: ms(54), height: ms(54), borderRadius: ms(18), backgroundColor: GREEN_SOFT, alignItems: "center", justifyContent: "center" }}><Ionicons name="call" size={ms(18)} color={GREEN} /></Press><Press onPress={() => Alert.alert("Live location", `${selected.name}'s assigned trip is being tracked.`)} style={{ flex: 1, height: ms(54), borderRadius: ms(18), backgroundColor: INK, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 7 }}><Ionicons name="locate" size={ms(17)} color={ACCENT} /><Text style={{ fontFamily: FONT.semibold, color: "#FFFFFF" }}>Live location</Text></Press><Press onPress={() => Alert.alert("Remove driver?", `${selected.name} will be removed from the school list.`, [{ text: "Cancel", style: "cancel" }, { text: "Remove", style: "destructive", onPress: () => { removeDriver(selected.id); setSelected(null); } }])} style={{ width: ms(54), height: ms(54), borderRadius: ms(18), backgroundColor: RED_SOFT, alignItems: "center", justifyContent: "center" }}><Ionicons name="trash" size={ms(17)} color={RED} /></Press></View></ScrollView></View>; }
 
-                    <SectionTitle icon="options" title="Actions" />
-                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: ms(10) }}>
-                        {(
-                            [
-                                { icon: "call", label: "Call Driver", color: GREEN, soft: GREEN_SOFT, fn: () => Linking.openURL(`tel:${selected.phone.replace(/\s/g, "")}`) },
-                                { icon: "locate", label: "Live Location", color: BLUE, soft: BLUE_SOFT, fn: () => act("Live Location") },
-                                { icon: "create", label: "Edit Driver", color: PURPLE, soft: PURPLE_SOFT, fn: () => act("Edit Driver") },
-                                { icon: "swap-horizontal", label: "Change Bus", color: ORANGE, soft: ORANGE_SOFT, fn: () => act("Change Bus") },
-                                { icon: "time", label: "Trip History", color: ACCENT_DEEP, soft: ACCENT_SOFT, fn: () => act("Trip History") },
-                                suspended
-                                    ? { icon: "play-circle" as const, label: "Activate", color: GREEN, soft: GREEN_SOFT, fn: () => act("Driver Activated") }
-                                    : { icon: "pause-circle" as const, label: "Suspend", color: ORANGE, soft: ORANGE_SOFT, fn: () => act("Driver Suspended") },
-                                { icon: "trash", label: "Remove Driver", color: RED, soft: RED_SOFT, fn: () => Alert.alert("Remove Driver?", "This cannot be undone.", [{ text: "Cancel", style: "cancel" }, { text: "Remove", style: "destructive", onPress: () => act("Driver Removed") }]) },
-                            ] as const
-                        ).map((a) => (
-                            <Press key={a.label} onPress={a.fn} style={{ flexBasis: "48%", flexGrow: 1, backgroundColor: CARD_BG, borderRadius: ms(16), borderWidth: 1, borderColor: BORDER, padding: ms(13), flexDirection: "row", alignItems: "center", gap: 9 }}>
-                                <View style={{ width: ms(34), height: ms(34), borderRadius: ms(12), backgroundColor: a.soft, alignItems: "center", justifyContent: "center" }}>
-                                    <Ionicons name={a.icon} size={ms(16)} color={a.color} />
-                                </View>
-                                <Text style={{ fontFamily: FONT.semibold, fontSize: ms(12.5), color: INK }}>{a.label}</Text>
-                            </Press>
-                        ))}
-                    </View>
-                </ScrollView>
-            </View>
-        );
-    }
-
-    /* ── LIST ── */
-    return (
-        <View style={{ flex: 1, backgroundColor: PAGE_BG }}>
-            <PageHeader title="Driver Management" subtitle={`${DRIVERS.length} drivers`} onBack={onBack} topInset={insets.top}
-                right={
-                    <Press onPress={() => act("Add Driver")} style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: INK, borderRadius: 999, paddingHorizontal: ms(12), paddingVertical: ms(8) }}>
-                        <Ionicons name="add" size={ms(15)} color={ACCENT} />
-                        <Text style={{ fontFamily: FONT.semibold, fontSize: ms(12), color: "#FFFFFF" }}>Add</Text>
-                    </Press>
-                } />
-            <ScrollView contentContainerStyle={{ padding: ms(16), paddingBottom: ms(40) }} showsVerticalScrollIndicator={false}>
-                <View style={{ height: ms(120), borderRadius: ms(20), overflow: "hidden", marginBottom: ms(14), backgroundColor: ACCENT_SOFT }}>
-                    <VideoView player={player} style={{ width: "100%", height: "100%" }} nativeControls={false} contentFit="cover" />
-                </View>
-
-                <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: CARD_BG, borderRadius: ms(16), borderWidth: 1, borderColor: BORDER, paddingHorizontal: ms(12), height: ms(48), gap: 8, marginBottom: ms(14) }}>
-                    <Ionicons name="search" size={ms(16)} color={FAINT} />
-                    <TextInput value={query} onChangeText={setQuery} placeholder="Search driver name or ID" placeholderTextColor={FAINT} style={{ flex: 1, fontFamily: FONT.regular, fontSize: ms(13.5), color: INK }} />
-                </View>
-
-                {list.map((d) => {
-                    const bus = busById(d.busId);
-                    const suspended = d.status === "Suspended";
-                    return (
-                        <Press key={d.id} onPress={() => setSelected(d)} style={{ backgroundColor: CARD_BG, borderRadius: ms(18), borderWidth: 1, borderColor: BORDER, padding: ms(13), marginBottom: ms(10), flexDirection: "row", alignItems: "center", gap: ms(11) }}>
-                            <View style={{ width: ms(44), height: ms(44), borderRadius: ms(15), backgroundColor: GREEN_SOFT, alignItems: "center", justifyContent: "center" }}>
-                                <Ionicons name="person" size={ms(20)} color={GREEN} />
-                            </View>
-                            <View style={{ flex: 1, minWidth: 0 }}>
-                                <Text style={{ fontFamily: FONT.display, fontSize: ms(14), color: INK }}>{d.name}</Text>
-                                <Text style={{ fontFamily: FONT.regular, fontSize: ms(11.5), color: MUTED }}>
-                                    {d.driverId} · {bus ? bus.number : "No bus"} · ★ {d.rating}
-                                </Text>
-                            </View>
-                            <Press onPress={() => Linking.openURL(`tel:${d.phone.replace(/\s/g, "")}`)} style={{ width: ms(36), height: ms(36), borderRadius: ms(12), backgroundColor: GREEN_SOFT, alignItems: "center", justifyContent: "center" }}>
-                                <Ionicons name="call" size={ms(15)} color={GREEN} />
-                            </Press>
-                            <Chip text={d.status} color={suspended ? RED : GREEN} soft={suspended ? RED_SOFT : GREEN_SOFT} />
-                        </Press>
-                    );
-                })}
-            </ScrollView>
-        </View>
-    );
+    return <View style={{ flex: 1, backgroundColor: PAGE_BG }}><PageHeader title="Driver Management" subtitle={`${drivers.length} active drivers`} onBack={onBack} topInset={insets.top} right={<Press onPress={() => { setForm(emptyForm); setAdding(true); }} style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: INK, borderRadius: 999, paddingHorizontal: ms(12), paddingVertical: ms(8) }}><Ionicons name="add" size={ms(15)} color={ACCENT} /><Text style={{ fontFamily: FONT.semibold, fontSize: ms(12), color: "#FFFFFF" }}>Add</Text></Press>} /><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: ms(16), paddingBottom: ms(40) }}><View style={{ flexDirection: "row", gap: ms(8), marginBottom: ms(14) }}><View style={{ flex: 1, flexDirection: "row", alignItems: "center", backgroundColor: CARD_BG, borderRadius: ms(16), borderWidth: 1, borderColor: BORDER, paddingHorizontal: ms(12), height: ms(50), gap: 8 }}><Ionicons name="search" size={ms(16)} color={FAINT} /><TextInput value={query} onChangeText={setQuery} placeholder="Search name, ID or phone" placeholderTextColor={FAINT} style={{ flex: 1, fontFamily: FONT.regular, fontSize: ms(13), color: INK }} /></View><Press onPress={() => setQuery(query.trim())} style={{ width: ms(50), height: ms(50), borderRadius: ms(16), backgroundColor: INK, alignItems: "center", justifyContent: "center" }}><Ionicons name="search" size={ms(17)} color={ACCENT} /></Press></View>{isLoading ? Array.from({ length: 4 }).map((_, i) => <View key={i} style={{ backgroundColor: CARD_BG, borderRadius: ms(18), borderWidth: 1, borderColor: BORDER, padding: ms(13), marginBottom: ms(10), flexDirection: "row", alignItems: "center", gap: ms(11) }}><SkeletonItem height={ms(44)} width={ms(44)} borderRadius={ms(15)} /><View style={{ flex: 1 }}><SkeletonItem height={ms(15)} width="60%" /><SkeletonItem height={ms(12)} width="80%" style={{ marginTop: ms(4) }} /></View><SkeletonItem height={ms(24)} width={ms(60)} borderRadius={999} /></View>) : list.map((driver) => { const bus = busFor(driver.busId); return <Press key={driver.id} onPress={() => setSelected(driver)} style={{ backgroundColor: CARD_BG, borderRadius: ms(18), borderWidth: 1, borderColor: BORDER, padding: ms(13), marginBottom: ms(10), flexDirection: "row", alignItems: "center", gap: ms(11) }}><View style={{ width: ms(44), height: ms(44), borderRadius: ms(15), backgroundColor: GREEN_SOFT, alignItems: "center", justifyContent: "center" }}><Ionicons name="person" size={ms(20)} color={GREEN} /></View><View style={{ flex: 1, minWidth: 0 }}><Text style={{ fontFamily: FONT.display, fontSize: ms(14), color: INK }}>{driver.name}</Text><Text style={{ fontFamily: FONT.regular, fontSize: ms(11.5), color: MUTED }}>{driver.driverId} · {bus ? bus.number : "No bus"} · ★ {driver.rating}</Text></View><Chip text={driver.status} color={driver.status === "Active" ? GREEN : RED} soft={driver.status === "Active" ? GREEN_SOFT : RED_SOFT} /></Press>; })}</ScrollView></View>;
 }
+
+function Input({ label, icon, value, onChangeText, placeholder, keyboardType, autoCapitalize }: { label: string; icon: keyof typeof Ionicons.glyphMap; value: string; onChangeText: (value: string) => void; placeholder: string; keyboardType?: "default" | "phone-pad"; autoCapitalize?: "none" | "words" | "characters" }) { const { INK, FAINT, BORDER, isDark } = useTheme(); return <View><Text style={{ fontFamily: FONT.semibold, fontSize: ms(12), color: INK, marginBottom: 6 }}>{label}</Text><View style={{ height: ms(50), borderRadius: ms(14), borderWidth: 1, borderColor: BORDER, backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "#FCFCFD", flexDirection: "row", alignItems: "center", paddingHorizontal: ms(11), gap: 8 }}><Ionicons name={icon} size={ms(16)} color={FAINT} /><TextInput value={value} onChangeText={onChangeText} placeholder={placeholder} placeholderTextColor={FAINT} keyboardType={keyboardType} autoCapitalize={autoCapitalize} style={{ flex: 1, fontFamily: FONT.regular, color: INK, fontSize: ms(13), paddingVertical: 0 }} /></View></View>; }
