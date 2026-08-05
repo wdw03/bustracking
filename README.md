@@ -49,7 +49,125 @@ Use the pre-configured credentials below to test the App Portals:
 
 ---
 
-## 🧠 Codebase Architecture & File Guide
+## 📊 JSON Data Schemas & Usage Matrix (किस Page में कौन सा Data Use होता है)
+
+Below is the complete reference of all JSON data structures used in the application, including which page consumes them and what each field is used for:
+
+### 👤 1. Driver Profile JSON (`DRIVER`)
+- **Pages Used In**: `driverdashbaord.tsx` (Header & Profile Tab), `personaldetail.tsx`
+- **JSON Structure**:
+  ```json
+  {
+    "name": "Rajesh Kumar",
+    "driverId": "DRV001",
+    "phone": "+91 98765 43210",
+    "license": "DL-0420110149646"
+  }
+  ```
+- **Field Purpose**:
+  - `name`: Display name rendered in the top greeting header and profile card.
+  - `driverId`: Unique system badge ID for official verification and attendance.
+  - `phone`: Driver's primary phone number used for login and parent emergency contact.
+  - `license`: Driving License number for transport authority compliance.
+
+---
+
+### 🏫 2. School Fleet JSON (`School`)
+- **Pages Used In**: `driverdashbaord.tsx` (Home & Schools Tab), `schooldetails.tsx`, `schooldetailsforherserds.tsx`
+- **JSON Structure**:
+  ```json
+  {
+    "id": "s1",
+    "name": "Green Valley School",
+    "code": "GVS-2024-113",
+    "address": "Plot 7, Knowledge Park, Sector 62, Noida, UP 201301",
+    "principal": "Dr. Meena Sharma",
+    "contact": "+91 120 456 7890",
+    "email": "office@greenvalley.edu.in",
+    "shift": "Morning · 7:00 AM – 2:30 PM",
+    "route": "Route A",
+    "buses": [ ... ]
+  }
+  ```
+- **Field Purpose**:
+  - `id`: Primary key used to map location sharing state (`sharing[schoolId]`).
+  - `name`: School title in list cards and search filters.
+  - `code`: Affiliation code for instant search filtering (`GVS-2024-113`).
+  - `address`: Complete physical address displayed in details view for navigation.
+  - `principal`: School principal/head contact name.
+  - `contact` & `email`: Direct phone call and email action triggers.
+  - `shift`: Operating hours window for driver pickup/drop schedule.
+  - `route`: Primary designated transit route.
+  - `buses`: Array of bus vehicle objects assigned to this school.
+
+---
+
+### 🚍 3. Bus Fleet & Vehicle JSON (`Bus`)
+- **Pages Used In**: `driverdashbaord.tsx` (Bus Tab & Bus Detail View), `busdetaisl.tsx`
+- **JSON Structure**:
+  ```json
+  {
+    "id": "b1",
+    "number": "DL01AB1234",
+    "route": "Route A",
+    "model": "Tata Starbus 32-Seater",
+    "capacity": "32 seats",
+    "partner": "Suresh Yadav",
+    "partnerPhone": "+91 98111 22334",
+    "pickupTime": "7:10 AM",
+    "stops": 12
+  }
+  ```
+- **Field Purpose**:
+  - `id`: Unique bus identifier.
+  - `number`: Official vehicle license plate number shown on fleet cards.
+  - `route`: Route assignment for student tracking.
+  - `model`: Vehicle make and seating configuration.
+  - `capacity`: Maximum seating limit for student safety audits.
+  - `partner` & `partnerPhone`: Helper/conductor contact details for on-bus coordination.
+  - `pickupTime`: Morning first student pickup timestamp.
+  - `stops`: Total designated route stops.
+
+---
+
+### ⚡ 4. Live Vehicle Telemetry JSON (`Telemetry`)
+- **Pages Used In**: `driverdashbaord.tsx` (Bus Detail Telemetry Dashboard), `busdetaisl.tsx`
+- **JSON Structure**:
+  ```json
+  {
+    "speed": "42 km/h",
+    "engineStatus": "ON",
+    "gpsSignal": "STRONG (12 Satellites)",
+    "batteryLevel": "98% (13.8V)",
+    "fuelLevel": "76%",
+    "lastPing": "Just now"
+  }
+  ```
+- **Field Purpose**:
+  - `speed`: Real-time vehicle velocity rendered on the 3D speedometer gauge.
+  - `engineStatus`: Vehicle ignition state (`ON` / `OFF`).
+  - `gpsSignal`: Satellite connection strength for position precision.
+  - `batteryLevel`: On-board battery health and voltage.
+  - `fuelLevel`: Fuel level percentage for trip planning.
+
+---
+
+### 📡 5. Location Sharing State JSON (`sharing`)
+- **Pages Used In**: `driverdashbaord.tsx` (Schools & Bus Detail Views)
+- **JSON Structure**:
+  ```json
+  {
+    "s1": true,
+    "s2": false,
+    "s3": false
+  }
+  ```
+- **Field Purpose**:
+  - `key (schoolId)`: Maps each school ID to a `boolean` indicating whether live GPS location broadcast is active (`true`) or inactive (`false`).
+
+---
+
+## 🧠 Codebase Architecture & File Purpose Guide (कौन सा Code किस Purpose के लिए है)
 
 Here is a detailed breakdown of every key component and directory in this repository:
 
@@ -86,17 +204,8 @@ Here is a detailed breakdown of every key component and directory in this reposi
 - 📄 **`Skeleton.tsx`**: Modular shimmering placeholders used while data is rendering.
 - 📄 **`common.tsx`**: Context provider (`useSchoolData`, `useTheme`) bridging robust dummy JSON state (lists of drivers, students, buses) and global CSS variables across the dashboard.
 
----
-
-## 📊 Core Data Architecture (JSON Logic)
-
-The app's logic currently relies on robust mock datasets inside `common.tsx` designed to map 1:1 with any future NoSQL (Firebase/MongoDB) schema:
-
-1. **School Schema**: Holds `code`, `principal`, `shift` timings, and linked subscription data.
-2. **Bus Schema**: Linked to schools via nested arrays. Contains `status` (Running, Offline), `speed`, `battery`, and mapped `driverId`.
-3. **Driver Schema**: Holds personal info, `experience`, `rating`, `license`, and a pointer to `busId`.
-4. **Student/Parent Schema**: Relational models linking `parentPhone` -> `students` -> `busId`.
-5. **Subscription Schema**: Transaction ledgers, withdrawal request queue, and limit ceilings (students/buses allowed).
+### 📂 7. Services & Infrastructure (`src/services/`)
+- 📄 **`src/services/locationService.ts`**: **GPS & Location Permission Service.** Safe native location service that handles device location permissions without crashing Metro bundler during development.
 
 ---
 
@@ -170,7 +279,7 @@ To commit and push updates to the repository:
 git add .
 
 # Commit changes
-git commit -m "docs: Comprehensive README update with School Dashboard features"
+git commit -m "docs: Update README with School Dashboard details while retaining old JSON schemas"
 
 # Push to GitHub
 git push
