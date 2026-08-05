@@ -21,6 +21,7 @@ const FAMILY_VIDEO = require("../../../../assets/expo.icon/Assets/happy-family-a
 export default function ParentManagementPage({ onBack }: { onBack: () => void }) {
     const insets = useSafeAreaInsets();
     const [selected, setSelected] = useState<DParent | null>(null);
+    const [query, setQuery] = useState("");
     const { parents, isLoading } = useSchoolData();
     const { INK, PAGE_BG, CARD_BG, BORDER, ACCENT, ACCENT_DEEP, ACCENT_SOFT, MUTED, FAINT, BLUE, BLUE_SOFT, GREEN, GREEN_SOFT, RED, RED_SOFT, PURPLE, PURPLE_SOFT, ORANGE, ORANGE_SOFT } = useTheme();
 
