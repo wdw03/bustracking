@@ -32,10 +32,66 @@ export const schoolMetrics: Metric[] = [
 ];
 
 export const schools: AdminRecord[] = [
-    { id: "SCH-101", title: "Bluebells Public School", subtitle: "Rohan Mehta · New Delhi", status: "active", icon: "business", fields: ["842 students · 714 parents · 12 buses · 14 drivers", "Enterprise plan · Registered 12 Aug 2026", "Mother Teresa Crescent, New Delhi 110023"] },
-    { id: "SCH-102", title: "St. Xavier's Academy", subtitle: "Ananya Singh · Gurugram", status: "active", icon: "business", fields: ["510 students · 466 parents · 8 buses · 9 drivers", "Growth plan · Registered 10 Aug 2026", "Sector 49, Sohna Road, Gurugram 122018"] },
-    { id: "SCH-103", title: "Green Valley School", subtitle: "Amit Sharma · Noida", status: "pending", icon: "business", fields: ["Registration request · 328 students declared · 6 buses", "Documents awaiting review", "Sector 62, Near IIIT Delhi, Noida 201309"] },
-    { id: "SCH-104", title: "Little Stars International", subtitle: "Priya Kapoor · Jaipur", status: "blocked", icon: "business", fields: ["214 students · 190 parents · 4 buses · 5 drivers", "Account blocked by Super Admin", "C-Scheme, MI Road, Jaipur 302001"] },
+    {
+        id: "SCH-101",
+        title: "Bluebells Public School",
+        subtitle: "Rohan Mehta · New Delhi",
+        status: "active",
+        icon: "business",
+        fields: [
+            "📍 Mother Teresa Crescent, New Delhi · PIN: 110023",
+            "👤 Principal: Dr. Anjali Mathur (+91 98100 12345)",
+            "👥 842 Students · 714 Parents · 12 Buses · 14 Drivers",
+            "💳 Enterprise Plan · Expires: 31 Mar 2027",
+            "✉️ admin@bluebells.edu.in · 🌐 www.bluebells.edu.in",
+            "📄 GST: 07AABCB1234C1ZD · Reg: 12 Aug 2026",
+        ],
+    },
+    {
+        id: "SCH-102",
+        title: "St. Xavier's Academy",
+        subtitle: "Ananya Singh · Gurugram",
+        status: "active",
+        icon: "business",
+        fields: [
+            "📍 Sector 49, Sohna Road, Gurugram · PIN: 122018",
+            "👤 Principal: Fr. Thomas D'Souza (+91 98765 43210)",
+            "👥 510 Students · 466 Parents · 8 Buses · 9 Drivers",
+            "💳 Growth Plan · Expires: 10 Feb 2027",
+            "✉️ transport@stxaviers.ac.in · 🌐 www.stxaviers.ac.in",
+            "📄 GST: 06AABCS5678D1ZE · Reg: 10 Aug 2026",
+        ],
+    },
+    {
+        id: "SCH-103",
+        title: "Green Valley School",
+        subtitle: "Amit Sharma · Noida",
+        status: "pending",
+        icon: "business",
+        fields: [
+            "📍 Sector 62, Near IIIT Delhi, Noida · PIN: 201309",
+            "👤 Principal: Mrs. Kavita Rao (+91 99990 00112)",
+            "👥 Registration request · 328 students declared · 6 buses",
+            "💳 Plan: Awaiting Approval",
+            "✉️ info@greenvalley.in · 🌐 www.greenvalleyschool.in",
+            "📄 Documents awaiting admin review",
+        ],
+    },
+    {
+        id: "SCH-104",
+        title: "Little Stars International",
+        subtitle: "Priya Kapoor · Jaipur",
+        status: "blocked",
+        icon: "business",
+        fields: [
+            "📍 C-Scheme, MI Road, Jaipur · PIN: 302001",
+            "👤 Principal: Mr. Rajesh Jain (+91 94140 55667)",
+            "👥 214 Students · 190 Parents · 4 Buses · 5 Drivers",
+            "💳 Starter Plan · Account Blocked by Super Admin",
+            "✉️ admin@littlestars.edu · 🌐 www.littlestars.edu",
+            "📄 GST: 08AABCL9012F1ZG · Reg: 05 Jul 2026",
+        ],
+    },
 ];
 
 export const parents: AdminRecord[] = [

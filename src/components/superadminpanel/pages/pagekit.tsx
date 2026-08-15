@@ -1,89 +1,996 @@
 import React, { ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Animated, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from "react-native";
+import { ActivityIndicator, Alert, Animated, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 export type IconName = keyof typeof Ionicons.glyphMap;
-export type AdminRecord = { id: string; title: string; subtitle: string; status: string; fields?: string[]; icon?: IconName };
+export type AdminRecord = { id: string; title: string; subtitle: string; status: string; fields?: string[]; icon?: IconName; school?: string };
 export type Metric = { label: string; value: string | number; icon: IconName; color?: string; note?: string };
-const COLORS = { ink: "#101828", muted: "#667085", faint: "#98A2B3", border: "#E4E7EC", blue: "#2563EB", navy: "#172554", yellow: "#FFD60A", green: "#16A34A", red: "#DC2626", orange: "#EA580C", bg: "#F6F8FB" };
-const FONT = { regular: "Inter-Regular", semibold: "Inter-SemiBold", bold: "Inter-Bold", display: "Sora-Bold" };
 
-export const statusColor = (status: string) => ({ active: COLORS.green, running: COLORS.green, approved: COLORS.green, completed: COLORS.green, pending: COLORS.orange, processing: COLORS.blue, stopped: COLORS.orange, inactive: COLORS.faint, blocked: COLORS.red, offline: COLORS.faint, rejected: COLORS.red, expired: COLORS.red, failed: COLORS.red }[status.toLowerCase()] ?? COLORS.muted);
+export const COLORS = {
+  ink: "#101828",
+  muted: "#667085",
+  faint: "#98A2B3",
+  border: "#E4E7EC",
+  blue: "#2563EB",
+  navy: "#172554",
+  yellow: "#FFD60A",
+  gold: "#B57900",
+  green: "#16A34A",
+  red: "#DC2626",
+  orange: "#EA580C",
+  purple: "#7C3AED",
+  cyan: "#0891B2",
+  bg: "#F6F8FB",
+  card: "#FFFFFF",
+};
 
-export function StatusBadge({ status }: { status: string }) { const color = statusColor(status); return <View style={[styles.status, { backgroundColor: `${color}16` }]}><View style={[styles.statusDot, { backgroundColor: color }]} /><Text style={[styles.statusText, { color }]}>{status.charAt(0).toUpperCase() + status.slice(1)}</Text></View>; }
+export const FONT = {
+  regular: "Inter-Regular",
+  semibold: "Inter-SemiBold",
+  bold: "Inter-Bold",
+  display: "Sora-Bold",
+};
+
+export const statusColor = (status: string) => ({
+  active: COLORS.green,
+  running: COLORS.green,
+  approved: COLORS.green,
+  completed: COLORS.green,
+  pending: COLORS.orange,
+  processing: COLORS.blue,
+  stopped: COLORS.orange,
+  inactive: COLORS.faint,
+  blocked: COLORS.red,
+  offline: COLORS.faint,
+  rejected: COLORS.red,
+  expired: COLORS.red,
+  failed: COLORS.red,
+}[status.toLowerCase()] ?? COLORS.muted);
+
+export function StatusBadge({ status }: { status: string }) {
+  const color = statusColor(status);
+  return (
+    <View style={[styles.status, { backgroundColor: `${color}16` }]}>
+      <View style={[styles.statusDot, { backgroundColor: color }]} />
+      <Text style={[styles.statusText, { color }]}>{status.charAt(0).toUpperCase() + status.slice(1)}</Text>
+    </View>
+  );
+}
 
 export function SkeletonBlock({ width = "100%", height = 14, radius = 8 }: { width?: number | `${number}%`; height?: number; radius?: number }) {
-    const opacity = useRef(new Animated.Value(0.45)).current;
-    useEffect(() => { const loop = Animated.loop(Animated.sequence([Animated.timing(opacity, { toValue: 0.9, duration: 650, useNativeDriver: true }), Animated.timing(opacity, { toValue: 0.45, duration: 650, useNativeDriver: true })])); loop.start(); return () => loop.stop(); }, [opacity]);
-    return <Animated.View style={{ width, height, borderRadius: radius, backgroundColor: "#E7ECF3", opacity }} />;
+  const opacity = useRef(new Animated.Value(0.45)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 0.9, duration: 650, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0.45, duration: 650, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [opacity]);
+  return <Animated.View style={{ width, height, borderRadius: radius, backgroundColor: "#E7ECF3", opacity }} />;
 }
 
 function PageSkeleton() {
-    return <View style={skeletonStyles.wrap}>{[0, 1, 2].map((item) => <View key={item} style={skeletonStyles.card}><View style={skeletonStyles.row}><SkeletonBlock width={40} height={40} radius={13} /><View style={skeletonStyles.copy}><SkeletonBlock width="68%" height={12} /><SkeletonBlock width="45%" height={9} /></View><SkeletonBlock width={58} height={20} radius={99} /></View><SkeletonBlock width="88%" height={9} /><SkeletonBlock width="54%" height={9} /></View>)}</View>;
-}
-
-export function MetricCard({ metric, onPress }: { metric: Metric; onPress?: () => void }) { const { width } = useWindowDimensions(); const color = metric.color ?? COLORS.blue; return <Pressable onPress={onPress} accessibilityRole={onPress ? "button" : undefined} style={({ pressed }) => [styles.metric, { width: (Math.min(width, 760) - 52) / 2, opacity: pressed ? 0.9 : 1 }]}><View style={[styles.metricIcon, { backgroundColor: `${color}15` }]}><Ionicons name={metric.icon} size={18} color={color} /></View><Text style={styles.metricLabel}>{metric.label}</Text><Text style={styles.metricValue}>{metric.value}</Text>{metric.note ? <Text style={styles.metricNote}>{metric.note}</Text> : null}{onPress ? <Ionicons name="chevron-forward-circle-outline" size={17} color={COLORS.faint} style={styles.metricArrow} /> : null}</Pressable>; }
-
-export function AdminPageFrame({ eyebrow = "SUPER ADMIN", title, subtitle, metrics = [], onMetricPress, search, onSearch, searchPlaceholder = "Search records...", filters = [], activeFilter = "All", onFilter, children, actionLabel, onAction }: { eyebrow?: string; title: string; subtitle?: string; metrics?: Metric[]; onMetricPress?: (metric: Metric) => void; search?: string; onSearch?: (value: string) => void; searchPlaceholder?: string; filters?: string[]; activeFilter?: string; onFilter?: (value: string) => void; children: ReactNode; actionLabel?: string; onAction?: () => void }) {
-    const [frameLoading, setFrameLoading] = useState(true);
-    useEffect(() => { const timer = setTimeout(() => setFrameLoading(false), 420); return () => clearTimeout(timer); }, []);
-    return <View style={styles.page}>
-        <View style={styles.heading}>
-            <View style={styles.headingCopy}>
-                <View style={styles.headingEyebrow}><View style={styles.headingMark} /><Text style={styles.eyebrow}>{eyebrow}</Text></View>
-                <Text style={styles.title}>{title}</Text>
-                {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+  return (
+    <View style={skeletonStyles.wrap}>
+      {[0, 1, 2].map((item) => (
+        <View key={item} style={skeletonStyles.card}>
+          <View style={skeletonStyles.row}>
+            <SkeletonBlock width={40} height={40} radius={13} />
+            <View style={skeletonStyles.copy}>
+              <SkeletonBlock width="68%" height={12} />
+              <SkeletonBlock width="45%" height={9} />
             </View>
-            {actionLabel ? <Pressable onPress={onAction} style={({ pressed }) => [styles.action, pressed && { opacity: 0.75 }]}><Ionicons name="add" size={16} color={COLORS.ink} /><Text style={styles.actionText}>{actionLabel}</Text></Pressable> : null}
+            <SkeletonBlock width={58} height={20} radius={99} />
+          </View>
+          <SkeletonBlock width="88%" height={9} />
+          <SkeletonBlock width="54%" height={9} />
         </View>
-        {metrics.length > 0 ? <View style={styles.metricGrid}>{metrics.map((metric) => <MetricCard key={metric.label} metric={metric} onPress={onMetricPress ? () => onMetricPress(metric) : undefined} />)}</View> : null}
-        {onSearch ? <View style={styles.search}><Ionicons name="search" size={17} color={COLORS.faint} /><TextInput value={search} onChangeText={onSearch} placeholder={searchPlaceholder} placeholderTextColor={COLORS.faint} style={styles.searchInput} />{search ? <Pressable onPress={() => onSearch("")}><Ionicons name="close-circle" size={17} color={COLORS.faint} /></Pressable> : null}</View> : null}
-        {filters.length > 0 ? <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>{filters.map((filter) => <Pressable key={filter} onPress={() => onFilter?.(filter)} style={[styles.filter, filter === activeFilter && styles.filterActive]}><Text style={[styles.filterText, filter === activeFilter && styles.filterTextActive]}>{filter}</Text></Pressable>)}</ScrollView> : null}
-        <View style={styles.content}>{frameLoading ? <PageSkeleton /> : children}</View>
-    </View>;
+      ))}
+    </View>
+  );
 }
 
-export function RecordCard({ record, onView, onEdit, onToggle, onDelete, busy, toggleLabel, actionLabel = "View" }: { record: AdminRecord; onView?: () => void; onEdit?: () => void; onToggle?: () => void; onDelete?: () => void; busy?: boolean; toggleLabel?: string; actionLabel?: string }) { return <View style={styles.card}><View style={styles.cardTop}><View style={styles.recordIcon}><Ionicons name={record.icon ?? "document-text-outline"} size={19} color={COLORS.blue} /></View><View style={{ flex: 1, marginLeft: 10 }}><Text style={styles.cardTitle}>{record.title}</Text><Text style={styles.cardSubtitle}>{record.id} · {record.subtitle}</Text></View><StatusBadge status={record.status} /></View>{record.fields?.map((field, index) => <Text key={`${record.id}-${index}`} style={styles.field}>{field}</Text>)}<View style={styles.cardActions}><Pressable onPress={onView} style={styles.outline}><Ionicons name="eye-outline" size={15} color={COLORS.blue} /><Text style={[styles.outlineText, { color: COLORS.blue }]}>{actionLabel}</Text></Pressable>{onEdit ? <Pressable onPress={onEdit} style={styles.outline}><Ionicons name="create-outline" size={15} color={COLORS.ink} /><Text style={styles.outlineText}>Edit</Text></Pressable> : null}{onToggle ? <Pressable disabled={busy} onPress={onToggle} style={[styles.outline, { borderColor: record.status === "blocked" ? `${COLORS.green}55` : `${COLORS.blue}55`, opacity: busy ? 0.6 : 1 }]}>{busy ? <ActivityIndicator size="small" color={COLORS.blue} /> : <><Ionicons name={toggleLabel ? "arrow-forward-circle-outline" : record.status === "blocked" ? "lock-open-outline" : "ban-outline"} size={15} color={toggleLabel ? COLORS.blue : record.status === "blocked" ? COLORS.green : COLORS.red} /><Text style={[styles.outlineText, { color: toggleLabel ? COLORS.blue : record.status === "blocked" ? COLORS.green : COLORS.red }]}>{toggleLabel ?? (record.status === "blocked" ? "Unblock" : "Block")}</Text></>}</Pressable> : null}{onDelete ? <Pressable onPress={onDelete} style={styles.delete}><Ionicons name="trash-outline" size={15} color={COLORS.red} /></Pressable> : null}</View></View>; }
+export function MetricCard({ metric, onPress }: { metric: Metric; onPress?: () => void }) {
+  const color = metric.color ?? COLORS.blue;
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole={onPress ? "button" : undefined}
+      style={({ pressed }) => [styles.metric, pressed && { transform: [{ scale: 0.98 }] }]}
+    >
+      <View style={styles.metricHeader}>
+        <View style={[styles.metricIcon, { backgroundColor: `${color}15` }]}>
+          <Ionicons name={metric.icon} size={18} color={color} />
+        </View>
+        {onPress ? (
+          <View style={styles.metricArrowWrap}>
+            <Ionicons name="chevron-forward" size={13} color={COLORS.faint} />
+          </View>
+        ) : null}
+      </View>
+      <Text style={styles.metricLabel}>{metric.label}</Text>
+      <Text style={styles.metricValue}>{metric.value}</Text>
+      {metric.note ? (
+        <View style={styles.metricNoteBadge}>
+          <Text style={styles.metricNoteText}>{metric.note}</Text>
+        </View>
+      ) : null}
+    </Pressable>
+  );
+}
 
-export function EmptyState({ text = "No records found." }: { text?: string }) { return <View style={styles.empty}><Ionicons name="file-tray-outline" size={30} color={COLORS.faint} /><Text style={styles.emptyText}>{text}</Text></View>; }
+export function AdminPageFrame({
+  eyebrow = "SUPER ADMIN",
+  title,
+  subtitle,
+  metrics = [],
+  onMetricPress,
+  search,
+  onSearch,
+  searchPlaceholder = "Search records...",
+  filters = [],
+  activeFilter = "All",
+  onFilter,
+  children,
+  actionLabel,
+  onAction,
+}: {
+  eyebrow?: string;
+  title: string;
+  subtitle?: string;
+  metrics?: Metric[];
+  onMetricPress?: (metric: Metric) => void;
+  search?: string;
+  onSearch?: (value: string) => void;
+  searchPlaceholder?: string;
+  filters?: string[];
+  activeFilter?: string;
+  onFilter?: (value: string) => void;
+  children: ReactNode;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
+  const [frameLoading, setFrameLoading] = useState(true);
+  useEffect(() => {
+    const timer = setTimeout(() => setFrameLoading(false), 300);
+    return () => clearTimeout(timer);
+  }, []);
 
-const skeletonStyles = StyleSheet.create({ wrap: { gap: 9 }, card: { backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#E4E7EC", borderRadius: 17, padding: 13, gap: 11 }, row: { flexDirection: "row", alignItems: "center", gap: 10 }, copy: { flex: 1, gap: 7 }, });
+  return (
+    <View style={styles.page}>
+      <View style={styles.heading}>
+        <View style={styles.headingCopy}>
+          <View style={styles.headingEyebrow}>
+            <View style={styles.headingMark} />
+            <Text style={styles.eyebrow}>{eyebrow}</Text>
+          </View>
+          <Text style={styles.title}>{title}</Text>
+          {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+        </View>
+        {actionLabel ? (
+          <Pressable onPress={onAction} style={({ pressed }) => [styles.action, pressed && { opacity: 0.75 }]}>
+            <Ionicons name="add" size={16} color={COLORS.ink} />
+            <Text style={styles.actionText}>{actionLabel}</Text>
+          </Pressable>
+        ) : null}
+      </View>
 
-export function SchoolFilterDropdown({ schools, selected, onSelect }: { schools: string[]; selected: string; onSelect: (s: string) => void }) {
-    const [open, setOpen] = useState(false);
-    const allSchools = ["All Schools", ...schools];
-    return (
-        <View style={{ marginBottom: 4 }}>
-            <Pressable onPress={() => setOpen(!open)} style={{ height: 44, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: open ? COLORS.blue : COLORS.border, borderRadius: 13, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, shadowColor: "#172554", shadowOpacity: 0.03, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 1 }}>
-                <View style={{ width: 28, height: 28, borderRadius: 9, backgroundColor: "#EEF2FF", alignItems: "center", justifyContent: "center" }}><Ionicons name="business" size={14} color={COLORS.blue} /></View>
-                <Text style={{ flex: 1, fontFamily: FONT.semibold, fontSize: 12, color: selected === "All Schools" ? COLORS.muted : COLORS.ink }} numberOfLines={1}>{selected}</Text>
-                <Ionicons name={open ? "chevron-up" : "chevron-down"} size={16} color={COLORS.faint} />
+      {metrics.length > 0 ? (
+        <View style={styles.metricGrid}>
+          {metrics.map((metric) => (
+            <MetricCard key={metric.label} metric={metric} onPress={onMetricPress ? () => onMetricPress(metric) : undefined} />
+          ))}
+        </View>
+      ) : null}
+
+      {onSearch ? (
+        <View style={styles.search}>
+          <Ionicons name="search" size={17} color={COLORS.faint} />
+          <TextInput
+            value={search}
+            onChangeText={onSearch}
+            placeholder={searchPlaceholder}
+            placeholderTextColor={COLORS.faint}
+            style={styles.searchInput}
+          />
+          {search ? (
+            <Pressable onPress={() => onSearch("")}>
+              <Ionicons name="close-circle" size={17} color={COLORS.faint} />
             </Pressable>
-            {open ? (
-                <View style={{ backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: COLORS.border, borderRadius: 13, marginTop: 4, overflow: "hidden", shadowColor: "#172554", shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 4, zIndex: 99 }}>
-                    {allSchools.map((s, i) => {
-                        const active = s === selected;
-                        return (
-                            <Pressable key={s} onPress={() => { onSelect(s); setOpen(false); }} style={({ pressed }) => [{ minHeight: 42, flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 13, backgroundColor: active ? "#EEF2FF" : pressed ? "#F8FAFC" : "#FFFFFF" }, i > 0 && { borderTopWidth: 1, borderTopColor: "#F0F2F5" }]}>
-                                <Ionicons name={active ? "radio-button-on" : "radio-button-off"} size={16} color={active ? COLORS.blue : COLORS.faint} />
-                                <Text style={{ flex: 1, fontFamily: active ? FONT.bold : FONT.regular, fontSize: 12, color: active ? COLORS.blue : COLORS.ink }} numberOfLines={1}>{s}</Text>
-                                {active ? <Ionicons name="checkmark" size={16} color={COLORS.blue} /> : null}
-                            </Pressable>
-                        );
-                    })}
-                </View>
-            ) : null}
+          ) : null}
         </View>
-    );
+      ) : null}
+
+      {filters.length > 0 ? (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
+          {filters.map((filter) => {
+            const active = filter === activeFilter;
+            return (
+              <Pressable
+                key={filter}
+                onPress={() => onFilter?.(filter)}
+                style={[styles.filter, active && styles.filterActive]}
+              >
+                <Text style={[styles.filterText, active && styles.filterTextActive]}>{filter}</Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      ) : null}
+
+      <View style={styles.content}>{frameLoading ? <PageSkeleton /> : children}</View>
+    </View>
+  );
 }
 
-export function EntityPage({ title, subtitle, seed, filters = ["All", "Active", "Blocked"], searchPlaceholder, metrics = [], actionLabel = "Add record", workflow = "access", schoolNames = [], onNavigate }: { title: string; subtitle: string; seed: AdminRecord[]; filters?: string[]; searchPlaceholder?: string; metrics?: Metric[]; actionLabel?: string; workflow?: "access" | "payment"; schoolNames?: string[]; onNavigate?: (page: string) => void }) {
-    const [records, setRecords] = useState(seed); const [query, setQuery] = useState(""); const [filter, setFilter] = useState("All"); const [schoolFilter, setSchoolFilter] = useState("All Schools"); const [selected, setSelected] = useState<AdminRecord | null>(null); const [editing, setEditing] = useState<AdminRecord | null>(null); const [busyId, setBusyId] = useState("");
-    const visible = useMemo(() => records.filter((record) => { const normalized = record.status.toLowerCase(); const filterMatch = filter === "All" || normalized === filter.toLowerCase() || (filter.toLowerCase() === "approved" && normalized === "active") || (filter.toLowerCase() === "rejected" && (normalized === "blocked" || normalized === "inactive")); const schoolMatch = schoolFilter === "All Schools" || record.subtitle.includes(schoolFilter); return (!query || `${record.title} ${record.subtitle} ${record.id} ${record.fields?.join(" ") ?? ""}`.toLowerCase().includes(query.toLowerCase())) && filterMatch && schoolMatch; }), [records, query, filter, schoolFilter]);
-    const performToggle = (record: AdminRecord) => { setBusyId(record.id); setTimeout(() => { const nextStatus = workflow === "payment" ? record.status === "pending" ? "processing" : record.status === "processing" ? "completed" : "rejected" : record.status === "blocked" ? "active" : "blocked"; setRecords((items) => items.map((item) => item.id === record.id ? { ...item, status: nextStatus } : item)); setBusyId(""); }, 250); };
-    const addRecord = () => { const next: AdminRecord = { id: `NEW-${records.length + 1}`, title: `New ${title.toLowerCase().replace(" management", "")}`, subtitle: "Awaiting details · local record", status: "pending", icon: "add-circle-outline", fields: ["Created from frontend form", "Ready for admin review"] }; setRecords((items) => [next, ...items]); setSelected(next); };
-    const saveEdit = () => { if (!editing) return; setRecords((items) => items.map((item) => item.id === editing.id ? editing : item)); setEditing(null); };
-    return <AdminPageFrame title={title} subtitle={subtitle} metrics={metrics} search={query} onSearch={setQuery} searchPlaceholder={searchPlaceholder} filters={filters} activeFilter={filter} onFilter={setFilter} actionLabel={actionLabel} onAction={addRecord} onMetricPress={onNavigate ? (m) => { const routeByMetric: Record<string, string> = { "Total parents": "parents", "Total drivers": "drivers", "Total students": "students", "Total schools": "schools", "Total buses": "buses", "Subscribed": "subscriptions" }; const route = routeByMetric[m.label]; if (route) onNavigate(route); } : undefined}>{schoolNames.length > 0 ? <SchoolFilterDropdown schools={schoolNames} selected={schoolFilter} onSelect={setSchoolFilter} /> : null}<View style={styles.resultBar}><Text style={styles.resultText}>{visible.length} records{schoolFilter !== "All Schools" ? ` · ${schoolFilter}` : ""}</Text>{query || filter !== "All" || schoolFilter !== "All Schools" ? <Pressable onPress={() => { setQuery(""); setFilter("All"); setSchoolFilter("All Schools"); }}><Text style={styles.resetText}>Reset filters</Text></Pressable> : null}</View>{visible.map((record) => <RecordCard key={record.id} record={record} busy={busyId === record.id} toggleLabel={workflow === "payment" ? record.status === "pending" ? "Process" : record.status === "processing" ? "Complete" : "Reject" : undefined} onView={() => setSelected(record)} onEdit={() => setEditing(record)} onToggle={() => workflow === "payment" ? performToggle(record) : record.status === "blocked" ? performToggle(record) : Alert.alert("Block record", `Block ${record.title}?`, [{ text: "Cancel", style: "cancel" }, { text: "Block", style: "destructive", onPress: () => performToggle(record) }])} onDelete={() => Alert.alert("Delete record", `Archive ${record.title}?`, [{ text: "Cancel", style: "cancel" }, { text: "Archive", style: "destructive", onPress: () => setRecords((items) => items.map((item) => item.id === record.id ? { ...item, status: "inactive" } : item)) }])} />)}{visible.length === 0 ? <EmptyState text="No matching records. Try resetting filters." /> : null}<Modal visible={Boolean(selected)} transparent animationType="slide" onRequestClose={() => setSelected(null)}><View style={styles.sheetBackdrop}><View style={styles.sheet}><View style={styles.sheetHandle} /><View style={styles.sheetHeader}><View style={{ flex: 1 }}><Text style={styles.eyebrow}>RECORD DETAILS</Text><Text style={styles.sheetTitle}>{selected?.title}</Text></View><Pressable onPress={() => setSelected(null)}><Ionicons name="close-circle" size={24} color={COLORS.faint} /></Pressable></View><StatusBadge status={selected?.status ?? ""} />{selected?.fields?.map((field) => <Text key={field} style={styles.sheetField}>{field}</Text>)}<Pressable onPress={() => { setSelected(null); setEditing(selected); }} style={styles.primarySheetAction}><Ionicons name="create-outline" size={16} color={COLORS.ink} /><Text style={styles.actionText}>Edit this record</Text></Pressable></View></View></Modal><Modal visible={Boolean(editing)} transparent animationType="fade" onRequestClose={() => setEditing(null)}><View style={styles.sheetBackdrop}><View style={styles.editSheet}><Text style={styles.eyebrow}>EDIT RECORD</Text><Text style={styles.sheetTitle}>{editing?.id}</Text><Text style={styles.formLabel}>Name / title</Text><TextInput value={editing?.title ?? ""} onChangeText={(value) => setEditing((item) => item ? { ...item, title: value } : item)} style={styles.formInput} /><Text style={styles.formLabel}>Details</Text><TextInput value={editing?.subtitle ?? ""} onChangeText={(value) => setEditing((item) => item ? { ...item, subtitle: value } : item)} style={styles.formInput} /><Text style={styles.formLabel}>Status</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>{filters.filter((item) => item !== "All").map((item) => <Pressable key={item} onPress={() => setEditing((record) => record ? { ...record, status: item.toLowerCase() } : record)} style={[styles.filter, editing?.status.toLowerCase() === item.toLowerCase() && styles.filterActive]}><Text style={styles.filterText}>{item}</Text></Pressable>)}</ScrollView><View style={styles.sheetActions}><Pressable onPress={() => setEditing(null)} style={styles.outline}><Text style={styles.outlineText}>Cancel</Text></Pressable><Pressable onPress={saveEdit} style={styles.primarySheetAction}><Text style={styles.actionText}>Save changes</Text></Pressable></View></View></View></Modal></AdminPageFrame>;
+export function SchoolFilterBar({
+  schools,
+  selected,
+  onSelect,
+  recordsCountBySchool = {},
+}: {
+  schools: string[];
+  selected: string;
+  onSelect: (s: string) => void;
+  recordsCountBySchool?: Record<string, number>;
+}) {
+  const [modalVisible, setModalVisible] = useState(false);
+  const allOptions = ["All Schools", ...schools];
+
+  return (
+    <View style={styles.schoolFilterContainer}>
+      {/* Header Selector Button */}
+      <Pressable
+        onPress={() => setModalVisible(true)}
+        style={({ pressed }) => [styles.schoolSelectButton, pressed && { opacity: 0.85 }]}
+      >
+        <View style={styles.schoolIconWrap}>
+          <Ionicons name="business" size={15} color={COLORS.blue} />
+        </View>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={styles.schoolSelectLabel}>FILTER BY SCHOOL</Text>
+          <Text style={styles.schoolSelectValue} numberOfLines={1}>
+            {selected}
+          </Text>
+        </View>
+        <View style={styles.schoolDropdownBadge}>
+          <Ionicons name="chevron-down" size={14} color={COLORS.navy} />
+        </View>
+      </Pressable>
+
+      {/* Horizontal School Chips for 1-Tap Switching */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.schoolChipsScroll}>
+        {allOptions.map((school) => {
+          const active = school === selected;
+          const count = recordsCountBySchool[school];
+          return (
+            <Pressable
+              key={school}
+              onPress={() => onSelect(school)}
+              style={[styles.schoolChip, active && styles.schoolChipActive]}
+            >
+              <Ionicons
+                name={school === "All Schools" ? "grid-outline" : "school-outline"}
+                size={13}
+                color={active ? COLORS.yellow : COLORS.muted}
+              />
+              <Text style={[styles.schoolChipText, active && styles.schoolChipTextActive]} numberOfLines={1}>
+                {school === "All Schools" ? "All Schools" : school.replace(" Public School", "").replace(" Academy", "").replace(" International", "")}
+              </Text>
+              {count !== undefined ? (
+                <View style={[styles.chipCountBadge, active && styles.chipCountBadgeActive]}>
+                  <Text style={[styles.chipCountText, active && styles.chipCountTextActive]}>{count}</Text>
+                </View>
+              ) : null}
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+
+      {/* Full School Selection Modal */}
+      <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={() => setModalVisible(false)}>
+        <View style={styles.sheetBackdrop}>
+          <View style={styles.sheet}>
+            <View style={styles.sheetHandle} />
+            <View style={styles.sheetHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.eyebrow}>FILTER RECORDS</Text>
+                <Text style={styles.sheetTitle}>Select School</Text>
+              </View>
+              <Pressable onPress={() => setModalVisible(false)}>
+                <Ionicons name="close-circle" size={24} color={COLORS.faint} />
+              </Pressable>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 380 }}>
+              {allOptions.map((school, i) => {
+                const active = school === selected;
+                const count = recordsCountBySchool[school];
+                return (
+                  <Pressable
+                    key={school}
+                    onPress={() => {
+                      onSelect(school);
+                      setModalVisible(false);
+                    }}
+                    style={({ pressed }) => [
+                      styles.schoolModalRow,
+                      active && styles.schoolModalRowActive,
+                      i > 0 && { borderTopWidth: 1, borderTopColor: "#F0F2F5" },
+                      pressed && { backgroundColor: "#F8FAFC" },
+                    ]}
+                  >
+                    <View style={[styles.schoolModalIcon, active && { backgroundColor: COLORS.navy }]}>
+                      <Ionicons
+                        name={school === "All Schools" ? "apps" : "business"}
+                        size={17}
+                        color={active ? COLORS.yellow : COLORS.blue}
+                      />
+                    </View>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={[styles.schoolModalName, active && { color: COLORS.navy, fontFamily: FONT.bold }]} numberOfLines={1}>
+                        {school}
+                      </Text>
+                      <Text style={styles.schoolModalSub}>
+                        {school === "All Schools" ? "Show records from all affiliated schools" : "Affiliated School Network"}
+                      </Text>
+                    </View>
+                    {count !== undefined ? (
+                      <View style={[styles.countPill, active && { backgroundColor: COLORS.navy }]}>
+                        <Text style={[styles.countText, active && { color: "#FFFFFF" }]}>{count}</Text>
+                      </View>
+                    ) : null}
+                    <Ionicons
+                      name={active ? "radio-button-on" : "radio-button-off"}
+                      size={20}
+                      color={active ? COLORS.blue : COLORS.faint}
+                    />
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+
+            {selected !== "All Schools" ? (
+              <Pressable
+                onPress={() => {
+                  onSelect("All Schools");
+                  setModalVisible(false);
+                }}
+                style={styles.clearSchoolBtn}
+              >
+                <Ionicons name="refresh" size={15} color={COLORS.red} />
+                <Text style={styles.clearSchoolText}>Reset to All Schools</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
 }
 
-export const styles = StyleSheet.create({ page: { flex: 1, backgroundColor: COLORS.bg }, heading: { flexDirection: "row", alignItems: "flex-start", gap: 10, marginBottom: 16 }, headingCopy: { flex: 1, minWidth: 0 }, headingEyebrow: { flexDirection: "row", alignItems: "center", gap: 6 }, headingMark: { width: 7, height: 7, borderRadius: 99, backgroundColor: COLORS.yellow }, eyebrow: { color: COLORS.blue, fontFamily: FONT.bold, letterSpacing: 1.2, fontSize: 10, marginBottom: 4 }, title: { color: COLORS.ink, fontFamily: FONT.display, fontSize: 24, letterSpacing: -0.6 }, subtitle: { color: COLORS.muted, fontFamily: FONT.regular, fontSize: 11, marginTop: 5 }, sectionTitle: { color: COLORS.ink, fontFamily: FONT.display, fontSize: 16, marginTop: 16, marginBottom: 8 }, metricGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 12 }, metric: { minHeight: 116, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: COLORS.border, borderRadius: 17, padding: 12, position: "relative", shadowColor: "#172554", shadowOpacity: 0.04, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 1 }, metricIcon: { width: 32, height: 32, borderRadius: 11, alignItems: "center", justifyContent: "center", marginBottom: 7 }, metricLabel: { color: COLORS.muted, fontFamily: FONT.semibold, fontSize: 10.5 }, metricValue: { color: COLORS.ink, fontFamily: FONT.display, fontSize: 22, marginTop: 3 }, metricNote: { color: COLORS.faint, fontFamily: FONT.regular, fontSize: 9, marginTop: 3 }, metricArrow: { position: "absolute", top: 14, right: 12 }, search: { height: 46, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: COLORS.border, borderRadius: 14, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, shadowColor: "#172554", shadowOpacity: 0.03, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 1 }, searchInput: { flex: 1, color: COLORS.ink, fontFamily: FONT.regular, fontSize: 12 }, filters: { gap: 7, paddingVertical: 10 }, filter: { borderWidth: 1, borderColor: COLORS.border, backgroundColor: "#FFFFFF", borderRadius: 99, paddingHorizontal: 12, paddingVertical: 7 }, filterActive: { backgroundColor: COLORS.navy, borderColor: COLORS.navy }, filterText: { color: COLORS.muted, fontFamily: FONT.semibold, fontSize: 10.5 }, filterTextActive: { color: COLORS.yellow }, content: { paddingBottom: 24 }, resultBar: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 7 }, resultText: { color: COLORS.muted, fontFamily: FONT.semibold, fontSize: 10.5 }, resetText: { color: COLORS.blue, fontFamily: FONT.bold, fontSize: 10.5 }, card: { backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: COLORS.border, borderRadius: 17, padding: 13, marginBottom: 9, shadowColor: "#172554", shadowOpacity: 0.035, shadowRadius: 9, shadowOffset: { width: 0, height: 3 }, elevation: 1 }, cardTop: { flexDirection: "row", alignItems: "center" }, recordIcon: { width: 39, height: 39, borderRadius: 13, backgroundColor: "#EEF2FF", alignItems: "center", justifyContent: "center" }, cardTitle: { color: COLORS.ink, fontFamily: FONT.semibold, fontSize: 13 }, cardSubtitle: { color: COLORS.muted, fontFamily: FONT.regular, fontSize: 10, marginTop: 3 }, status: { flexDirection: "row", alignItems: "center", gap: 4, borderRadius: 99, paddingHorizontal: 8, paddingVertical: 5 }, statusDot: { width: 5, height: 5, borderRadius: 99 }, statusText: { fontFamily: FONT.bold, fontSize: 9.5 }, field: { color: COLORS.muted, fontFamily: FONT.regular, fontSize: 10.5, marginTop: 9, paddingTop: 8, borderTopWidth: 1, borderTopColor: "#F0F2F5" }, cardActions: { flexDirection: "row", gap: 7, marginTop: 12, flexWrap: "wrap" }, outline: { minHeight: 32, borderWidth: 1, borderColor: COLORS.border, borderRadius: 9, paddingHorizontal: 9, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5 }, outlineText: { fontFamily: FONT.bold, fontSize: 9.5 }, delete: { width: 32, height: 32, borderRadius: 9, backgroundColor: "#FFF1F2", alignItems: "center", justifyContent: "center" }, empty: { alignItems: "center", justifyContent: "center", paddingVertical: 42, gap: 8 }, emptyText: { color: COLORS.muted, fontFamily: FONT.regular, fontSize: 12 }, action: { backgroundColor: COLORS.yellow, borderRadius: 11, minHeight: 38, paddingHorizontal: 11, flexDirection: "row", alignItems: "center", gap: 5 }, actionText: { color: COLORS.ink, fontFamily: FONT.bold, fontSize: 10.5 }, sheetBackdrop: { flex: 1, backgroundColor: "rgba(15,23,42,0.55)", justifyContent: "flex-end" }, sheet: { backgroundColor: "#FFFFFF", borderTopLeftRadius: 25, borderTopRightRadius: 25, padding: 18, minHeight: 300 }, editSheet: { backgroundColor: "#FFFFFF", borderRadius: 22, margin: 16, padding: 18 }, sheetHandle: { width: 42, height: 4, borderRadius: 99, alignSelf: "center", backgroundColor: "#D0D5DD", marginBottom: 14 }, sheetHeader: { flexDirection: "row", alignItems: "flex-start", marginBottom: 14 }, sheetTitle: { color: COLORS.ink, fontFamily: FONT.display, fontSize: 20, marginBottom: 10 }, sheetField: { color: COLORS.muted, fontFamily: FONT.regular, fontSize: 11, borderTopWidth: 1, borderTopColor: "#F0F2F5", paddingVertical: 10 }, primarySheetAction: { minHeight: 43, borderRadius: 12, backgroundColor: COLORS.yellow, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 12 }, sheetActions: { flexDirection: "row", gap: 8, marginTop: 8 }, mapPreview: { height: 240, borderRadius: 20, backgroundColor: "#DCE8E5", borderWidth: 1, borderColor: "#C8D8D4", overflow: "hidden", position: "relative", padding: 13, marginBottom: 12 }, mapTitle: { color: COLORS.ink, fontFamily: FONT.display, fontSize: 14 }, mapPin: { position: "absolute", alignItems: "center" }, pinCircle: { width: 32, height: 32, borderRadius: 12, backgroundColor: COLORS.green, alignItems: "center", justifyContent: "center" }, pinText: { color: COLORS.ink, backgroundColor: "#FFFFFFDD", paddingHorizontal: 4, borderRadius: 4, fontSize: 9, fontFamily: FONT.bold }, mapLegend: { position: "absolute", bottom: 12, left: 12, color: COLORS.muted, fontFamily: FONT.semibold, fontSize: 10 }, formCard: { backgroundColor: "#FFFFFF", borderRadius: 18, borderWidth: 1, borderColor: COLORS.border, padding: 14, marginBottom: 16 }, formLabel: { color: COLORS.ink, fontFamily: FONT.semibold, fontSize: 11, marginTop: 8, marginBottom: 6 }, formInput: { minHeight: 45, borderWidth: 1, borderColor: COLORS.border, borderRadius: 12, paddingHorizontal: 11, color: COLORS.ink, fontFamily: FONT.regular, fontSize: 12 }, formArea: { minHeight: 95, borderWidth: 1, borderColor: COLORS.border, borderRadius: 12, padding: 11, color: COLORS.ink, fontFamily: FONT.regular, textAlignVertical: "top" }, recipientRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 }, recipient: { paddingHorizontal: 9, paddingVertical: 7, borderRadius: 99, backgroundColor: "#EEF2FF" }, recipientText: { color: COLORS.blue, fontFamily: FONT.semibold, fontSize: 10 }, chart: { backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: COLORS.border, borderRadius: 18, padding: 14 }, chartValue: { color: COLORS.ink, fontFamily: FONT.display, fontSize: 24, marginTop: 4 }, bars: { height: 130, marginTop: 15, borderBottomWidth: 1, borderBottomColor: COLORS.border, flexDirection: "row", alignItems: "flex-end", justifyContent: "space-around" }, barColumn: { alignItems: "center", justifyContent: "flex-end", height: "100%", gap: 5 }, bar: { width: 18, borderTopLeftRadius: 6, borderTopRightRadius: 6, backgroundColor: COLORS.blue }, barLabel: { color: COLORS.faint, fontFamily: FONT.regular, fontSize: 9, marginBottom: 4 }, securityCard: { backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: COLORS.border, borderRadius: 17, padding: 14, marginBottom: 10 }, settingsRow: { backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: COLORS.border, borderRadius: 16, padding: 14, marginBottom: 10 }, });
+export function RecordCard({
+  record,
+  onView,
+  onEdit,
+  onToggle,
+  onDelete,
+  busy,
+  toggleLabel,
+  actionLabel = "View",
+}: {
+  record: AdminRecord;
+  onView?: () => void;
+  onEdit?: () => void;
+  onToggle?: () => void;
+  onDelete?: () => void;
+  busy?: boolean;
+  toggleLabel?: string;
+  actionLabel?: string;
+}) {
+  return (
+    <View style={styles.card}>
+      <View style={styles.cardTop}>
+        <View style={styles.recordIcon}>
+          <Ionicons name={record.icon ?? "document-text-outline"} size={19} color={COLORS.blue} />
+        </View>
+        <View style={{ flex: 1, marginLeft: 10 }}>
+          <Text style={styles.cardTitle}>{record.title}</Text>
+          <Text style={styles.cardSubtitle}>
+            {record.id} · {record.subtitle}
+          </Text>
+        </View>
+        <StatusBadge status={record.status} />
+      </View>
+      {record.fields?.map((field, index) => (
+        <Text key={`${record.id}-${index}`} style={styles.field}>
+          {field}
+        </Text>
+      ))}
+      <View style={styles.cardActions}>
+        <Pressable onPress={onView} style={styles.outline}>
+          <Ionicons name="eye-outline" size={15} color={COLORS.blue} />
+          <Text style={[styles.outlineText, { color: COLORS.blue }]}>{actionLabel}</Text>
+        </Pressable>
+        {onEdit ? (
+          <Pressable onPress={onEdit} style={styles.outline}>
+            <Ionicons name="create-outline" size={15} color={COLORS.ink} />
+            <Text style={styles.outlineText}>Edit</Text>
+          </Pressable>
+        ) : null}
+        {onToggle ? (
+          <Pressable
+            disabled={busy}
+            onPress={onToggle}
+            style={[
+              styles.outline,
+              {
+                borderColor: record.status === "blocked" ? `${COLORS.green}55` : `${COLORS.blue}55`,
+                opacity: busy ? 0.6 : 1,
+              },
+            ]}
+          >
+            {busy ? (
+              <ActivityIndicator size="small" color={COLORS.blue} />
+            ) : (
+              <>
+                <Ionicons
+                  name={
+                    toggleLabel
+                      ? "arrow-forward-circle-outline"
+                      : record.status === "blocked"
+                      ? "lock-open-outline"
+                      : "ban-outline"
+                  }
+                  size={15}
+                  color={toggleLabel ? COLORS.blue : record.status === "blocked" ? COLORS.green : COLORS.red}
+                />
+                <Text
+                  style={[
+                    styles.outlineText,
+                    {
+                      color: toggleLabel
+                        ? COLORS.blue
+                        : record.status === "blocked"
+                        ? COLORS.green
+                        : COLORS.red,
+                    },
+                  ]}
+                >
+                  {toggleLabel ?? (record.status === "blocked" ? "Unblock" : "Block")}
+                </Text>
+              </>
+            )}
+          </Pressable>
+        ) : null}
+        {onDelete ? (
+          <Pressable onPress={onDelete} style={styles.delete}>
+            <Ionicons name="trash-outline" size={15} color={COLORS.red} />
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+export function EmptyState({ text = "No records found." }: { text?: string }) {
+  return (
+    <View style={styles.empty}>
+      <Ionicons name="file-tray-outline" size={30} color={COLORS.faint} />
+      <Text style={styles.emptyText}>{text}</Text>
+    </View>
+  );
+}
+
+const skeletonStyles = StyleSheet.create({
+  wrap: { gap: 9 },
+  card: { backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#E4E7EC", borderRadius: 17, padding: 13, gap: 11 },
+  row: { flexDirection: "row", alignItems: "center", gap: 10 },
+  copy: { flex: 1, gap: 7 },
+});
+
+export function EntityPage({
+  title,
+  subtitle,
+  seed,
+  filters = ["All", "Active", "Blocked"],
+  searchPlaceholder,
+  metrics = [],
+  actionLabel = "Add record",
+  workflow = "access",
+  schoolNames = [],
+  onNavigate,
+}: {
+  title: string;
+  subtitle: string;
+  seed: AdminRecord[];
+  filters?: string[];
+  searchPlaceholder?: string;
+  metrics?: Metric[];
+  actionLabel?: string;
+  workflow?: "access" | "payment";
+  schoolNames?: string[];
+  onNavigate?: (page: string) => void;
+}) {
+  const [records, setRecords] = useState(seed);
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState("All");
+  const [schoolFilter, setSchoolFilter] = useState("All Schools");
+  const [selected, setSelected] = useState<AdminRecord | null>(null);
+  const [editing, setEditing] = useState<AdminRecord | null>(null);
+  const [busyId, setBusyId] = useState("");
+
+  // Record counts by school for chip badges
+  const recordsCountBySchool = useMemo(() => {
+    const map: Record<string, number> = { "All Schools": records.length };
+    schoolNames.forEach((s) => {
+      map[s] = records.filter(
+        (r) =>
+          r.subtitle.toLowerCase().includes(s.toLowerCase()) ||
+          r.title.toLowerCase().includes(s.toLowerCase()) ||
+          (r.fields?.some((f) => f.toLowerCase().includes(s.toLowerCase())) ?? false)
+      ).length;
+    });
+    return map;
+  }, [records, schoolNames]);
+
+  const visible = useMemo(
+    () =>
+      records.filter((record) => {
+        const normalized = record.status.toLowerCase();
+        const filterMatch =
+          filter === "All" ||
+          normalized === filter.toLowerCase() ||
+          (filter.toLowerCase() === "approved" && normalized === "active") ||
+          (filter.toLowerCase() === "rejected" && (normalized === "blocked" || normalized === "inactive"));
+
+        const schoolMatch =
+          schoolFilter === "All Schools" ||
+          record.subtitle.toLowerCase().includes(schoolFilter.toLowerCase()) ||
+          record.title.toLowerCase().includes(schoolFilter.toLowerCase()) ||
+          (record.fields?.some((f) => f.toLowerCase().includes(schoolFilter.toLowerCase())) ?? false);
+
+        const queryMatch =
+          !query ||
+          `${record.title} ${record.subtitle} ${record.id} ${record.fields?.join(" ") ?? ""}`
+            .toLowerCase()
+            .includes(query.toLowerCase());
+
+        return queryMatch && filterMatch && schoolMatch;
+      }),
+    [records, query, filter, schoolFilter]
+  );
+
+  const performToggle = (record: AdminRecord) => {
+    setBusyId(record.id);
+    setTimeout(() => {
+      const nextStatus =
+        workflow === "payment"
+          ? record.status === "pending"
+            ? "processing"
+            : record.status === "processing"
+            ? "completed"
+            : "rejected"
+          : record.status === "blocked"
+          ? "active"
+          : "blocked";
+      setRecords((items) => items.map((item) => (item.id === record.id ? { ...item, status: nextStatus } : item)));
+      setBusyId("");
+    }, 250);
+  };
+
+  const addRecord = () => {
+    const next: AdminRecord = {
+      id: `NEW-${records.length + 1}`,
+      title: `New ${title.toLowerCase().replace(" management", "")}`,
+      subtitle: "Awaiting details · local record",
+      status: "pending",
+      icon: "add-circle-outline",
+      fields: ["Created from frontend form", "Ready for admin review"],
+    };
+    setRecords((items) => [next, ...items]);
+    setSelected(next);
+  };
+
+  const saveEdit = () => {
+    if (!editing) return;
+    setRecords((items) => items.map((item) => (item.id === editing.id ? editing : item)));
+    setEditing(null);
+  };
+
+  return (
+    <AdminPageFrame
+      title={title}
+      subtitle={subtitle}
+      metrics={metrics}
+      search={query}
+      onSearch={setQuery}
+      searchPlaceholder={searchPlaceholder}
+      filters={filters}
+      activeFilter={filter}
+      onFilter={setFilter}
+      actionLabel={actionLabel}
+      onAction={addRecord}
+      onMetricPress={
+        onNavigate
+          ? (m) => {
+              const routeByMetric: Record<string, string> = {
+                "Total parents": "parents",
+                "Total drivers": "drivers",
+                "Total students": "students",
+                "Total schools": "schools",
+                "Total buses": "buses",
+                Subscribed: "subscriptions",
+              };
+              const route = routeByMetric[m.label];
+              if (route) onNavigate(route);
+            }
+          : undefined
+      }
+    >
+      {/* School filter selector */}
+      {schoolNames.length > 0 ? (
+        <SchoolFilterBar
+          schools={schoolNames}
+          selected={schoolFilter}
+          onSelect={setSchoolFilter}
+          recordsCountBySchool={recordsCountBySchool}
+        />
+      ) : null}
+
+      {/* Result stats bar */}
+      <View style={styles.resultBar}>
+        <View style={styles.resultBadgeWrap}>
+          <Text style={styles.resultText}>{visible.length} records</Text>
+          {schoolFilter !== "All Schools" ? (
+            <View style={styles.activeSchoolTag}>
+              <Ionicons name="business" size={11} color={COLORS.blue} />
+              <Text style={styles.activeSchoolTagText} numberOfLines={1}>
+                {schoolFilter}
+              </Text>
+              <Pressable onPress={() => setSchoolFilter("All Schools")}>
+                <Ionicons name="close-circle" size={13} color={COLORS.blue} />
+              </Pressable>
+            </View>
+          ) : null}
+        </View>
+        {query || filter !== "All" || schoolFilter !== "All Schools" ? (
+          <Pressable
+            onPress={() => {
+              setQuery("");
+              setFilter("All");
+              setSchoolFilter("All Schools");
+            }}
+          >
+            <Text style={styles.resetText}>Reset filters</Text>
+          </Pressable>
+        ) : null}
+      </View>
+
+      {visible.map((record) => (
+        <RecordCard
+          key={record.id}
+          record={record}
+          busy={busyId === record.id}
+          toggleLabel={
+            workflow === "payment"
+              ? record.status === "pending"
+                ? "Process"
+                : record.status === "processing"
+                ? "Complete"
+                : "Reject"
+              : undefined
+          }
+          onView={() => setSelected(record)}
+          onEdit={() => setEditing(record)}
+          onToggle={() =>
+            workflow === "payment"
+              ? performToggle(record)
+              : record.status === "blocked"
+              ? performToggle(record)
+              : Alert.alert("Block record", `Block ${record.title}?`, [
+                  { text: "Cancel", style: "cancel" },
+                  { text: "Block", style: "destructive", onPress: () => performToggle(record) },
+                ])
+          }
+          onDelete={() =>
+            Alert.alert("Delete record", `Archive ${record.title}?`, [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Archive",
+                style: "destructive",
+                onPress: () => setRecords((items) => items.map((item) => (item.id === record.id ? { ...item, status: "inactive" } : item))),
+              },
+            ])
+          }
+        />
+      ))}
+
+      {visible.length === 0 ? <EmptyState text="No matching records. Try resetting filters." /> : null}
+
+      {/* Record details modal */}
+      <Modal visible={Boolean(selected)} transparent animationType="slide" onRequestClose={() => setSelected(null)}>
+        <View style={styles.sheetBackdrop}>
+          <View style={styles.sheet}>
+            <View style={styles.sheetHandle} />
+            <View style={styles.sheetHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.eyebrow}>RECORD DETAILS</Text>
+                <Text style={styles.sheetTitle}>{selected?.title}</Text>
+              </View>
+              <Pressable onPress={() => setSelected(null)}>
+                <Ionicons name="close-circle" size={24} color={COLORS.faint} />
+              </Pressable>
+            </View>
+            <StatusBadge status={selected?.status ?? ""} />
+            {selected?.fields?.map((field) => (
+              <Text key={field} style={styles.sheetField}>
+                {field}
+              </Text>
+            ))}
+            <Pressable
+              onPress={() => {
+                setSelected(null);
+                setEditing(selected);
+              }}
+              style={styles.primarySheetAction}
+            >
+              <Ionicons name="create-outline" size={16} color={COLORS.ink} />
+              <Text style={styles.actionText}>Edit this record</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Edit modal */}
+      <Modal visible={Boolean(editing)} transparent animationType="fade" onRequestClose={() => setEditing(null)}>
+        <View style={styles.sheetBackdrop}>
+          <View style={styles.editSheet}>
+            <Text style={styles.eyebrow}>EDIT RECORD</Text>
+            <Text style={styles.sheetTitle}>{editing?.id}</Text>
+            <Text style={styles.formLabel}>Name / title</Text>
+            <TextInput
+              value={editing?.title ?? ""}
+              onChangeText={(value) => setEditing((item) => (item ? { ...item, title: value } : item))}
+              style={styles.formInput}
+            />
+            <Text style={styles.formLabel}>Details</Text>
+            <TextInput
+              value={editing?.subtitle ?? ""}
+              onChangeText={(value) => setEditing((item) => (item ? { ...item, subtitle: value } : item))}
+              style={styles.formInput}
+            />
+            <Text style={styles.formLabel}>Status</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filters}>
+              {filters
+                .filter((item) => item !== "All")
+                .map((item) => (
+                  <Pressable
+                    key={item}
+                    onPress={() => setEditing((record) => (record ? { ...record, status: item.toLowerCase() } : record))}
+                    style={[styles.filter, editing?.status.toLowerCase() === item.toLowerCase() && styles.filterActive]}
+                  >
+                    <Text style={styles.filterText}>{item}</Text>
+                  </Pressable>
+                ))}
+            </ScrollView>
+            <View style={styles.sheetActions}>
+              <Pressable onPress={() => setEditing(null)} style={styles.outline}>
+                <Text style={styles.outlineText}>Cancel</Text>
+              </Pressable>
+              <Pressable onPress={saveEdit} style={styles.primarySheetAction}>
+                <Text style={styles.actionText}>Save changes</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </AdminPageFrame>
+  );
+}
+
+export const styles = StyleSheet.create({
+  page: { flex: 1, backgroundColor: COLORS.bg },
+  heading: { flexDirection: "row", alignItems: "flex-start", gap: 10, marginBottom: 14 },
+  headingCopy: { flex: 1, minWidth: 0 },
+  headingEyebrow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  headingMark: { width: 7, height: 7, borderRadius: 99, backgroundColor: COLORS.yellow },
+  eyebrow: { color: COLORS.blue, fontFamily: FONT.bold, letterSpacing: 1.2, fontSize: 10, marginBottom: 3 },
+  title: { color: COLORS.ink, fontFamily: FONT.display, fontSize: 23, letterSpacing: -0.5 },
+  subtitle: { color: COLORS.muted, fontFamily: FONT.regular, fontSize: 11, marginTop: 3 },
+  sectionTitle: { color: COLORS.ink, fontFamily: FONT.display, fontSize: 15.5, marginTop: 14, marginBottom: 8 },
+
+  // Responsive 2-Column Metric Grid
+  metricGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", gap: 8, marginBottom: 12 },
+  metric: {
+    flexBasis: "48%",
+    flexGrow: 1,
+    minHeight: 105,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 16,
+    padding: 11,
+    shadowColor: "#172554",
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 1,
+  },
+  metricHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 },
+  metricIcon: { width: 30, height: 30, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  metricArrowWrap: { width: 20, height: 20, borderRadius: 6, backgroundColor: "#F2F4F7", alignItems: "center", justifyContent: "center" },
+  metricLabel: { color: COLORS.muted, fontFamily: FONT.semibold, fontSize: 10 },
+  metricValue: { color: COLORS.ink, fontFamily: FONT.display, fontSize: 20, marginTop: 2 },
+  metricNoteBadge: { alignSelf: "flex-start", marginTop: 4, backgroundColor: "#F2F4F7", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  metricNoteText: { color: COLORS.muted, fontFamily: FONT.regular, fontSize: 8.5 },
+
+  // School filter components
+  schoolFilterContainer: { marginBottom: 10 },
+  schoolSelectButton: {
+    minHeight: 46,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+    paddingHorizontal: 11,
+    shadowColor: "#172554",
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
+  },
+  schoolIconWrap: { width: 28, height: 28, borderRadius: 9, backgroundColor: "#EEF2FF", alignItems: "center", justifyContent: "center" },
+  schoolSelectLabel: { color: COLORS.blue, fontFamily: FONT.bold, fontSize: 8, letterSpacing: 0.8 },
+  schoolSelectValue: { color: COLORS.ink, fontFamily: FONT.bold, fontSize: 12, marginTop: 1 },
+  schoolDropdownBadge: { width: 24, height: 24, borderRadius: 8, backgroundColor: "#FFF8DB", alignItems: "center", justifyContent: "center" },
+  schoolChipsScroll: { gap: 6, paddingVertical: 8 },
+  schoolChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 99,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  schoolChipActive: { backgroundColor: COLORS.navy, borderColor: COLORS.navy },
+  schoolChipText: { color: COLORS.muted, fontFamily: FONT.semibold, fontSize: 10.5 },
+  schoolChipTextActive: { color: COLORS.yellow, fontFamily: FONT.bold },
+  chipCountBadge: { backgroundColor: "#F2F4F7", paddingHorizontal: 5, paddingVertical: 1, borderRadius: 99, marginLeft: 2 },
+  chipCountBadgeActive: { backgroundColor: "rgba(255,255,255,0.2)" },
+  chipCountText: { color: COLORS.muted, fontFamily: FONT.bold, fontSize: 9 },
+  chipCountTextActive: { color: "#FFFFFF" },
+
+  // School modal list
+  schoolModalRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 11, paddingHorizontal: 10, borderRadius: 12 },
+  schoolModalRowActive: { backgroundColor: "#F8FAFC" },
+  schoolModalIcon: { width: 34, height: 34, borderRadius: 11, backgroundColor: "#EEF2FF", alignItems: "center", justifyContent: "center" },
+  schoolModalName: { color: COLORS.ink, fontFamily: FONT.semibold, fontSize: 12.5 },
+  schoolModalSub: { color: COLORS.muted, fontFamily: FONT.regular, fontSize: 10, marginTop: 1 },
+  clearSchoolBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginTop: 12,
+    paddingVertical: 10,
+    backgroundColor: "#FFF1F2",
+    borderRadius: 12,
+  },
+  clearSchoolText: { color: COLORS.red, fontFamily: FONT.bold, fontSize: 11 },
+
+  // Search and general filters
+  search: {
+    height: 44,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 13,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 12,
+    marginBottom: 6,
+    shadowColor: "#172554",
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
+  },
+  searchInput: { flex: 1, color: COLORS.ink, fontFamily: FONT.regular, fontSize: 12 },
+  filters: { gap: 6, paddingVertical: 6 },
+  filter: { borderWidth: 1, borderColor: COLORS.border, backgroundColor: "#FFFFFF", borderRadius: 99, paddingHorizontal: 11, paddingVertical: 6 },
+  filterActive: { backgroundColor: COLORS.navy, borderColor: COLORS.navy },
+  filterText: { color: COLORS.muted, fontFamily: FONT.semibold, fontSize: 10 },
+  filterTextActive: { color: COLORS.yellow, fontFamily: FONT.bold },
+
+  // Result stats bar
+  resultBar: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 4, marginBottom: 8 },
+  resultBadgeWrap: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap", flex: 1 },
+  resultText: { color: COLORS.muted, fontFamily: FONT.semibold, fontSize: 10.5 },
+  activeSchoolTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#EEF2FF",
+    borderWidth: 1,
+    borderColor: "#D9E2FF",
+    borderRadius: 99,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    maxWidth: 180,
+  },
+  activeSchoolTagText: { color: COLORS.blue, fontFamily: FONT.bold, fontSize: 9.5 },
+  resetText: { color: COLORS.blue, fontFamily: FONT.bold, fontSize: 10.5 },
+
+  // Cards
+  card: {
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 9,
+    shadowColor: "#172554",
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
+  },
+  cardTop: { flexDirection: "row", alignItems: "center" },
+  recordIcon: { width: 36, height: 36, borderRadius: 12, backgroundColor: "#EEF2FF", alignItems: "center", justifyContent: "center" },
+  cardTitle: { color: COLORS.ink, fontFamily: FONT.semibold, fontSize: 13 },
+  cardSubtitle: { color: COLORS.muted, fontFamily: FONT.regular, fontSize: 10, marginTop: 2 },
+  status: { flexDirection: "row", alignItems: "center", gap: 4, borderRadius: 99, paddingHorizontal: 7, paddingVertical: 4 },
+  statusDot: { width: 5, height: 5, borderRadius: 99 },
+  statusText: { fontFamily: FONT.bold, fontSize: 9 },
+  field: { color: COLORS.muted, fontFamily: FONT.regular, fontSize: 10.5, marginTop: 8, paddingTop: 7, borderTopWidth: 1, borderTopColor: "#F0F2F5" },
+  cardActions: { flexDirection: "row", gap: 6, marginTop: 10, flexWrap: "wrap" },
+  outline: { minHeight: 30, borderWidth: 1, borderColor: COLORS.border, borderRadius: 8, paddingHorizontal: 8, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4 },
+  outlineText: { fontFamily: FONT.bold, fontSize: 9 },
+  delete: { width: 30, height: 30, borderRadius: 8, backgroundColor: "#FFF1F2", alignItems: "center", justifyContent: "center" },
+  empty: { alignItems: "center", justifyContent: "center", paddingVertical: 36, gap: 8 },
+  emptyText: { color: COLORS.muted, fontFamily: FONT.regular, fontSize: 11.5 },
+  action: { backgroundColor: COLORS.yellow, borderRadius: 10, minHeight: 36, paddingHorizontal: 10, flexDirection: "row", alignItems: "center", gap: 4 },
+  actionText: { color: COLORS.ink, fontFamily: FONT.bold, fontSize: 10 },
+
+  // Sheets & Modals
+  sheetBackdrop: { flex: 1, backgroundColor: "rgba(15,23,42,0.55)", justifyContent: "flex-end" },
+  sheet: { backgroundColor: "#FFFFFF", borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 16, minHeight: 280 },
+  editSheet: { backgroundColor: "#FFFFFF", borderRadius: 20, margin: 16, padding: 16 },
+  sheetHandle: { width: 40, height: 4, borderRadius: 99, alignSelf: "center", backgroundColor: "#D0D5DD", marginBottom: 12 },
+  sheetHeader: { flexDirection: "row", alignItems: "flex-start", marginBottom: 12 },
+  sheetTitle: { color: COLORS.ink, fontFamily: FONT.display, fontSize: 19, marginBottom: 8 },
+  sheetField: { color: COLORS.muted, fontFamily: FONT.regular, fontSize: 11, borderTopWidth: 1, borderTopColor: "#F0F2F5", paddingVertical: 9 },
+  primarySheetAction: { minHeight: 40, borderRadius: 11, backgroundColor: COLORS.yellow, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, marginTop: 10 },
+  sheetActions: { flexDirection: "row", gap: 8, marginTop: 8 },
+  countPill: { borderRadius: 99, backgroundColor: "#F2F4F7", paddingHorizontal: 7, paddingVertical: 4 },
+  countText: { color: "#667085", fontFamily: FONT.Bold ?? FONT.bold, fontSize: 9 },
+
+  // Form styles
+  formCard: { backgroundColor: "#FFFFFF", borderRadius: 16, borderWidth: 1, borderColor: COLORS.border, padding: 13, marginBottom: 14 },
+  formLabel: { color: COLORS.ink, fontFamily: FONT.semibold, fontSize: 10.5, marginTop: 7, marginBottom: 5 },
+  formInput: { minHeight: 42, borderWidth: 1, borderColor: COLORS.border, borderRadius: 11, paddingHorizontal: 10, color: COLORS.ink, fontFamily: FONT.regular, fontSize: 11.5 },
+  formArea: { minHeight: 90, borderWidth: 1, borderColor: COLORS.border, borderRadius: 11, padding: 10, color: COLORS.ink, fontFamily: FONT.regular, textAlignVertical: "top" },
+  recipientRow: { flexDirection: "row", flexWrap: "wrap", gap: 5 },
+  recipient: { paddingHorizontal: 8, paddingVertical: 6, borderRadius: 99, backgroundColor: "#EEF2FF" },
+  recipientText: { color: COLORS.blue, fontFamily: FONT.semibold, fontSize: 9.5 },
+  chart: { backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: COLORS.border, borderRadius: 16, padding: 13 },
+  chartValue: { color: COLORS.ink, fontFamily: FONT.display, fontSize: 22, marginTop: 3 },
+  bars: { height: 120, marginTop: 14, borderBottomWidth: 1, borderBottomColor: COLORS.border, flexDirection: "row", alignItems: "flex-end", justifyContent: "space-around" },
+  barColumn: { alignItems: "center", justifyContent: "flex-end", height: "100%", gap: 4 },
+  bar: { width: 16, borderTopLeftRadius: 5, borderTopRightRadius: 5, backgroundColor: COLORS.blue },
+  barLabel: { color: COLORS.faint, fontFamily: FONT.regular, fontSize: 8.5, marginBottom: 3 },
+  securityCard: { backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: COLORS.border, borderRadius: 16, padding: 13, marginBottom: 9 },
+  settingsRow: { backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: COLORS.border, borderRadius: 15, padding: 13, marginBottom: 9 },
+  content: { paddingBottom: 24 },
+});
