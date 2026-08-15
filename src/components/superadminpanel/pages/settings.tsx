@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { AdminPageFrame, COLORS, FONT } from "./pagekit";
+import TermsAndConditionsModal from "../../termsandconditions";
 
 export default function SuperAdminSettingsPage({
   onChangePassword,
@@ -14,6 +15,8 @@ export default function SuperAdminSettingsPage({
   const [soundAlerts, setSoundAlerts] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [darkMap, setDarkMap] = useState(false);
+  const [termsVisible, setTermsVisible] = useState(false);
+  const [termsTab, setTermsTab] = useState<"terms" | "privacy">("terms");
 
   return (
     <AdminPageFrame
@@ -184,7 +187,54 @@ export default function SuperAdminSettingsPage({
         </Pressable>
       </View>
 
-      {/* ── 4. App Build & Sign Out (Enclosed Box) ── */}
+      {/* ── 4. Legal, Compliance & Privacy (Enclosed Box) ── */}
+      <View style={set.card}>
+        <View style={set.cardHeader}>
+          <View style={[set.headerIcon, { backgroundColor: "#EEF2FF" }]}>
+            <Ionicons name="shield-checkmark" size={17} color={COLORS.blue} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={set.cardTitle}>Legal & Compliance</Text>
+            <Text style={set.cardSubtitle}>Terms of service, privacy policy and DPDP compliance</Text>
+          </View>
+        </View>
+
+        <Pressable
+          onPress={() => {
+            setTermsTab("terms");
+            setTermsVisible(true);
+          }}
+          style={({ pressed }) => [set.settingRow, pressed && { backgroundColor: "#F8FAFC" }]}
+        >
+          <View style={[set.itemIcon, { backgroundColor: "#FFF8DB" }]}>
+            <Ionicons name="document-text-outline" size={16} color={COLORS.gold} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={set.itemTitle}>Terms of Service</Text>
+            <Text style={set.itemSub}>Platform usage guidelines, roles and service policies</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={15} color={COLORS.faint} />
+        </Pressable>
+
+        <Pressable
+          onPress={() => {
+            setTermsTab("privacy");
+            setTermsVisible(true);
+          }}
+          style={({ pressed }) => [set.settingRow, pressed && { backgroundColor: "#F8FAFC" }]}
+        >
+          <View style={[set.itemIcon, { backgroundColor: "#ECFDF3" }]}>
+            <Ionicons name="lock-closed-outline" size={16} color={COLORS.green} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={set.itemTitle}>Privacy & GPS Policy</Text>
+            <Text style={set.itemSub}>Child data protection and live GPS telemetry rules</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={15} color={COLORS.faint} />
+        </Pressable>
+      </View>
+
+      {/* ── 5. App Build & Sign Out (Enclosed Box) ── */}
       <View style={set.card}>
         <View style={set.versionRow}>
           <Text style={set.versionLabel}>BusTracker Super Admin Control Centre</Text>
@@ -204,6 +254,13 @@ export default function SuperAdminSettingsPage({
           <Text style={set.logoutText}>Sign Out of Super Admin</Text>
         </Pressable>
       </View>
+
+      <TermsAndConditionsModal
+        visible={termsVisible}
+        onClose={() => setTermsVisible(false)}
+        initialTab={termsTab}
+        showAcceptButtons={false}
+      />
     </AdminPageFrame>
   );
 }

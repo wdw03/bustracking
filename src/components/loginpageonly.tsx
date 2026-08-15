@@ -28,6 +28,7 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import TermsAndConditionsModal from "./termsandconditions";
 
 /* ─────────────────────────── Design Tokens ─────────────────────────── */
 const ACCENT = "#FFD60A";
@@ -109,6 +110,9 @@ export default function Sinuplogin({ onSignUp, onLoginSuccess, onForgotPassword 
 
     const [btnState, setBtnState] = useState<"idle" | "loading" | "success">("idle");
     const [loginError, setLoginError] = useState<"notFound" | "wrongPassword" | null>(null);
+    const [termsVisible, setTermsVisible] = useState(false);
+    const [termsTab, setTermsTab] = useState<"terms" | "privacy">("terms");
+    const [termsAccepted, setTermsAccepted] = useState(false);
     const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -912,7 +916,14 @@ export default function Sinuplogin({ onSignUp, onLoginSuccess, onForgotPassword 
                         <Text style={{ color: FAINT, fontFamily: FONT.light, fontSize: ms(11.5) }}>
                             By continuing, you agree to our
                         </Text>
-                        <Pressable hitSlop={8}>
+                        <Pressable
+                            hitSlop={8}
+                            onPress={() => {
+                                Haptics.selectionAsync();
+                                setTermsTab("terms");
+                                setTermsVisible(true);
+                            }}
+                        >
                             <Text
                                 className="ml-1 underline"
                                 style={{ color: "#1F2937", fontFamily: FONT.semibold, fontSize: ms(11.5) }}
@@ -923,7 +934,14 @@ export default function Sinuplogin({ onSignUp, onLoginSuccess, onForgotPassword 
                         <Text style={{ color: FAINT, fontFamily: FONT.light, fontSize: ms(11.5) }}>
                             {" & "}
                         </Text>
-                        <Pressable hitSlop={8}>
+                        <Pressable
+                            hitSlop={8}
+                            onPress={() => {
+                                Haptics.selectionAsync();
+                                setTermsTab("privacy");
+                                setTermsVisible(true);
+                            }}
+                        >
                             <Text
                                 className="underline"
                                 style={{ color: "#1F2937", fontFamily: FONT.semibold, fontSize: ms(11.5) }}
@@ -934,6 +952,14 @@ export default function Sinuplogin({ onSignUp, onLoginSuccess, onForgotPassword 
                     </View>
                 </Animated.View>
             </ScrollView>
+
+            <TermsAndConditionsModal
+                visible={termsVisible}
+                onClose={() => setTermsVisible(false)}
+                initialTab={termsTab}
+                accepted={termsAccepted}
+                onAccept={() => setTermsAccepted(true)}
+            />
         </View>
     );
 }

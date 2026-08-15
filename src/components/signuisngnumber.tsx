@@ -29,6 +29,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { VideoView, useVideoPlayer } from "expo-video";
 import { SignupRole } from "./signupmethod";
+import TermsAndConditionsModal from "./termsandconditions";
 
 /* ─────────────────────────── Design Tokens ─────────────────────────── */
 const ACCENT = "#FFD60A";
@@ -121,6 +122,9 @@ export default function RegisterNumberPage({
     const [touched, setTouched] = useState(false);
     const [btnState, setBtnState] = useState<"idle" | "loading" | "success">("idle");
     const [exception, setException] = useState<ExceptionType | null>(null);
+    const [termsVisible, setTermsVisible] = useState(false);
+    const [termsTab, setTermsTab] = useState<"terms" | "privacy">("terms");
+    const [termsAccepted, setTermsAccepted] = useState(false);
 
     const phoneRef = useRef<TextInput>(null);
     const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -970,7 +974,14 @@ export default function RegisterNumberPage({
                         <Text style={{ color: FAINT, fontFamily: FONT.light, fontSize: ms(11.5) }}>
                             By registering, you agree to our
                         </Text>
-                        <Pressable hitSlop={8}>
+                        <Pressable
+                            hitSlop={8}
+                            onPress={() => {
+                                Haptics.selectionAsync();
+                                setTermsTab("terms");
+                                setTermsVisible(true);
+                            }}
+                        >
                             <Text
                                 className="ml-1 underline"
                                 style={{ color: "#1F2937", fontFamily: FONT.semibold, fontSize: ms(11.5) }}
@@ -981,7 +992,14 @@ export default function RegisterNumberPage({
                         <Text style={{ color: FAINT, fontFamily: FONT.light, fontSize: ms(11.5) }}>
                             {" & "}
                         </Text>
-                        <Pressable hitSlop={8}>
+                        <Pressable
+                            hitSlop={8}
+                            onPress={() => {
+                                Haptics.selectionAsync();
+                                setTermsTab("privacy");
+                                setTermsVisible(true);
+                            }}
+                        >
                             <Text
                                 className="underline"
                                 style={{ color: "#1F2937", fontFamily: FONT.semibold, fontSize: ms(11.5) }}
@@ -992,6 +1010,14 @@ export default function RegisterNumberPage({
                     </View>
                 </Animated.View>
             </ScrollView>
+
+            <TermsAndConditionsModal
+                visible={termsVisible}
+                onClose={() => setTermsVisible(false)}
+                initialTab={termsTab}
+                accepted={termsAccepted}
+                onAccept={() => setTermsAccepted(true)}
+            />
         </View>
     );
 }

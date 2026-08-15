@@ -25,6 +25,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { VideoView, useVideoPlayer } from "expo-video";
+import TermsAndConditionsModal from "./termsandconditions";
 
 /* ─────────────────────────── Design Tokens ───────────────────────────
    Same palette as the login / forgot-password / OTP / role pages. */
@@ -342,6 +343,8 @@ export default function SchoolSignupPage({ onBack, onSubmit }: SchoolSignupPageP
     const [showConfirm, setShowConfirm] = useState(false);
     const [termsAccepted, setTermsAccepted] = useState(false);
     const [termsError, setTermsError] = useState(false);
+    const [termsModalVisible, setTermsModalVisible] = useState(false);
+    const [termsModalTab, setTermsModalTab] = useState<"terms" | "privacy">("terms");
 
     const [step, setStep] = useState(0);
     const isLastStep = step === STEPS.length - 1;
@@ -750,8 +753,8 @@ export default function SchoolSignupPage({ onBack, onSubmit }: SchoolSignupPageP
                             <Pressable
                                 onPress={() => {
                                     Haptics.selectionAsync();
-                                    setTermsAccepted((t) => !t);
-                                    setTermsError(false);
+                                    setTermsAccepted(!termsAccepted);
+                                    if (termsError) setTermsError(false);
                                 }}
                                 accessibilityRole="checkbox"
                                 accessibilityState={{ checked: termsAccepted }}
@@ -774,16 +777,38 @@ export default function SchoolSignupPage({ onBack, onSubmit }: SchoolSignupPageP
                                 >
                                     {termsAccepted && <Ionicons name="checkmark" size={ms(14)} color={INK} />}
                                 </View>
-                                <Text style={{ flex: 1, fontSize: ms(12), color: MUTED, fontFamily: FONT.regular, lineHeight: ms(17) }}>
-                                    {"I accept the "}
-                                    <Text style={{ color: INK, fontFamily: FONT.semibold, textDecorationLine: "underline" }}>
-                                        Terms & Conditions
+                                <View style={{ flex: 1, flexDirection: "row", flexWrap: "wrap", alignItems: "center" }}>
+                                    <Text style={{ fontSize: ms(12), color: MUTED, fontFamily: FONT.regular, lineHeight: ms(17) }}>
+                                        {"I accept the "}
                                     </Text>
-                                    {" and "}
-                                    <Text style={{ color: INK, fontFamily: FONT.semibold, textDecorationLine: "underline" }}>
-                                        Privacy Policy
+                                    <Pressable
+                                        hitSlop={8}
+                                        onPress={() => {
+                                            Haptics.selectionAsync();
+                                            setTermsModalTab("terms");
+                                            setTermsModalVisible(true);
+                                        }}
+                                    >
+                                        <Text style={{ color: INK, fontFamily: FONT.semibold, textDecorationLine: "underline", fontSize: ms(12) }}>
+                                            Terms & Conditions
+                                        </Text>
+                                    </Pressable>
+                                    <Text style={{ fontSize: ms(12), color: MUTED, fontFamily: FONT.regular, lineHeight: ms(17) }}>
+                                        {" and "}
                                     </Text>
-                                </Text>
+                                    <Pressable
+                                        hitSlop={8}
+                                        onPress={() => {
+                                            Haptics.selectionAsync();
+                                            setTermsModalTab("privacy");
+                                            setTermsModalVisible(true);
+                                        }}
+                                    >
+                                        <Text style={{ color: INK, fontFamily: FONT.semibold, textDecorationLine: "underline", fontSize: ms(12) }}>
+                                            Privacy Policy
+                                        </Text>
+                                    </Pressable>
+                                </View>
                             </Pressable>
                         )}
                     </Animated.View>
@@ -856,6 +881,17 @@ export default function SchoolSignupPage({ onBack, onSubmit }: SchoolSignupPageP
                     </View>
                 </ScrollView>
             </KeyboardAvoidingView>
+
+            <TermsAndConditionsModal
+                visible={termsModalVisible}
+                onClose={() => setTermsModalVisible(false)}
+                initialTab={termsModalTab}
+                accepted={termsAccepted}
+                onAccept={() => {
+                    setTermsAccepted(true);
+                    setTermsError(false);
+                }}
+            />
         </View>
     );
 }
