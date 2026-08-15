@@ -137,6 +137,28 @@ export const buses: AdminRecord[] = [
     { id: "BUS-204", title: "Bus 204 · HR 26 D 9901", subtitle: "St. Xavier's Academy · Suresh Pal", status: "running", icon: "bus", fields: ["18 km/h · Sohna Road → School · 30 students · 27 parents", "GPS just now · Route active"] },
 ];
 
+/* ─── Orders / Subscriptions Transactions ─── */
+export type OrderRecord = {
+    id: string;
+    parentName: string;
+    studentName: string;
+    schoolName: string;
+    amount: string;
+    planName: string;
+    date: string;
+    paymentMode: string;
+    status: "paid" | "pending" | "processing" | "refunded";
+};
+
+export const orders: OrderRecord[] = [
+    { id: "ORD-9821", parentName: "Sanjay Gupta", studentName: "Ishita Singh (Class 9-B)", schoolName: "St. Xavier's Academy", amount: "₹999", planName: "Growth Plan · Monthly", date: "15 Aug 2026, 09:20 AM", paymentMode: "UPI · PhonePe", status: "paid" },
+    { id: "ORD-9820", parentName: "Rajesh Sharma", studentName: "Priya Sharma (Class 3-B)", schoolName: "Bluebells Public School", amount: "₹499", planName: "Starter Plan · Monthly", date: "14 Aug 2026, 06:45 PM", paymentMode: "UPI · GooglePay", status: "paid" },
+    { id: "ORD-9819", parentName: "Sunita Kapoor", studentName: "Arjun Kapoor (Class 7-C)", schoolName: "St. Xavier's Academy", amount: "₹999", planName: "Growth Plan · Monthly", date: "14 Aug 2026, 02:15 PM", paymentMode: "HDFC Netbanking", status: "paid" },
+    { id: "ORD-9818", parentName: "Amit Tiwari", studentName: "Shreya Tiwari (Class 2-B)", schoolName: "Green Valley School", amount: "₹499", planName: "Starter Plan · Monthly", date: "13 Aug 2026, 11:30 AM", paymentMode: "Paytm UPI", status: "pending" },
+    { id: "ORD-9817", parentName: "Kavita Patel", studentName: "Dev Patel (Class 4-C)", schoolName: "Bluebells Public School", amount: "₹999", planName: "Growth Plan · Monthly", date: "12 Aug 2026, 04:10 PM", paymentMode: "ICICI Debit Card", status: "paid" },
+    { id: "ORD-9816", parentName: "Meera Joshi", studentName: "Kabir Joshi (Class 4-A)", schoolName: "Green Valley School", amount: "₹499", planName: "Starter Plan · Cancelled", date: "10 Aug 2026, 01:05 PM", paymentMode: "UPI · Refund Pending", status: "refunded" },
+];
+
 export const payments: AdminRecord[] = [
     { id: "PAY-8401", title: "WD-20260814-01 · ₹28,400", subtitle: "Bluebells Public School · Withdrawal", status: "pending", icon: "wallet", fields: ["HDFC bank transfer · ****4482 · Requested 14 Aug 2026", "Available balance ₹84,200 · Admin note required"] },
     { id: "PAY-8402", title: "SUB-20260813-92 · ₹999", subtitle: "Sanjay Gupta · St. Xavier's Academy", status: "completed", icon: "card", fields: ["UPI sanjay@upi · Transaction completed 13 Aug 2026", "St. Xavier's Academy · Growth plan"] },
