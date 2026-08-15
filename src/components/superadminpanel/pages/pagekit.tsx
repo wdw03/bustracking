@@ -3,7 +3,19 @@ import { ActivityIndicator, Alert, Animated, Modal, Pressable, ScrollView, Style
 import { Ionicons } from "@expo/vector-icons";
 
 export type IconName = keyof typeof Ionicons.glyphMap;
-export type AdminRecord = { id: string; title: string; subtitle: string; status: string; fields?: string[]; icon?: IconName; school?: string };
+export type AdminRecord = {
+    id: string;
+    title: string;
+    subtitle: string;
+    status: string;
+    fields?: string[];
+    icon?: IconName;
+    school?: string;
+    phone?: string;
+    email?: string;
+    address?: string;
+    details?: Array<{ label: string; value: string; icon?: IconName }>;
+};
 export type Metric = { label: string; value: string | number; icon: IconName; color?: string; note?: string };
 
 export const COLORS = {
@@ -410,7 +422,7 @@ export function RecordCard({
     onDelete,
     busy,
     toggleLabel,
-    actionLabel = "View",
+    actionLabel = "View Profile",
 }: {
     record: AdminRecord;
     onView?: () => void;
@@ -422,7 +434,10 @@ export function RecordCard({
     actionLabel?: string;
 }) {
     return (
-        <View style={styles.card}>
+        <Pressable
+            onPress={onView}
+            style={({ pressed }) => [styles.card, pressed && { opacity: 0.94 }]}
+        >
             <View style={styles.cardTop}>
                 <View style={styles.recordIcon}>
                     <Ionicons name={record.icon ?? "document-text-outline"} size={19} color={COLORS.blue} />
@@ -441,12 +456,24 @@ export function RecordCard({
                 </Text>
             ))}
             <View style={styles.cardActions}>
-                <Pressable onPress={onView} style={styles.outline}>
+                <Pressable
+                    onPress={(e) => {
+                        e.stopPropagation();
+                        onView?.();
+                    }}
+                    style={styles.outline}
+                >
                     <Ionicons name="eye-outline" size={15} color={COLORS.blue} />
                     <Text style={[styles.outlineText, { color: COLORS.blue }]}>{actionLabel}</Text>
                 </Pressable>
                 {onEdit ? (
-                    <Pressable onPress={onEdit} style={styles.outline}>
+                    <Pressable
+                        onPress={(e) => {
+                            e.stopPropagation();
+                            onEdit();
+                        }}
+                        style={styles.outline}
+                    >
                         <Ionicons name="create-outline" size={15} color={COLORS.ink} />
                         <Text style={styles.outlineText}>Edit</Text>
                     </Pressable>
@@ -454,7 +481,10 @@ export function RecordCard({
                 {onToggle ? (
                     <Pressable
                         disabled={busy}
-                        onPress={onToggle}
+                        onPress={(e) => {
+                            e.stopPropagation();
+                            onToggle();
+                        }}
                         style={[
                             styles.outline,
                             {
@@ -497,12 +527,18 @@ export function RecordCard({
                     </Pressable>
                 ) : null}
                 {onDelete ? (
-                    <Pressable onPress={onDelete} style={styles.delete}>
+                    <Pressable
+                        onPress={(e) => {
+                            e.stopPropagation();
+                            onDelete();
+                        }}
+                        style={styles.delete}
+                    >
                         <Ionicons name="trash-outline" size={15} color={COLORS.red} />
                     </Pressable>
                 ) : null}
             </View>
-        </View>
+        </Pressable>
     );
 }
 
@@ -741,36 +777,112 @@ export function EntityPage({
 
             {visible.length === 0 ? <EmptyState text="No matching records. Try resetting filters." /> : null}
 
-            {/* Record details modal */}
+            {/* Comprehensive Record details modal */}
             <Modal visible={Boolean(selected)} transparent animationType="slide" onRequestClose={() => setSelected(null)}>
                 <View style={styles.sheetBackdrop}>
-                    <View style={styles.sheet}>
+                    <View style={[styles.sheet, { maxHeight: "88%" }]}>
                         <View style={styles.sheetHandle} />
                         <View style={styles.sheetHeader}>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.eyebrow}>RECORD DETAILS</Text>
-                                <Text style={styles.sheetTitle}>{selected?.title}</Text>
+                            <View style={[styles.recordIcon, { backgroundColor: "#EEF2FF", width: 38, height: 38, borderRadius: 12 }]}>
+                                <Ionicons name={selected?.icon ?? "document-text-outline"} size={22} color={COLORS.blue} />
+                            </View>
+                            <View style={{ flex: 1, marginLeft: 10, minWidth: 0 }}>
+                                <Text style={styles.eyebrow}>{selected?.id} · PROFILE DOSSIER</Text>
+                                <Text style={styles.sheetTitle} numberOfLines={1}>
+                                    {selected?.title}
+                                </Text>
+                                <Text style={styles.sheetSubtitle} numberOfLines={1}>
+                                    {selected?.subtitle}
+                                </Text>
                             </View>
                             <Pressable onPress={() => setSelected(null)}>
-                                <Ionicons name="close-circle" size={24} color={COLORS.faint} />
+                                <Ionicons name="close-circle" size={26} color={COLORS.faint} />
                             </Pressable>
                         </View>
-                        <StatusBadge status={selected?.status ?? ""} />
-                        {selected?.fields?.map((field) => (
-                            <Text key={field} style={styles.sheetField}>
-                                {field}
-                            </Text>
-                        ))}
-                        <Pressable
-                            onPress={() => {
-                                setSelected(null);
-                                setEditing(selected);
-                            }}
-                            style={styles.primarySheetAction}
-                        >
-                            <Ionicons name="create-outline" size={16} color={COLORS.ink} />
-                            <Text style={styles.actionText}>Edit this record</Text>
-                        </Pressable>
+
+                        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                            <StatusBadge status={selected?.status ?? ""} />
+                            {selected?.phone ? (
+                                <View style={styles.phoneChip}>
+                                    <Ionicons name="call" size={12} color={COLORS.green} />
+                                    <Text style={styles.phoneChipText}>{selected.phone}</Text>
+                                </View>
+                            ) : null}
+                        </View>
+
+                        <ScrollView showsVerticalScrollIndicator={false} style={{ flexGrow: 1, marginBottom: 10 }}>
+                            {selected?.details && selected.details.length > 0 ? (
+                                <View style={styles.detailsList}>
+                                    {selected.details.map((item, idx) => (
+                                        <View
+                                            key={item.label}
+                                            style={[
+                                                styles.detailCardRow,
+                                                idx > 0 && { borderTopWidth: 1, borderTopColor: "#F0F2F5" },
+                                            ]}
+                                        >
+                                            <View style={styles.detailIconBox}>
+                                                <Ionicons name={item.icon ?? "information-circle-outline"} size={16} color={COLORS.blue} />
+                                            </View>
+                                            <View style={{ flex: 1, marginLeft: 10 }}>
+                                                <Text style={styles.detailCardLabel}>{item.label}</Text>
+                                                <Text style={styles.detailCardValue}>{item.value}</Text>
+                                            </View>
+                                        </View>
+                                    ))}
+                                </View>
+                            ) : (
+                                <View style={styles.detailsList}>
+                                    {selected?.fields?.map((field, idx) => (
+                                        <View key={idx} style={[styles.detailCardRow, idx > 0 && { borderTopWidth: 1, borderTopColor: "#F0F2F5" }]}>
+                                            <View style={styles.detailIconBox}>
+                                                <Ionicons name="checkmark-circle-outline" size={16} color={COLORS.blue} />
+                                            </View>
+                                            <Text style={[styles.detailCardValue, { flex: 1, marginLeft: 10 }]}>{field}</Text>
+                                        </View>
+                                    ))}
+                                </View>
+                            )}
+                        </ScrollView>
+
+                        <View style={styles.modalFooterActions}>
+                            <Pressable
+                                onPress={() => {
+                                    const target = selected;
+                                    setSelected(null);
+                                    if (target) setEditing(target);
+                                }}
+                                style={[styles.outline, { flex: 1, justifyContent: "center", minHeight: 44, borderRadius: 12 }]}
+                            >
+                                <Ionicons name="create-outline" size={16} color={COLORS.ink} />
+                                <Text style={[styles.outlineText, { fontSize: 12 }]}>Edit Record</Text>
+                            </Pressable>
+                            <Pressable
+                                onPress={() => {
+                                    if (selected) performToggle(selected);
+                                    setSelected(null);
+                                }}
+                                style={[
+                                    styles.action,
+                                    {
+                                        flex: 1,
+                                        justifyContent: "center",
+                                        minHeight: 44,
+                                        borderRadius: 12,
+                                        backgroundColor: selected?.status === "blocked" ? COLORS.green : COLORS.navy,
+                                    },
+                                ]}
+                            >
+                                <Ionicons
+                                    name={selected?.status === "blocked" ? "lock-open" : "ban"}
+                                    size={16}
+                                    color="#FFFFFF"
+                                />
+                                <Text style={[styles.actionText, { color: "#FFFFFF", fontSize: 12 }]}>
+                                    {selected?.status === "blocked" ? "Unblock Access" : "Block Access"}
+                                </Text>
+                            </Pressable>
+                        </View>
                     </View>
                 </View>
             </Modal>
@@ -999,12 +1111,23 @@ export const styles = StyleSheet.create({
     editSheet: { backgroundColor: "#FFFFFF", borderRadius: 20, margin: 16, padding: 16 },
     sheetHandle: { width: 40, height: 4, borderRadius: 99, alignSelf: "center", backgroundColor: "#D0D5DD", marginBottom: 12 },
     sheetHeader: { flexDirection: "row", alignItems: "flex-start", marginBottom: 12 },
-    sheetTitle: { color: COLORS.ink, fontFamily: FONT.display, fontSize: 19, marginBottom: 8 },
+    sheetTitle: { color: COLORS.ink, fontFamily: FONT.display, fontSize: 18, marginBottom: 2 },
+    sheetSubtitle: { color: COLORS.muted, fontFamily: FONT.regular, fontSize: 10.5 },
     sheetField: { color: COLORS.muted, fontFamily: FONT.regular, fontSize: 11, borderTopWidth: 1, borderTopColor: "#F0F2F5", paddingVertical: 9 },
     primarySheetAction: { minHeight: 40, borderRadius: 11, backgroundColor: COLORS.yellow, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, marginTop: 10 },
     sheetActions: { flexDirection: "row", gap: 8, marginTop: 8 },
     countPill: { borderRadius: 99, backgroundColor: "#F2F4F7", paddingHorizontal: 7, paddingVertical: 4 },
     countText: { color: "#667085", fontFamily: FONT.Bold ?? FONT.bold, fontSize: 9 },
+
+    // Dossier Modal styles
+    phoneChip: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#ECFDF3", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+    phoneChipText: { color: COLORS.green, fontFamily: FONT.bold, fontSize: 9.5 },
+    detailsList: { backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: "#E4E7EC", borderRadius: 14, paddingHorizontal: 11, paddingVertical: 4 },
+    detailCardRow: { flexDirection: "row", alignItems: "flex-start", paddingVertical: 9 },
+    detailIconBox: { width: 28, height: 28, borderRadius: 8, backgroundColor: "#EEF2FF", alignItems: "center", justifyContent: "center", marginTop: 2 },
+    detailCardLabel: { color: COLORS.muted, fontFamily: FONT.semibold, fontSize: 9.5 },
+    detailCardValue: { color: COLORS.ink, fontFamily: FONT.bold, fontSize: 11.5, marginTop: 2, lineHeight: 16 },
+    modalFooterActions: { flexDirection: "row", gap: 8, marginTop: 8 },
 
     // Form styles
     formCard: { backgroundColor: "#FFFFFF", borderRadius: 16, borderWidth: 1, borderColor: COLORS.border, padding: 13, marginBottom: 14 },
