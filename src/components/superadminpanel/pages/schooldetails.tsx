@@ -1,0 +1,4 @@
+import React from "react";
+import { EntityPage } from "./pagekit";
+import { buses, parents, drivers, students } from "./mockData";
+export default function SchoolDetailsPage() { return <EntityPage title="School details" subtitle="School buses, parents, drivers, classes and subscription overview." seed={[...buses.slice(0, 2), ...parents.slice(0, 1), ...drivers.slice(0, 1), ...students.slice(0, 1)]} metrics={[{ label: "Students", value: 842, icon: "school", color: "#16A34A" }, { label: "Parents", value: 714, icon: "people", color: "#7C3AED" }, { label: "Buses", value: 12, icon: "bus", color: "#0891B2" }, { label: "Active subscriptions", value: 284, icon: "card", color: "#DB2777" }]} filters={["All", "Buses", "Parents", "Drivers", "Students"]} searchPlaceholder="Search related school records" actionLabel="Edit school" />; }

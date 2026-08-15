@@ -1,0 +1,4 @@
+import React from "react";
+import { EntityPage } from "./pagekit";
+import { payments } from "./mockData";
+export default function WithdrawalRequestsPage() { return <EntityPage workflow="payment" title="School withdrawal requests" subtitle="Review bank information, available balance, notes and payout status." seed={payments.filter((item) => item.id.startsWith("PAY-8401") || item.id.startsWith("PAY-8403"))} metrics={[{ label: "Total requests", value: 2, icon: "wallet", color: "#EA580C" }, { label: "Pending", value: 1, icon: "time", color: "#EA580C" }, { label: "Processing", value: 1, icon: "sync", color: "#2563EB" }, { label: "Total amount", value: "₹41,000", icon: "cash", color: "#0F766E" }]} filters={["All", "Pending", "Processing", "Completed", "Rejected"]} searchPlaceholder="Withdrawal ID, school or bank reference" actionLabel="Refresh withdrawals" />; }

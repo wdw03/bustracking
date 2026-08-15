@@ -1,0 +1,3 @@
+import React from "react";
+import { EntityPage } from "./pagekit";
+export default function AuditLogsPage() { return <EntityPage title="Audit logs" subtitle="Every local Super Admin action is recorded for accountability." seed={[{ id: "LOG-01", title: "Approved school", subtitle: "Bluebells Public School · Super Admin · Today 09:12", status: "completed", icon: "checkmark-done" }, { id: "LOG-02", title: "Completed payment", subtitle: "SUB-20260813-92 · Super Admin · Yesterday 16:20", status: "completed", icon: "wallet" }, { id: "LOG-03", title: "Blocked parent", subtitle: "Meera Joshi · Super Admin · Yesterday 13:10", status: "completed", icon: "ban" }]} filters={["All", "Completed"]} searchPlaceholder="Action, target or admin" actionLabel="Export logs" />; }

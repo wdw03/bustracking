@@ -1,0 +1,4 @@
+import React from "react";
+import { EntityPage } from "./pagekit";
+import { payments } from "./mockData";
+export default function PaymentRequestsPage() { return <EntityPage workflow="payment" title="Payment requests" subtitle="Process, approve, reject and complete subscription payments." seed={payments.filter((item) => item.id.startsWith("PAY"))} metrics={[{ label: "Total revenue", value: "₹3,84,920", icon: "cash", color: "#0F766E" }, { label: "Pending", value: 1, icon: "time", color: "#EA580C" }, { label: "Processing", value: 1, icon: "sync", color: "#2563EB" }, { label: "Completed", value: 1, icon: "checkmark-circle", color: "#16A34A" }]} filters={["All", "Pending", "Processing", "Completed", "Rejected", "Failed"]} searchPlaceholder="Request ID, parent, school or transaction" actionLabel="Refresh payments" />; }
