@@ -238,13 +238,21 @@ export function SchoolFilterBar({
   recordsCountBySchool?: Record<string, number>;
 }) {
   const [modalVisible, setModalVisible] = useState(false);
+  const [search, setSearch] = useState("");
   const allOptions = ["All Schools", ...schools];
+
+  const filteredOptions = allOptions.filter((s) =>
+    s.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <View style={styles.schoolFilterContainer}>
       {/* Header Selector Button */}
       <Pressable
-        onPress={() => setModalVisible(true)}
+        onPress={() => {
+          setSearch("");
+          setModalVisible(true);
+        }}
         style={({ pressed }) => [styles.schoolSelectButton, pressed && { opacity: 0.85 }]}
       >
         <View style={styles.schoolIconWrap}>
@@ -290,7 +298,7 @@ export function SchoolFilterBar({
         })}
       </ScrollView>
 
-      {/* Full School Selection Modal */}
+      {/* Full School Selection Modal with Search */}
       <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={() => setModalVisible(false)}>
         <View style={styles.sheetBackdrop}>
           <View style={styles.sheet}>
@@ -305,8 +313,25 @@ export function SchoolFilterBar({
               </Pressable>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 380 }}>
-              {allOptions.map((school, i) => {
+            {/* Modal Search Input */}
+            <View style={[styles.search, { marginBottom: 10, minHeight: 40 }]}>
+              <Ionicons name="search" size={15} color={COLORS.faint} />
+              <TextInput
+                value={search}
+                onChangeText={setSearch}
+                placeholder="Search school name..."
+                placeholderTextColor={COLORS.faint}
+                style={[styles.searchInput, { fontSize: 11.5 }]}
+              />
+              {search ? (
+                <Pressable onPress={() => setSearch("")}>
+                  <Ionicons name="close-circle" size={15} color={COLORS.faint} />
+                </Pressable>
+              ) : null}
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 340 }}>
+              {filteredOptions.map((school, i) => {
                 const active = school === selected;
                 const count = recordsCountBySchool[school];
                 return (
@@ -351,6 +376,11 @@ export function SchoolFilterBar({
                   </Pressable>
                 );
               })}
+              {filteredOptions.length === 0 ? (
+                <View style={{ paddingVertical: 20, alignItems: "center" }}>
+                  <Text style={{ color: COLORS.muted, fontFamily: FONT.regular, fontSize: 11 }}>No matching schools</Text>
+                </View>
+              ) : null}
             </ScrollView>
 
             {selected !== "All Schools" ? (
