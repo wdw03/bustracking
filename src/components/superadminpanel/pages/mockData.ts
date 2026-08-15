@@ -137,6 +137,18 @@ export const buses: AdminRecord[] = [
     { id: "BUS-204", title: "Bus 204 · HR 26 D 9901", subtitle: "St. Xavier's Academy · Suresh Pal", status: "running", icon: "bus", fields: ["18 km/h · Sohna Road → School · 30 students · 27 parents", "GPS just now · Route active"] },
 ];
 
+/* ─── Routes across all schools ─── */
+export const routes: AdminRecord[] = [
+    { id: "R-101", title: "Dwarka Morning Route", subtitle: "Bluebells Public School · Bus 101 · 8 stops", status: "active", icon: "git-branch", fields: ["Stops: Sector 6 → Sector 10 → Sector 14 → Bluebells Campus", "Driver Vikram Yadav · 42 students assigned · Morning 07:15 AM"] },
+    { id: "R-102", title: "Rohini Morning Route", subtitle: "Bluebells Public School · Bus 102 · 6 stops", status: "active", icon: "git-branch", fields: ["Stops: Sector 9 → Sector 13 → Pitampura → Bluebells Campus", "Driver Deepak Singh · 38 students assigned · Morning 07:20 AM"] },
+    { id: "R-201", title: "Golf Course Road Route", subtitle: "St. Xavier's Academy · Bus 203 · 7 stops", status: "active", icon: "git-branch", fields: ["Stops: Phase 5 → Horizon Center → Sector 49 → Campus", "Driver Rahul Khan · 36 students assigned · Morning 07:30 AM"] },
+    { id: "R-202", title: "Sohna Road Morning Route", subtitle: "St. Xavier's Academy · Bus 204 · 6 stops", status: "active", icon: "git-branch", fields: ["Stops: Subhash Chowk → Vatika City → Sector 49 Campus", "Driver Suresh Pal · 30 students assigned · Morning 07:25 AM"] },
+    { id: "R-301", title: "Sector 62 Evening Route", subtitle: "Green Valley School · Bus 305 · 5 stops", status: "inactive", icon: "git-branch", fields: ["Stops: Fortis Chowk → Electronic City → Green Valley Campus", "Driver Arjun Malik · 28 students assigned · Evening 02:45 PM"] },
+    { id: "R-302", title: "Indirapuram Route", subtitle: "Green Valley School · Bus 306 · 6 stops", status: "active", icon: "git-branch", fields: ["Stops: Shipra Mall → Ahinsa Khand → Sector 62 Campus", "Driver Ajay Verma · 24 students assigned · Morning 07:40 AM"] },
+    { id: "R-401", title: "C-Scheme Jaipur Route", subtitle: "Little Stars International · Bus 410 · 4 stops", status: "inactive", icon: "git-branch", fields: ["Stops: MI Road → Panch Batti → C-Scheme Campus", "Driver Ramesh Gupta · 20 students assigned"] },
+    { id: "R-402", title: "Mansarovar Route", subtitle: "Little Stars International · Bus 411 · 5 stops", status: "inactive", icon: "git-branch", fields: ["Stops: VT Road → Madhyam Marg → Campus", "Unassigned driver · 18 students declared"] },
+];
+
 /* ─── Orders / Subscriptions Transactions ─── */
 export type OrderRecord = {
     id: string;

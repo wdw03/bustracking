@@ -1,3 +1,24 @@
 import React from "react";
 import { EntityPage } from "./pagekit";
-export default function RoutesPage() { return <EntityPage title="Routes & stops" subtitle="Create routes, add stops and assign buses and drivers." seed={[{ id: "R-101", title: "Dwarka Morning Route", subtitle: "Bluebells · Bus 101 · 8 stops", status: "active", icon: "git-branch" }, { id: "R-203", title: "Golf Course Road Route", subtitle: "St. Xavier's · Bus 203 · 6 stops", status: "active", icon: "git-branch" }, { id: "R-305", title: "Sector 62 Evening Route", subtitle: "Green Valley · Bus 305 · 5 stops", status: "inactive", icon: "git-branch" }]} metrics={[{ label: "Total routes", value: 3, icon: "git-branch", color: "#2563EB" }, { label: "Active routes", value: 2, icon: "checkmark-circle", color: "#16A34A" }, { label: "Total stops", value: 19, icon: "location", color: "#EA580C" }, { label: "Assigned buses", value: 2, icon: "bus", color: "#0891B2" }]} filters={["All", "Active", "Inactive"]} searchPlaceholder="Route, school or bus" actionLabel="Create route" />; }
+import { routes, SCHOOL_NAMES } from "./mockData";
+
+export default function RoutesPage({ onNavigate }: { onNavigate?: (page: string) => void }) {
+  return (
+    <EntityPage
+      title="Routes & stops"
+      subtitle="Manage morning and evening routes, stops and bus assignments across all schools."
+      seed={routes}
+      schoolNames={SCHOOL_NAMES}
+      onNavigate={onNavigate}
+      metrics={[
+        { label: "Total routes", value: routes.length, icon: "git-branch", color: "#2563EB" },
+        { label: "Active routes", value: routes.filter((r) => r.status === "active").length, icon: "checkmark-circle", color: "#16A34A" },
+        { label: "Inactive", value: routes.filter((r) => r.status === "inactive").length, icon: "pause-circle", color: "#EA580C" },
+        { label: "Total buses", value: 6, icon: "bus", color: "#0891B2" },
+      ]}
+      filters={["All", "Active", "Inactive"]}
+      searchPlaceholder="Route name, school, bus, stop or driver"
+      actionLabel="Create route"
+    />
+  );
+}

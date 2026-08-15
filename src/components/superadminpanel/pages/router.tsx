@@ -63,13 +63,13 @@ export default function SuperAdminPagesRouter({ onLogout }: { onLogout?: () => v
 
   const body = page === "dashboard" ? <DashboardPage onNavigate={navigate} />
     : page === "schools" ? <SchoolManagementPage />
-      : page === "requests" ? <SchoolRequestsPage />
+      : page === "requests" ? <SchoolRequestsPage onNavigate={navigate} />
         : page === "parents" ? <ParentsPage onNavigate={navigate} />
           : page === "students" ? <StudentsPage />
             : page === "drivers" ? <DriversPage onNavigate={navigate} />
               : page === "buses" ? <BusesPage />
                 : page === "tracking" ? <LiveTrackingPage />
-                  : page === "routes" ? <RoutesPage />
+                  : page === "routes" ? <RoutesPage onNavigate={navigate} />
                     : page === "subscriptions" ? <SubscriptionsPage />
                       : page === "payments" ? <PaymentRequestsPage onNavigate={navigate} />
                         : page === "withdrawals" ? <WithdrawalRequestsPage />
@@ -77,7 +77,7 @@ export default function SuperAdminPagesRouter({ onLogout }: { onLogout?: () => v
                             : page === "notifications" ? <NotificationsPage />
                               : page === "reports" ? <ReportsPage />
                                 : page === "security" ? <AdminSecurityPage onLogout={onLogout} />
-                                  : page === "audit" ? <AuditLogsPage />
+                                  : page === "audit" ? <AuditLogsPage onNavigate={navigate} />
                                     : <SuperAdminSettingsPage onLogout={onLogout} />;
 
   return (
