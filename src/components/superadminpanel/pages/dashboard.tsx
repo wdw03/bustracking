@@ -1,7 +1,7 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { AdminPageFrame, COLORS, FONT, MetricCard, StatusBadge, styles } from "./pagekit";
+import { AdminPageFrame, COLORS, FONT, StatusBadge, styles } from "./pagekit";
 import { metrics } from "./mockDataDashboard";
 import { schools, orders, payments } from "./mockData";
 import SuperAdminFleetMap from "./superadminmap";
@@ -71,14 +71,17 @@ export default function SuperAdminDashboardPage({ onNavigate }: { onNavigate?: (
       </View>
 
       {/* ── 3. Quick Action Hub (Enclosed Control Box) ── */}
-      <View style={dash.hubBox}>
-        <View style={dash.hubHeader}>
-          <View style={dash.hubHeaderIcon}>
-            <Ionicons name="flash" size={15} color={COLORS.yellow} />
+      <View style={dash.sectionCard}>
+        <View style={dash.sectionCardHeader}>
+          <View style={[dash.sectionCardIcon, { backgroundColor: "#FFF8DB" }]}>
+            <Ionicons name="flash" size={16} color={COLORS.gold} />
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={dash.hubTitle}>Quick Actions</Text>
-            <Text style={dash.hubSubtitle}>One-tap shortcuts to manage platform</Text>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={dash.sectionCardTitle}>Quick Actions</Text>
+            <Text style={dash.sectionCardSubtitle}>One-tap shortcuts to manage platform</Text>
+          </View>
+          <View style={dash.sectionBadge}>
+            <Text style={dash.sectionBadgeText}>4 SHORTCUTS</Text>
           </View>
         </View>
 
@@ -122,15 +125,15 @@ export default function SuperAdminDashboardPage({ onNavigate }: { onNavigate?: (
         </View>
       </View>
 
-      {/* ── 4. Recent Subscription Orders (NEW ORDERS SECTION) ── */}
-      <View style={dash.ordersBox}>
-        <View style={dash.ordersHead}>
-          <View style={dash.ordersHeadIcon}>
-            <Ionicons name="cart" size={17} color={COLORS.green} />
+      {/* ── 4. Recent Subscription Orders (Enclosed Box) ── */}
+      <View style={dash.sectionCard}>
+        <View style={dash.sectionCardHeader}>
+          <View style={[dash.sectionCardIcon, { backgroundColor: "#ECFDF3" }]}>
+            <Ionicons name="cart" size={16} color={COLORS.green} />
           </View>
-          <View style={{ flex: 1, marginLeft: 8 }}>
-            <Text style={dash.ordersTitle}>Recent Subscription Orders</Text>
-            <Text style={dash.ordersSubtitle}>Parent subscription payments across all schools</Text>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={dash.sectionCardTitle}>Recent Subscription Orders</Text>
+            <Text style={dash.sectionCardSubtitle}>Parent payments across all schools</Text>
           </View>
           <Pressable onPress={() => onNavigate?.("subscriptions")} style={dash.viewAllBtn}>
             <Text style={dash.viewAllText}>View all</Text>
@@ -148,7 +151,7 @@ export default function SuperAdminDashboardPage({ onNavigate }: { onNavigate?: (
               pressed && { backgroundColor: "#F8FAFC" },
             ]}
           >
-            {/* Left order avatar badge */}
+            {/* Left avatar icon */}
             <View
               style={[
                 dash.orderAvatar,
@@ -197,7 +200,7 @@ export default function SuperAdminDashboardPage({ onNavigate }: { onNavigate?: (
               </Text>
             </View>
 
-            {/* Right amount and status */}
+            {/* Right amount & status badge */}
             <View style={dash.orderRight}>
               <Text style={dash.orderAmountText}>{order.amount}</Text>
               <View
@@ -234,112 +237,159 @@ export default function SuperAdminDashboardPage({ onNavigate }: { onNavigate?: (
         ))}
       </View>
 
-      {/* ── 5. Platform Snapshot (Metrics Grid) ── */}
-      <View style={dash.sectionHeaderRow}>
-        <Text style={dash.sectionTitle}>Platform Snapshot</Text>
-        <Text style={dash.sectionSub}>Live metrics · Tap any card to navigate</Text>
-      </View>
-      <View style={styles.metricGrid}>
-        {keyMetrics.map((metric) => (
-          <MetricCard
-            key={metric.label}
-            metric={metric}
-            onPress={() => {
-              const routeByMetric: Record<string, string> = {
-                "Total schools": "schools",
-                "Total parents": "parents",
-                "Total students": "students",
-                "Total drivers": "drivers",
-                "Total buses": "buses",
-                "Running buses": "tracking",
-              };
-              const route = routeByMetric[metric.label];
-              if (route) onNavigate?.(route);
-            }}
-          />
-        ))}
-      </View>
-
-      {/* ── 6. Financials & Plans Grid ── */}
-      <View style={dash.sectionHeaderRow}>
-        <Text style={dash.sectionTitle}>Financials & Plans</Text>
-        <Text style={dash.sectionSub}>Revenue and active parent subscriptions</Text>
-      </View>
-      <View style={dash.summaryGrid}>
-        <SummaryTile
-          icon="person-add"
-          label="Subscribed parents"
-          value={String(metrics[6].value)}
-          tone="#DB2777"
-          note="Parents with active plan"
-          onPress={() => onNavigate?.("subscriptions")}
-        />
-        <SummaryTile
-          icon="card"
-          label="Active subscriptions"
-          value={String(metrics[7].value)}
-          tone="#DB2777"
-          note="Plans running now"
-          onPress={() => onNavigate?.("subscriptions")}
-        />
-        <SummaryTile
-          icon="cash"
-          label="Revenue this cycle"
-          value={String(metrics[8].value)}
-          tone="#0F766E"
-          note="Settled & processing"
-          onPress={() => onNavigate?.("payments")}
-        />
-        <SummaryTile
-          icon="time"
-          label="Pending requests"
-          value={String(metrics[9].value)}
-          tone="#EA580C"
-          note="Need your review"
-          onPress={() => onNavigate?.("requests")}
-        />
-      </View>
-
-      {/* ── 7. Needs Your Attention (Pending Approvals) ── */}
-      <View style={dash.sectionHeader}>
-        <View>
-          <Text style={dash.sectionTitle}>Needs Your Attention</Text>
-          <Text style={dash.sectionHint}>Registration requests waiting in queue</Text>
+      {/* ── 5. Platform Snapshot (Enclosed Box) ── */}
+      <View style={dash.sectionCard}>
+        <View style={dash.sectionCardHeader}>
+          <View style={[dash.sectionCardIcon, { backgroundColor: "#EEF2FF" }]}>
+            <Ionicons name="stats-chart" size={16} color={COLORS.blue} />
+          </View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={dash.sectionCardTitle}>Platform Snapshot</Text>
+            <Text style={dash.sectionCardSubtitle}>Tap any metric card to open records</Text>
+          </View>
+          <View style={dash.sectionBadge}>
+            <Text style={dash.sectionBadgeText}>6 METRICS</Text>
+          </View>
         </View>
-        <Pressable onPress={() => onNavigate?.("requests")} style={dash.linkButton}>
-          <Text style={dash.linkText}>View all</Text>
-          <Ionicons name="chevron-forward" size={13} color="#2563EB" />
-        </Pressable>
+
+        <View style={dash.innerMetricGrid}>
+          {keyMetrics.map((metric) => {
+            const color = metric.color ?? COLORS.blue;
+            return (
+              <Pressable
+                key={metric.label}
+                onPress={() => {
+                  const routeByMetric: Record<string, string> = {
+                    "Total schools": "schools",
+                    "Total parents": "parents",
+                    "Total students": "students",
+                    "Total drivers": "drivers",
+                    "Total buses": "buses",
+                    "Running buses": "tracking",
+                  };
+                  const route = routeByMetric[metric.label];
+                  if (route) onNavigate?.(route);
+                }}
+                style={({ pressed }) => [dash.innerMetricCard, pressed && { transform: [{ scale: 0.98 }] }]}
+              >
+                <View style={dash.innerMetricHeader}>
+                  <View style={[dash.innerMetricIcon, { backgroundColor: `${color}15` }]}>
+                    <Ionicons name={metric.icon} size={17} color={color} />
+                  </View>
+                  <View style={dash.innerMetricArrow}>
+                    <Ionicons name="chevron-forward" size={12} color={COLORS.faint} />
+                  </View>
+                </View>
+                <Text style={dash.innerMetricLabel}>{metric.label}</Text>
+                <Text style={dash.innerMetricValue}>{metric.value}</Text>
+                {metric.note ? (
+                  <View style={dash.innerMetricNoteBadge}>
+                    <Text style={dash.innerMetricNoteText}>{metric.note}</Text>
+                  </View>
+                ) : null}
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
 
-      {pendingSchools.length > 0 ? (
-        pendingSchools.map((school) => (
-          <Pressable
-            key={school.id}
-            onPress={() => onNavigate?.("requests")}
-            style={({ pressed }) => [dash.attentionCard, pressed && { opacity: 0.9 }]}
-          >
-            <View style={styles.cardTop}>
-              <View style={[styles.recordIcon, { backgroundColor: "#FFF7D6" }]}>
-                <Ionicons name="business" size={18} color="#B57900" />
-              </View>
-              <View style={{ flex: 1, marginLeft: 10 }}>
-                <Text style={styles.cardTitle}>{school.title}</Text>
-                <Text style={styles.cardSubtitle}>{school.subtitle}</Text>
-              </View>
-              <StatusBadge status={school.status} />
-            </View>
-            <Text style={styles.field}>
-              Registration request · {school.fields?.[0] ?? "Documents submitted"}
-            </Text>
+      {/* ── 6. Financials & Plans (Enclosed Box) ── */}
+      <View style={dash.sectionCard}>
+        <View style={dash.sectionCardHeader}>
+          <View style={[dash.sectionCardIcon, { backgroundColor: "#FDF2F8" }]}>
+            <Ionicons name="card" size={16} color="#DB2777" />
+          </View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={dash.sectionCardTitle}>Financials & Plans</Text>
+            <Text style={dash.sectionCardSubtitle}>Revenue & subscription metrics</Text>
+          </View>
+          <Pressable onPress={() => onNavigate?.("payments")} style={dash.viewAllBtn}>
+            <Text style={dash.viewAllText}>Details</Text>
+            <Ionicons name="chevron-forward" size={12} color={COLORS.blue} />
           </Pressable>
-        ))
-      ) : (
-        <View style={styles.empty}>
-          <Ionicons name="checkmark-circle" size={28} color="#16A34A" />
-          <Text style={styles.emptyText}>All school requests are clear.</Text>
         </View>
-      )}
+
+        <View style={dash.innerSummaryGrid}>
+          <SummaryTile
+            icon="person-add"
+            label="Subscribed parents"
+            value={String(metrics[6].value)}
+            tone="#DB2777"
+            note="Parents with active plan"
+            onPress={() => onNavigate?.("subscriptions")}
+          />
+          <SummaryTile
+            icon="card"
+            label="Active subscriptions"
+            value={String(metrics[7].value)}
+            tone="#DB2777"
+            note="Plans running now"
+            onPress={() => onNavigate?.("subscriptions")}
+          />
+          <SummaryTile
+            icon="cash"
+            label="Revenue this cycle"
+            value={String(metrics[8].value)}
+            tone="#0F766E"
+            note="Settled & processing"
+            onPress={() => onNavigate?.("payments")}
+          />
+          <SummaryTile
+            icon="time"
+            label="Pending requests"
+            value={String(metrics[9].value)}
+            tone="#EA580C"
+            note="Need your review"
+            onPress={() => onNavigate?.("requests")}
+          />
+        </View>
+      </View>
+
+      {/* ── 7. Needs Your Attention (Enclosed Box) ── */}
+      <View style={dash.sectionCard}>
+        <View style={dash.sectionCardHeader}>
+          <View style={[dash.sectionCardIcon, { backgroundColor: "#FFF7ED" }]}>
+            <Ionicons name="alert-circle" size={16} color={COLORS.orange} />
+          </View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={dash.sectionCardTitle}>Needs Your Attention</Text>
+            <Text style={dash.sectionCardSubtitle}>Registration requests awaiting review</Text>
+          </View>
+          <Pressable onPress={() => onNavigate?.("requests")} style={dash.viewAllBtn}>
+            <Text style={dash.viewAllText}>View all</Text>
+            <Ionicons name="chevron-forward" size={12} color={COLORS.blue} />
+          </Pressable>
+        </View>
+
+        {pendingSchools.length > 0 ? (
+          pendingSchools.map((school) => (
+            <Pressable
+              key={school.id}
+              onPress={() => onNavigate?.("requests")}
+              style={({ pressed }) => [dash.innerAttentionCard, pressed && { opacity: 0.9 }]}
+            >
+              <View style={styles.cardTop}>
+                <View style={[styles.recordIcon, { backgroundColor: "#FFF7D6" }]}>
+                  <Ionicons name="business" size={18} color="#B57900" />
+                </View>
+                <View style={{ flex: 1, marginLeft: 10 }}>
+                  <Text style={styles.cardTitle}>{school.title}</Text>
+                  <Text style={styles.cardSubtitle}>{school.subtitle}</Text>
+                </View>
+                <StatusBadge status={school.status} />
+              </View>
+              <Text style={styles.field}>
+                Registration request · {school.fields?.[0] ?? "Documents submitted"}
+              </Text>
+            </Pressable>
+          ))
+        ) : (
+          <View style={styles.empty}>
+            <Ionicons name="checkmark-circle" size={28} color="#16A34A" />
+            <Text style={styles.emptyText}>All school requests are clear.</Text>
+          </View>
+        )}
+      </View>
 
       {/* ── 8. Live Fleet Map ── */}
       <SuperAdminFleetMap />
@@ -410,21 +460,21 @@ function SummaryTile({
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [dash.summaryTile, pressed && { transform: [{ scale: 0.98 }] }]}
+      style={({ pressed }) => [dash.innerSummaryTile, pressed && { transform: [{ scale: 0.98 }] }]}
     >
-      <View style={dash.summaryTileTop}>
-        <View style={[dash.summaryIcon, { backgroundColor: `${tone}18` }]}>
+      <View style={dash.innerSummaryTop}>
+        <View style={[dash.innerSummaryIcon, { backgroundColor: `${tone}18` }]}>
           <Ionicons name={icon} size={16} color={tone} />
         </View>
-        <View style={dash.summaryArrow}>
+        <View style={dash.innerSummaryArrow}>
           <Ionicons name="chevron-forward" size={12} color="#98A2B3" />
         </View>
       </View>
-      <Text style={dash.summaryValue}>{value}</Text>
-      <Text style={dash.summaryLabel} numberOfLines={1}>
+      <Text style={dash.innerSummaryValue}>{value}</Text>
+      <Text style={dash.innerSummaryLabel} numberOfLines={1}>
         {label}
       </Text>
-      <Text style={dash.summaryNote} numberOfLines={1}>
+      <Text style={dash.innerSummaryNote} numberOfLines={1}>
         {note}
       </Text>
     </Pressable>
@@ -526,8 +576,8 @@ const dash = StyleSheet.create({
   healthLabel: { color: "#667085", fontFamily: FONT.semibold, fontSize: 8.5 },
   healthValue: { color: "#101828", fontFamily: FONT.display, fontSize: 15, marginTop: 1 },
 
-  // Control Hub Box
-  hubBox: {
+  // Universal Section Card Container (Bordered Outer Box)
+  sectionCard: {
     backgroundColor: "#FFFFFF",
     borderWidth: 1,
     borderColor: "#E4E7EC",
@@ -540,24 +590,43 @@ const dash = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     elevation: 2,
   },
-  hubHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 11 },
-  hubHeaderIcon: {
-    width: 28,
-    height: 28,
+  sectionCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 11,
+    paddingBottom: 9,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F2F5",
+  },
+  sectionCardIcon: {
+    width: 30,
+    height: 30,
     borderRadius: 9,
-    backgroundColor: "#172554",
     alignItems: "center",
     justifyContent: "center",
   },
-  hubTitle: { color: "#101828", fontFamily: FONT.display, fontSize: 14 },
-  hubSubtitle: { color: "#98A2B3", fontFamily: FONT.regular, fontSize: 9.5, marginTop: 1 },
+  sectionCardTitle: { color: "#101828", fontFamily: FONT.display, fontSize: 13.5 },
+  sectionCardSubtitle: { color: "#98A2B3", fontFamily: FONT.regular, fontSize: 9.5, marginTop: 1 },
+  sectionBadge: { backgroundColor: "#F2F4F7", paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6 },
+  sectionBadgeText: { color: "#667085", fontFamily: FONT.bold, fontSize: 8.5, letterSpacing: 0.5 },
+  viewAllBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: "#EEF2FF",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  viewAllText: { color: COLORS.blue, fontFamily: FONT.bold, fontSize: 10 },
 
-  // Quick Action Grid inside Hub
+  // Quick Action Grid inside Box
   quickGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", gap: 8 },
   quickBtnCard: {
     flexBasis: "48%",
     flexGrow: 1,
-    minHeight: 98,
+    minHeight: 96,
     backgroundColor: "#F8FAFC",
     borderWidth: 1,
     borderColor: "#E4E7EC",
@@ -573,50 +642,8 @@ const dash = StyleSheet.create({
   quickBtnBottom: { flexDirection: "row", alignItems: "center", gap: 3, marginTop: 7 },
   quickBtnGo: { color: COLORS.navy, fontFamily: FONT.bold, fontSize: 9 },
 
-  // Orders Section Box
-  ordersBox: {
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#E4E7EC",
-    borderRadius: 18,
-    paddingHorizontal: 13,
-    paddingVertical: 10,
-    marginBottom: 12,
-    shadowColor: "#172554",
-    shadowOpacity: 0.035,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 2,
-  },
-  ordersHead: {
-    minHeight: 46,
-    flexDirection: "row",
-    alignItems: "center",
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F2F5",
-    paddingBottom: 8,
-  },
-  ordersHeadIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: "#ECFDF3",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  ordersTitle: { color: "#101828", fontFamily: FONT.display, fontSize: 13.5 },
-  ordersSubtitle: { color: "#98A2B3", fontFamily: FONT.regular, fontSize: 9.5, marginTop: 1 },
-  viewAllBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-    backgroundColor: "#EEF2FF",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  viewAllText: { color: COLORS.blue, fontFamily: FONT.bold, fontSize: 10 },
-  orderRow: { minHeight: 64, paddingVertical: 9, flexDirection: "row", alignItems: "center" },
+  // Orders Rows inside Box
+  orderRow: { minHeight: 62, paddingVertical: 8, flexDirection: "row", alignItems: "center" },
   orderRowBorder: { borderTopWidth: 1, borderTopColor: "#F0F2F5" },
   orderAvatar: { width: 34, height: 34, borderRadius: 11, alignItems: "center", justifyContent: "center" },
   orderIdText: { color: COLORS.navy, fontFamily: FONT.bold, fontSize: 11 },
@@ -628,61 +655,52 @@ const dash = StyleSheet.create({
   orderStatusBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
   orderStatusText: { fontFamily: FONT.bold, fontSize: 8 },
 
-  // Platform Section headers
-  sectionHeaderRow: { marginTop: 4, marginBottom: 8 },
-  sectionTitle: { color: "#101828", fontFamily: FONT.display, fontSize: 14.5 },
-  sectionSub: { color: "#98A2B3", fontFamily: FONT.regular, fontSize: 9.5, marginTop: 1 },
-
-  // Summary Tiles (2x2 Grid)
-  summaryGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", gap: 8, marginBottom: 12 },
-  summaryTile: {
+  // Inner Platform Metrics Grid
+  innerMetricGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", gap: 8 },
+  innerMetricCard: {
     flexBasis: "48%",
     flexGrow: 1,
-    minHeight: 94,
-    borderRadius: 15,
+    minHeight: 100,
+    backgroundColor: "#F8FAFC",
     borderWidth: 1,
     borderColor: "#E4E7EC",
-    backgroundColor: "#FFFFFF",
-    padding: 11,
-    shadowColor: "#172554",
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
+    borderRadius: 14,
+    padding: 10,
   },
-  summaryTileTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 },
-  summaryIcon: { width: 30, height: 30, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  summaryArrow: { width: 20, height: 20, borderRadius: 6, backgroundColor: "#F2F4F7", alignItems: "center", justifyContent: "center" },
-  summaryValue: { color: "#101828", fontFamily: FONT.display, fontSize: 17 },
-  summaryLabel: { color: "#667085", fontFamily: FONT.semibold, fontSize: 10, marginTop: 2 },
-  summaryNote: { color: "#98A2B3", fontFamily: FONT.regular, fontSize: 8.5, marginTop: 1 },
+  innerMetricHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 5 },
+  innerMetricIcon: { width: 28, height: 28, borderRadius: 9, alignItems: "center", justifyContent: "center" },
+  innerMetricArrow: { width: 18, height: 18, borderRadius: 5, backgroundColor: "#EEF2FF", alignItems: "center", justifyContent: "center" },
+  innerMetricLabel: { color: COLORS.muted, fontFamily: FONT.semibold, fontSize: 9.5 },
+  innerMetricValue: { color: COLORS.ink, fontFamily: FONT.display, fontSize: 19, marginTop: 2 },
+  innerMetricNoteBadge: { alignSelf: "flex-start", marginTop: 3, backgroundColor: "#E4E7EC", paddingHorizontal: 5, paddingVertical: 1, borderRadius: 5 },
+  innerMetricNoteText: { color: COLORS.muted, fontFamily: FONT.regular, fontSize: 8 },
 
-  // Attention Cards
-  sectionHeader: { flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", marginTop: 6, marginBottom: 6 },
-  sectionHint: { color: "#98A2B3", fontFamily: FONT.regular, fontSize: 9.5, marginTop: 1 },
-  linkButton: {
-    minHeight: 28,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-    backgroundColor: "#EEF2FF",
-    borderWidth: 1,
-    borderColor: "#D9E2FF",
-  },
-  linkText: { color: "#2563EB", fontFamily: FONT.bold, fontSize: 10 },
-  attentionCard: {
-    backgroundColor: "#FFFFFF",
+  // Inner Summary Grid (Financials)
+  innerSummaryGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", gap: 8 },
+  innerSummaryTile: {
+    flexBasis: "48%",
+    flexGrow: 1,
+    minHeight: 90,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: "#E4E7EC",
-    borderRadius: 15,
-    padding: 12,
-    marginBottom: 9,
-    shadowColor: "#172554",
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
+    backgroundColor: "#F8FAFC",
+    padding: 10,
+  },
+  innerSummaryTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 5 },
+  innerSummaryIcon: { width: 28, height: 28, borderRadius: 9, alignItems: "center", justifyContent: "center" },
+  innerSummaryArrow: { width: 18, height: 18, borderRadius: 5, backgroundColor: "#EEF2FF", alignItems: "center", justifyContent: "center" },
+  innerSummaryValue: { color: "#101828", fontFamily: FONT.display, fontSize: 16 },
+  innerSummaryLabel: { color: "#667085", fontFamily: FONT.semibold, fontSize: 9.5, marginTop: 2 },
+  innerSummaryNote: { color: "#98A2B3", fontFamily: FONT.regular, fontSize: 8.5, marginTop: 1 },
+
+  // Attention inside Box
+  innerAttentionCard: {
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E4E7EC",
+    borderRadius: 14,
+    padding: 11,
+    marginTop: 4,
   },
 });
