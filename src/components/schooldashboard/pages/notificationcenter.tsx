@@ -14,6 +14,7 @@ import {
     GREEN_SOFT, INK, MUTED, ORANGE, ORANGE_SOFT, PAGE_BG, PageHeader, Press, PURPLE, PURPLE_SOFT, RED, RED_SOFT,
     SectionTitle, ms,
 } from "../common";
+import { notifyBusNearby } from "../../../services/locationService";
 
 const TEMPLATES = [
     { id: "delay", icon: "time" as const, title: "Bus Delay", body: "Your child's bus is running 15 minutes late today. We apologize for the inconvenience.", color: ORANGE, soft: ORANGE_SOFT },
@@ -37,10 +38,11 @@ export default function NotificationCenterPage({ onBack }: { onBack: () => void 
     const [busId, setBusId] = useState<string | null>(null);
     const [message, setMessage] = useState(TEMPLATES[0].body);
 
-    const send = () => {
+    const send = async () => {
         if (!message.trim()) return Alert.alert("Empty message", "Please write a message first.");
         const aud = AUDIENCES.find((a) => a.id === audience)?.label;
-        Alert.alert("Notification Sent", `"${template.title}" sent to ${aud}${audience === "bus" && busId ? ` (${BUSES.find((b) => b.id === busId)?.number})` : ""}.`, [{ text: "OK" }]);
+        const delivered = await notifyBusNearby(template.title, message.trim());
+        Alert.alert(delivered ? "Notification queued" : "Permission needed", delivered ? `Alert prepared for ${aud}${audience === "bus" && busId ? ` (${BUSES.find((b) => b.id === busId)?.number})` : ""}.` : "Allow notifications to send alerts from this device.", [{ text: "OK" }]);
     };
 
     return (

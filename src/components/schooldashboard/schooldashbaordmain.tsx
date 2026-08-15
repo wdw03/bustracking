@@ -6,7 +6,7 @@
    ========================================================================== */
 
 import React, { useMemo, useState, useEffect, useRef } from "react";
-import { ScrollView, Text, View, Pressable, Animated, BackHandler } from "react-native";
+import { ScrollView, Text, View, Pressable, Animated, BackHandler, TextInput } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { VideoView, useVideoPlayer } from "expo-video";
@@ -28,13 +28,14 @@ import NotificationCenterPage from "./pages/notificationcenter";
 import ReportsPage from "./pages/reports";
 import ContactCenterPage from "./pages/contactcenter";
 import SettingsPage from "./pages/settings";
+import SchoolLocationPicker from "./pages/locationpicker";
 
 /* PLACEHOLDER — replace with your school logo image if you have one */
 const SCHOOL_VIDEO = require("../../../assets/expo.icon/Assets/school-animation-gif-download-7813556.mp4");
 
 type PageKey =
     | "home" | "buses" | "drivers" | "students" | "parents" | "assignment"
-    | "live" | "subscription" | "notifications" | "reports" | "contact" | "settings";
+    | "live" | "subscription" | "notifications" | "reports" | "contact" | "settings" | "location";
 
 type Tab = "home" | "live" | "manage" | "settings";
 
@@ -50,6 +51,7 @@ function SchoolDashboardContent({ onLogout }: { onLogout?: () => void }) {
     const [tab, setTab] = useState<Tab>("home");
     const { buses, drivers, students, parents, isLoading } = useSchoolData();
     const [focusedBusId, setFocusedBusId] = useState<string | null>(null);
+    const [dashboardQuery, setDashboardQuery] = useState("");
 
     const player = useVideoPlayer(SCHOOL_VIDEO, (p) => {
         p.loop = true;
@@ -129,26 +131,26 @@ function SchoolDashboardContent({ onLogout }: { onLogout?: () => void }) {
             translateY4.setValue(20);
             translateY5.setValue(20);
 
-            Animated.stagger(120, [
+            Animated.stagger(45, [
                 Animated.parallel([
-                    Animated.timing(fadeAnim1, { toValue: 1, duration: 450, useNativeDriver: true }),
-                    Animated.timing(translateY1, { toValue: 0, duration: 450, useNativeDriver: true })
+                    Animated.timing(fadeAnim1, { toValue: 1, duration: 220, useNativeDriver: true }),
+                    Animated.timing(translateY1, { toValue: 0, duration: 220, useNativeDriver: true })
                 ]),
                 Animated.parallel([
-                    Animated.timing(fadeAnim2, { toValue: 1, duration: 450, useNativeDriver: true }),
-                    Animated.timing(translateY2, { toValue: 0, duration: 450, useNativeDriver: true })
+                    Animated.timing(fadeAnim2, { toValue: 1, duration: 220, useNativeDriver: true }),
+                    Animated.timing(translateY2, { toValue: 0, duration: 220, useNativeDriver: true })
                 ]),
                 Animated.parallel([
-                    Animated.timing(fadeAnim3, { toValue: 1, duration: 450, useNativeDriver: true }),
-                    Animated.timing(translateY3, { toValue: 0, duration: 450, useNativeDriver: true })
+                    Animated.timing(fadeAnim3, { toValue: 1, duration: 220, useNativeDriver: true }),
+                    Animated.timing(translateY3, { toValue: 0, duration: 220, useNativeDriver: true })
                 ]),
                 Animated.parallel([
-                    Animated.timing(fadeAnim4, { toValue: 1, duration: 450, useNativeDriver: true }),
-                    Animated.timing(translateY4, { toValue: 0, duration: 450, useNativeDriver: true })
+                    Animated.timing(fadeAnim4, { toValue: 1, duration: 220, useNativeDriver: true }),
+                    Animated.timing(translateY4, { toValue: 0, duration: 220, useNativeDriver: true })
                 ]),
                 Animated.parallel([
-                    Animated.timing(fadeAnim5, { toValue: 1, duration: 450, useNativeDriver: true }),
-                    Animated.timing(translateY5, { toValue: 0, duration: 450, useNativeDriver: true })
+                    Animated.timing(fadeAnim5, { toValue: 1, duration: 220, useNativeDriver: true }),
+                    Animated.timing(translateY5, { toValue: 0, duration: 220, useNativeDriver: true })
                 ]),
             ]).start();
         }
@@ -165,7 +167,8 @@ function SchoolDashboardContent({ onLogout }: { onLogout?: () => void }) {
     if (page === "notifications") return <NotificationCenterPage onBack={goBack} />;
     if (page === "reports") return <ReportsPage onBack={goBack} />;
     if (page === "contact") return <ContactCenterPage onBack={goBack} />;
-    if (page === "settings") return <SettingsPage onBack={goBack} onLogout={onLogout} />;
+    if (page === "settings") return <SettingsPage onBack={goBack} onLogout={onLogout} onOpenLocationPicker={() => go("location")} />;
+    if (page === "location") return <SchoolLocationPicker onBack={goBack} />;
 
     /* ── HOME ── */
     const quickActions: { icon: keyof typeof Ionicons.glyphMap; label: string; color: string; soft: string; target: PageKey }[] = [
@@ -193,6 +196,10 @@ function SchoolDashboardContent({ onLogout }: { onLogout?: () => void }) {
         month: "short",
         day: "numeric",
     });
+    const matchingPages = menuPages.filter((item) => {
+        const value = dashboardQuery.trim().toLowerCase();
+        return !value || `${item.label} ${item.desc}`.toLowerCase().includes(value);
+    });
 
     return (
         <View style={{ flex: 1, backgroundColor: PAGE_BG }}>
@@ -212,7 +219,7 @@ function SchoolDashboardContent({ onLogout }: { onLogout?: () => void }) {
             />
 
             {/* header */}
-            <View style={{ paddingTop: insets.top + ms(12), paddingHorizontal: ms(20), paddingBottom: ms(18) }}>
+            <View style={{ paddingTop: insets.top + ms(12), paddingHorizontal: ms(20), paddingBottom: ms(18), zIndex: 2, elevation: 4 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
                     <View
                         style={{
@@ -235,6 +242,7 @@ function SchoolDashboardContent({ onLogout }: { onLogout?: () => void }) {
                     <View style={{ flex: 1 }}>
                         <Text style={{ fontFamily: FONT.semibold, fontSize: ms(10), color: "#8B7300", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>{currentDate}</Text>
                         <Text style={{ fontFamily: FONT.displayHeavy, fontSize: ms(17), color: INK }} numberOfLines={1}>Good Morning, Admin!</Text>
+                        <Text style={{ fontFamily: FONT.regular, fontSize: ms(10.5), color: "#6B5900", marginTop: 2 }} numberOfLines={1}>{SCHOOL.name}</Text>
                     </View>
                     <Press onPress={() => go("subscription")}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: CARD_BG, borderRadius: 999, paddingHorizontal: ms(8), paddingVertical: ms(6), shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 3, shadowOffset: { width: 0, height: 2 } }}>
@@ -255,6 +263,64 @@ function SchoolDashboardContent({ onLogout }: { onLogout?: () => void }) {
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingBottom: ms(96) + insets.bottom }}
             >
+                <Animated.View style={{ opacity: fadeAnim1, transform: [{ translateY: translateY1 }], paddingHorizontal: ms(16), marginTop: ms(2) }}>
+                    <View style={{ backgroundColor: isDark ? CARD_BG : INK, borderRadius: ms(24), padding: ms(16), overflow: "hidden", shadowColor: "#000", shadowOpacity: 0.16, shadowRadius: 14, shadowOffset: { width: 0, height: 7 }, elevation: 5 }}>
+                        <View style={{ position: "absolute", width: ms(160), height: ms(160), borderRadius: ms(80), backgroundColor: ACCENT, opacity: isDark ? 0.08 : 0.12, right: -ms(46), top: -ms(66) }} />
+                        <View style={{ flexDirection: "row", alignItems: "center", marginBottom: ms(13) }}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ fontFamily: FONT.regular, fontSize: ms(11), color: isDark ? MUTED : "#9CA3AF" }}>Today&apos;s operations</Text>
+                                <Text style={{ fontFamily: FONT.display, fontSize: ms(18), color: isDark ? INK : "#FFFFFF", marginTop: 3 }}>Fleet is moving smoothly</Text>
+                            </View>
+                            <Press onPress={() => go("live")} style={{ width: ms(40), height: ms(40), borderRadius: ms(14), backgroundColor: ACCENT, alignItems: "center", justifyContent: "center" }}>
+                                <Ionicons name="navigate" size={ms(18)} color={INK} />
+                            </Press>
+                        </View>
+                        <View style={{ flexDirection: "row", gap: ms(8) }}>
+                            {[
+                                { icon: "bus" as const, value: String(stats.running), label: "On route", color: GREEN },
+                                { icon: "radio" as const, value: String(stats.gpsOn), label: "GPS online", color: BLUE },
+                                { icon: "warning" as const, value: String(stats.offline), label: "Needs check", color: ORANGE },
+                            ].map((item) => (
+                                <View key={item.label} style={{ flex: 1, backgroundColor: isDark ? PAGE_BG : "rgba(255,255,255,0.08)", borderRadius: ms(14), paddingVertical: ms(9), paddingHorizontal: ms(8), flexDirection: "row", alignItems: "center", gap: 7 }}>
+                                    <Ionicons name={item.icon} size={ms(15)} color={item.color} />
+                                    <View style={{ flex: 1 }}><Text style={{ fontFamily: FONT.display, fontSize: ms(15), color: isDark ? INK : "#FFFFFF" }}>{item.value}</Text><Text numberOfLines={1} style={{ fontFamily: FONT.regular, fontSize: ms(9.5), color: isDark ? MUTED : "#C7D2FE" }}>{item.label}</Text></View>
+                                </View>
+                            ))}
+                        </View>
+                    </View>
+                </Animated.View>
+
+                {/* Dashboard search */}
+                <View style={{ paddingHorizontal: ms(16), marginTop: ms(14) }}>
+                    <View style={{ height: ms(50), borderRadius: ms(17), backgroundColor: CARD_BG, borderWidth: 1, borderColor: BORDER, flexDirection: "row", alignItems: "center", paddingHorizontal: ms(12), gap: 8, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 1 }}>
+                        <Ionicons name="search" size={ms(17)} color={FAINT} />
+                        <TextInput value={dashboardQuery} onChangeText={setDashboardQuery} placeholder="Search dashboard tools..." placeholderTextColor={FAINT} style={{ flex: 1, fontFamily: FONT.regular, color: INK, fontSize: ms(13) }} returnKeyType="search" />
+                        {dashboardQuery.length > 0 && <Press onPress={() => setDashboardQuery("")} style={{ width: ms(26), height: ms(26), borderRadius: ms(9), backgroundColor: PAGE_BG, alignItems: "center", justifyContent: "center" }}><Ionicons name="close" size={ms(14)} color={MUTED} /></Press>}
+                    </View>
+                    {dashboardQuery.trim().length > 0 && (
+                        <View style={{ marginTop: ms(8), backgroundColor: CARD_BG, borderRadius: ms(17), borderWidth: 1, borderColor: BORDER, overflow: "hidden" }}>
+                            {matchingPages.length > 0 ? matchingPages.slice(0, 4).map((item, index) => (
+                                <Press key={item.target} onPress={() => { setDashboardQuery(""); go(item.target); }} style={{ flexDirection: "row", alignItems: "center", gap: ms(10), padding: ms(11), borderBottomWidth: index === Math.min(matchingPages.length, 4) - 1 ? 0 : 1, borderBottomColor: BORDER }}>
+                                    <View style={{ width: ms(32), height: ms(32), borderRadius: ms(10), backgroundColor: item.soft, alignItems: "center", justifyContent: "center" }}><Ionicons name={item.icon} size={ms(15)} color={item.color} /></View>
+                                    <View style={{ flex: 1 }}><Text style={{ fontFamily: FONT.semibold, fontSize: ms(12.5), color: INK }}>{item.label}</Text><Text numberOfLines={1} style={{ fontFamily: FONT.regular, fontSize: ms(10.5), color: MUTED }}>{item.desc}</Text></View>
+                                    <Ionicons name="arrow-forward" size={ms(14)} color={FAINT} />
+                                </Press>
+                            )) : <View style={{ padding: ms(14), flexDirection: "row", alignItems: "center", gap: 8 }}><Ionicons name="search-outline" size={ms(17)} color={FAINT} /><Text style={{ fontFamily: FONT.regular, fontSize: ms(12), color: MUTED }}>No dashboard tool found</Text></View>}
+                        </View>
+                    )}
+                </View>
+
+                {/* Attention strip */}
+                {!isLoading && stats.offline > 0 && (
+                    <View style={{ paddingHorizontal: ms(16), marginTop: ms(12) }}>
+                        <Press onPress={() => go("live")} style={{ backgroundColor: ORANGE_SOFT, borderRadius: ms(17), borderWidth: 1, borderColor: "#FED7AA", padding: ms(12), flexDirection: "row", alignItems: "center", gap: ms(10) }}>
+                            <View style={{ width: ms(34), height: ms(34), borderRadius: ms(12), backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center" }}><Ionicons name="warning" size={ms(17)} color={ORANGE} /></View>
+                            <View style={{ flex: 1 }}><Text style={{ fontFamily: FONT.semibold, fontSize: ms(12.5), color: INK }}>{stats.offline} fleet item{stats.offline > 1 ? "s" : ""} need attention</Text><Text style={{ fontFamily: FONT.regular, fontSize: ms(10.5), color: "#9A3412", marginTop: 2 }}>Open live tracking to review status and GPS.</Text></View>
+                            <Ionicons name="chevron-forward" size={ms(16)} color={ORANGE} />
+                        </Press>
+                    </View>
+                )}
+
                 {/* ── Quick actions (Horizontal Carousel) ── */}
                 <Animated.View style={{ opacity: fadeAnim1, transform: [{ translateY: translateY1 }], paddingLeft: ms(16) }}>
                     <SectionTitle icon="flash" title="Quick Actions" />
@@ -322,7 +388,7 @@ function SchoolDashboardContent({ onLogout }: { onLogout?: () => void }) {
                         ) : (
                             buses.map((b, i) => {
                                 const st = busStatusColor(b.status);
-                                const drv = driverForBus(b.id);
+                                const drv = driverForBus(b.id, drivers);
                                 return (
                                     <Press key={b.id} onPress={() => go("live", undefined, b.id)} style={{ flexDirection: "row", alignItems: "center", gap: ms(12), padding: ms(14), borderTopWidth: i === 0 ? 0 : 1, borderTopColor: BORDER }}>
                                         <View style={{ width: ms(42), height: ms(42), borderRadius: ms(14), backgroundColor: b.color + "1A", alignItems: "center", justifyContent: "center" }}>

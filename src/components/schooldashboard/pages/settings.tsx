@@ -6,10 +6,11 @@
    ========================================================================== */
 
 import React, { useState } from "react";
-import { Alert, ScrollView, Text, View } from "react-native";
+import { Alert, Linking, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { VideoView, useVideoPlayer } from "expo-video";
+import { requestDeviceLocationPermission, requestNotificationPermission } from "../../../services/locationService";
 
 import {
     Card, FONT, InfoRow, PageHeader, Press,
@@ -27,13 +28,30 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
     );
 }
 
-export default function SettingsPage({ onBack, onLogout }: { onBack: () => void; onLogout?: () => void }) {
+export default function SettingsPage({ onBack, onLogout, onOpenLocationPicker }: { onBack: () => void; onLogout?: () => void; onOpenLocationPicker?: () => void }) {
     const insets = useSafeAreaInsets();
-    const { isDarkMode, setIsDarkMode, gpsEnabled, setGpsEnabled, notificationsEnabled, setNotificationsEnabled } = useSettings();
+    const { isDarkMode, setIsDarkMode, gpsEnabled, setGpsEnabled, notificationsEnabled, setNotificationsEnabled, schoolAddress } = useSettings();
     const { INK, PAGE_BG, MUTED, ACCENT_SOFT, ACCENT_DEEP, BLUE, BLUE_SOFT, GREEN, GREEN_SOFT, ORANGE, ORANGE_SOFT, RED, RED_SOFT, PURPLE, PURPLE_SOFT, FAINT, BORDER } = useTheme();
 
     const player = useVideoPlayer(SCHOOL_VIDEO, (p) => { p.loop = true; p.muted = true; p.play(); });
     const act = (label: string) => Alert.alert(label, "Your school settings have been updated.", [{ text: "OK" }]);
+    const toggleNotifications = async () => {
+        if (notificationsEnabled) { setNotificationsEnabled(false); return; }
+        const granted = await requestNotificationPermission();
+        if (granted) setNotificationsEnabled(true);
+        else Alert.alert("Notifications permission required", "Allow notifications in system settings to receive bus and emergency alerts.", [{ text: "Open Settings", onPress: () => Linking.openSettings() }, { text: "Cancel", style: "cancel" }]);
+    };
+    const toggleGPS = async () => {
+        if (gpsEnabled) { setGpsEnabled(false); return; }
+        const granted = await requestDeviceLocationPermission();
+        if (granted) setGpsEnabled(true);
+        else Alert.alert("Location permission required", "Allow precise location access to monitor live bus locations.", [{ text: "Open Settings", onPress: () => Linking.openSettings() }, { text: "Cancel", style: "cancel" }]);
+    };
+    const openPermissions = async () => {
+        const location = await requestDeviceLocationPermission();
+        const notifications = await requestNotificationPermission();
+        Alert.alert("Permission status", `Location: ${location ? "Allowed" : "Not allowed"}\nNotifications: ${notifications ? "Allowed" : "Not allowed"}`, [{ text: "Open Settings", onPress: () => Linking.openSettings() }, { text: "Done" }]);
+    };
 
     const logout = () =>
         Alert.alert("Logout?", "You will need to log in again.", [
@@ -83,17 +101,18 @@ export default function SettingsPage({ onBack, onLogout }: { onBack: () => void;
                     <InfoRow icon="person" label="Principal Name" value={SCHOOL.principal} color={BLUE} soft={BLUE_SOFT} />
                     <InfoRow icon="call" label="Phone" value={SCHOOL.phone} color={GREEN} soft={GREEN_SOFT} />
                     <InfoRow icon="mail" label="Email" value={SCHOOL.email} color={ORANGE} soft={ORANGE_SOFT} />
-                    <InfoRow icon="location" label="Address" value={SCHOOL.address} color={RED} soft={RED_SOFT} />
+                    <InfoRow icon="location" label="Address" value={schoolAddress} color={RED} soft={RED_SOFT} />
+                    <Press onPress={onOpenLocationPicker} style={{ marginTop: ms(8), height: ms(44), borderRadius: ms(14), backgroundColor: BLUE_SOFT, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: ms(7) }}><Ionicons name="map" size={ms(16)} color={BLUE} /><Text style={{ fontFamily: FONT.semibold, fontSize: ms(12), color: BLUE }}>Choose exact school point on map</Text></Press>
                 </Card>
 
                 <SectionTitle icon="options" title="Preferences" />
                 <Card style={{ padding: 0, overflow: "hidden" }}>
                     {[
                         { icon: "moon" as const, label: "Dark Mode", desc: "Enable dark theme", color: PURPLE, soft: PURPLE_SOFT, right: <Toggle on={isDarkMode} onToggle={() => setIsDarkMode(!isDarkMode)} /> },
-                        { icon: "notifications" as const, label: "Notifications", desc: "Push alerts & emails", color: RED, soft: RED_SOFT, right: <Toggle on={notificationsEnabled} onToggle={() => setNotificationsEnabled(!notificationsEnabled)} /> },
-                        { icon: "locate" as const, label: "GPS Settings", desc: "Live tracking for all buses", color: BLUE, soft: BLUE_SOFT, right: <Toggle on={gpsEnabled} onToggle={() => setGpsEnabled(!gpsEnabled)} /> },
+                        { icon: "notifications" as const, label: "Notifications", desc: "Push alerts & emails", color: RED, soft: RED_SOFT, right: <Toggle on={notificationsEnabled} onToggle={toggleNotifications} /> },
+                        { icon: "locate" as const, label: "GPS Settings", desc: "Live tracking for all buses", color: BLUE, soft: BLUE_SOFT, right: <Toggle on={gpsEnabled} onToggle={toggleGPS} /> },
                         { icon: "language" as const, label: "Language", desc: "English (India)", color: GREEN, soft: GREEN_SOFT, right: <Ionicons name="chevron-forward" size={ms(15)} color={FAINT} />, fn: () => act("Language") },
-                        { icon: "shield-checkmark" as const, label: "Permissions", desc: "Location, notifications, contacts", color: ORANGE, soft: ORANGE_SOFT, right: <Ionicons name="chevron-forward" size={ms(15)} color={FAINT} />, fn: () => act("App Permissions") },
+                        { icon: "shield-checkmark" as const, label: "Permissions", desc: "Location, notifications, contacts", color: ORANGE, soft: ORANGE_SOFT, right: <Ionicons name="chevron-forward" size={ms(15)} color={FAINT} />, fn: openPermissions },
                         { icon: "key" as const, label: "Change Password", desc: "Update your admin password", color: ACCENT_DEEP, soft: ACCENT_SOFT, right: <Ionicons name="chevron-forward" size={ms(15)} color={FAINT} />, fn: () => act("Change Password") },
                     ].map((r, i) => (
                         <Press key={r.label} onPress={r.fn ?? (() => { })} style={{ flexDirection: "row", alignItems: "center", gap: ms(11), padding: ms(13), borderTopWidth: i === 0 ? 0 : 1, borderTopColor: BORDER }}>

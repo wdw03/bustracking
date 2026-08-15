@@ -21,6 +21,9 @@ import BusDetails from "./driver/driverpages/busdetaisl";
 import AccountSettings from "./driver/driverpages/accounysseting";
 import NotificationSettings from "./driver/driverpages/NotificationSettings";
 import SchoolDashboardMain from "./schooldashboard/schooldashbaordmain";
+import ParentsHomeDashboard from "./parentsdashbaord/paratentshomedasbahord";
+import { addSchoolRegistrationRequest } from "./superadminpanel/supaeradminpaneel";
+import SuperAdminPagesRouter from "./superadminpanel/pages/router";
 
 export type RouteName =
   | "login"
@@ -39,7 +42,9 @@ export type RouteName =
   | "driverBusDetails"
   | "driverAccountSettings"
   | "driverNotificationSettings"
-  | "schoolDashboard";
+  | "schoolDashboard"
+  | "parentDashboard"
+  | "superAdminPanel";
 
 export default function MainComponent() {
   const [loading, setLoading] = useState(true);
@@ -182,6 +187,7 @@ export default function MainComponent() {
         onBack={goBack}
         onSubmit={(data) => {
           console.log("School Signup Complete:", data);
+          addSchoolRegistrationRequest(data);
           setResetPhone(data.adminMobile || data.schoolPhone || resetPhone || "9876543210");
           navigateTo("otp");
         }}
@@ -266,6 +272,14 @@ export default function MainComponent() {
     return <SchoolDashboardMain onLogout={() => resetTo("login")} />;
   }
 
+  if (currentRoute === "parentDashboard") {
+    return <ParentsHomeDashboard onLogout={() => resetTo("login")} />;
+  }
+
+  if (currentRoute === "superAdminPanel") {
+    return <SuperAdminPagesRouter onLogout={() => resetTo("login")} />;
+  }
+
   return (
     <Sinuplogin
       onSignUp={() => navigateTo("signupMethod")}
@@ -274,6 +288,12 @@ export default function MainComponent() {
         console.log("Login Success for:", phone);
         if (phone === "8789968980") {
           resetTo("schoolDashboard");
+        } else if (phone === "9826751348") {
+          resetTo("superAdminPanel");
+        } else if (phone === "9876543210" || phone === "9102765934") {
+          resetTo("parentDashboard");
+        } else if (phone === "9810839381") {
+          resetTo("driverDashboard");
         } else {
           resetTo("driverDashboard");
         }

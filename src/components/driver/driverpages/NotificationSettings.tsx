@@ -3,6 +3,7 @@ import { Dimensions, Pressable, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { requestNotificationPermission } from "../../../services/locationService";
 
 const ACCENT = "#FFD500";
 const ACCENT_SOFT = "#FFF7CC";
@@ -78,14 +79,16 @@ export default function NotificationSettings({ onBack }: { onBack?: () => void }
 
     const allOn = Object.values(values).every(Boolean);
 
-    const toggle = (key: SettingKey) => {
+    const toggle = async (key: SettingKey) => {
         Haptics.selectionAsync();
+        if (!values[key] && !(await requestNotificationPermission())) return;
         setValues((v) => ({ ...v, [key]: !v[key] }));
     };
 
-    const toggleAll = () => {
+    const toggleAll = async () => {
         Haptics.selectionAsync();
         const next = !allOn;
+        if (next && !(await requestNotificationPermission())) return;
         setValues({
             tripAlerts: next,
             routeChanges: next,

@@ -411,6 +411,15 @@ export default function SchoolSignupPage({ onBack, onSubmit }: SchoolSignupPageP
         transform: [{ scale: btnPress.value }],
     }));
 
+    const shake = () => {
+        btnPress.value = withSequence(
+            withTiming(0.96, { duration: 55 }),
+            withTiming(1.02, { duration: 55 }),
+            withTiming(0.98, { duration: 55 }),
+            withTiming(1, { duration: 55 }),
+        );
+    };
+
     /* ── Handlers ── */
     const setField = (key: FieldKey, raw: string) => {
         const isNumeric = key === "schoolPhone" || key === "adminMobile" || key === "postalCode";

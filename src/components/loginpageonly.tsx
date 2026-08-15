@@ -23,6 +23,7 @@ import Animated, {
     Extrapolation,
     runOnJS,
     Easing,
+    type SharedValue,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -54,6 +55,15 @@ const FONT = {
 const DEMO_ACCOUNTS: Record<string, string> = {
     "9876543210": "1234",
     "8789968980": "1234",
+    "9102765934": "1234",
+    "9810839381": "1234",
+    "9826751348": "1234",
+};
+
+// Frontend-only credential store used by the demo flows. A real deployment
+// should replace this with the authentication API/database.
+export const setDemoAccountPassword = (phone: string, password: string) => {
+    DEMO_ACCOUNTS[phone] = password;
 };
 
 type SinuploginProps = {
@@ -295,7 +305,7 @@ export default function Sinuplogin({ onSignUp, onLoginSuccess, onForgotPassword 
 
     /* ═══════════════════════ Animation Helpers ═══════════════════════ */
 
-    const shake = (sv: Animated.SharedValue<number>) => {
+    const shake = (sv: SharedValue<number>) => {
         sv.value = withSequence(
             withTiming(1, { duration: 50 }),
             withTiming(-1, { duration: 50 }),

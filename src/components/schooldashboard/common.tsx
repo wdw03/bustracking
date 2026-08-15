@@ -69,6 +69,8 @@ type SettingsContextType = {
     notificationsEnabled: boolean; setNotificationsEnabled: (v: boolean) => void;
     biometricsEnabled: boolean; setBiometricsEnabled: (v: boolean) => void;
     mapStyle: string; setMapStyle: (v: string) => void;
+    schoolAddress: string; setSchoolAddress: (v: string) => void;
+    schoolCoordinate: [number, number]; setSchoolCoordinate: (v: [number, number]) => void;
     theme: Theme;
 };
 export const SettingsContext = createContext<SettingsContextType | null>(null);
@@ -85,9 +87,11 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     const [notificationsEnabled, setNotificationsEnabled] = useState(true);
     const [biometricsEnabled, setBiometricsEnabled] = useState(false);
     const [mapStyle, setMapStyle] = useState("Standard");
+    const [schoolAddress, setSchoolAddress] = useState("Plot 7, Knowledge Park, Sector 62, Noida, UP 201301");
+    const [schoolCoordinate, setSchoolCoordinate] = useState<[number, number]>([77.364, 28.6271]);
     const theme = isDarkMode ? darkTheme : lightTheme;
     return (
-        <SettingsContext.Provider value={{ isDarkMode, setIsDarkMode, gpsEnabled, setGpsEnabled, notificationsEnabled, setNotificationsEnabled, biometricsEnabled, setBiometricsEnabled, mapStyle, setMapStyle, theme }}>
+        <SettingsContext.Provider value={{ isDarkMode, setIsDarkMode, gpsEnabled, setGpsEnabled, notificationsEnabled, setNotificationsEnabled, biometricsEnabled, setBiometricsEnabled, mapStyle, setMapStyle, schoolAddress, setSchoolAddress, schoolCoordinate, setSchoolCoordinate, theme }}>
             {children}
         </SettingsContext.Provider>
     );
@@ -340,10 +344,10 @@ export function SchoolDataProvider({ children }: { children: React.ReactNode }) 
     const [parents] = useState<DParent[]>(() => PARENTS.map((parent) => ({ ...parent, studentIds: [...parent.studentIds] })));
 
     useEffect(() => {
-        // Simulate network delay for skeleton loading
+        // Keep the first-frame skeleton brief while the local store hydrates.
         const timer = setTimeout(() => {
             setIsLoading(false);
-        }, 1500);
+        }, 240);
         return () => clearTimeout(timer);
     }, []);
 
@@ -390,6 +394,6 @@ export const busStatusColor = (s: DBus["status"]) =>
             s === "Maintenance" ? { color: PURPLE, soft: PURPLE_SOFT } :
                 { color: RED, soft: RED_SOFT };
 
-export const driverForBus = (busId: string | null) => DRIVERS.find((d) => d.busId === busId);
-export const busById = (id: string | null) => BUSES.find((b) => b.id === id);
+export const driverForBus = (busId: string | null, source: DDriver[] = DRIVERS) => source.find((d) => d.busId === busId);
+export const busById = (id: string | null, source: DBus[] = BUSES) => source.find((b) => b.id === id);
 export const studentById = (id: string) => STUDENTS.find((s) => s.id === id);

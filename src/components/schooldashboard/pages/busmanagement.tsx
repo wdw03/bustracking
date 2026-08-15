@@ -33,7 +33,7 @@ export default function BusManagementPage({ onBack }: { onBack: () => void }) {
         const sub = BackHandler.addEventListener("hardwareBackPress", onHardwareBack);
         return () => sub.remove();
     }, [adding, selected]);
-    const { buses, addBus, updateBus, removeBus, isLoading } = useSchoolData();
+    const { buses, drivers, addBus, updateBus, removeBus, isLoading } = useSchoolData();
     const { INK, PAGE_BG, CARD_BG, BORDER, ACCENT, ACCENT_DEEP, ACCENT_SOFT, MUTED, FAINT, BLUE, BLUE_SOFT, GREEN, GREEN_SOFT, RED, RED_SOFT, PURPLE, PURPLE_SOFT, ORANGE, ORANGE_SOFT } = useTheme();
 
     const player = useVideoPlayer(BUS_VIDEO, (p) => { p.loop = true; p.muted = true; p.play(); });
@@ -59,6 +59,14 @@ export default function BusManagementPage({ onBack }: { onBack: () => void }) {
         if (selected) updateBus(bus); else addBus(bus);
         setSelected(bus); setAdding(false);
         Alert.alert(selected ? "Bus updated" : "Bus added", `${bus.number} is now available in the dashboard and live map.`);
+    };
+    const toggleBusAvailability = () => {
+        if (!selected) return;
+        const nextStatus: DBus["status"] = selected.status === "Disabled" ? "Offline" : "Disabled";
+        const nextBus = { ...selected, status: nextStatus };
+        updateBus(nextBus);
+        setSelected(nextBus);
+        Alert.alert(nextStatus === "Disabled" ? "Bus disabled" : "Bus enabled", `${nextBus.number} is now ${nextStatus === "Disabled" ? "hidden from active operations" : "available for operations"}.`);
     };
 
     if (adding || (selected && adding)) {
@@ -112,7 +120,7 @@ export default function BusManagementPage({ onBack }: { onBack: () => void }) {
     /* ── BUS DETAIL ── */
     if (selected) {
         const st = busStatusColor(selected.status);
-        const drv = driverForBus(selected.id);
+        const drv = driverForBus(selected.id, drivers);
         return (
             <View style={{ flex: 1, backgroundColor: PAGE_BG }}>
                 <PageHeader title={selected.number} subtitle={selected.vehicleNumber} onBack={() => setSelected(null)} topInset={insets.top}
@@ -127,25 +135,22 @@ export default function BusManagementPage({ onBack }: { onBack: () => void }) {
                         <InfoRow icon="time" label="Last Updated" value={selected.lastUpdated} color={ORANGE} soft={ORANGE_SOFT} />
                     </Card>
 
-                    <SectionTitle icon="options" title="Actions" />
-                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: ms(10) }}>
-                        {(
-                            [
-                                { icon: "create", label: "Edit Bus", color: BLUE, soft: BLUE_SOFT, fn: openEdit },
-                                { icon: "swap-horizontal", label: "Replace Bus", color: PURPLE, soft: PURPLE_SOFT, fn: () => act("Replace Bus") },
-                                { icon: "pause-circle", label: "Disable Bus", color: ORANGE, soft: ORANGE_SOFT, fn: () => act("Disable Bus") },
-                                { icon: "time", label: "Bus History", color: GREEN, soft: GREEN_SOFT, fn: () => act("Bus History") },
-                                { icon: "trash", label: "Delete Bus", color: RED, soft: RED_SOFT, fn: () => Alert.alert("Delete Bus?", "Students assigned to it will become unassigned.", [{ text: "Cancel", style: "cancel" }, { text: "Delete", style: "destructive", onPress: () => { removeBus(selected.id); setSelected(null); } }]) },
-                            ] as const
-                        ).map((a) => (
-                            <Press key={a.label} onPress={a.fn} style={{ flexBasis: "48%", flexGrow: 1, backgroundColor: CARD_BG, borderRadius: ms(16), borderWidth: 1, borderColor: BORDER, padding: ms(13), flexDirection: "row", alignItems: "center", gap: 9 }}>
-                                <View style={{ width: ms(34), height: ms(34), borderRadius: ms(12), backgroundColor: a.soft, alignItems: "center", justifyContent: "center" }}>
-                                    <Ionicons name={a.icon} size={ms(16)} color={a.color} />
-                                </View>
-                                <Text style={{ fontFamily: FONT.semibold, fontSize: ms(12.5), color: INK }}>{a.label}</Text>
+                    <SectionTitle icon="options" title="Manage this bus" right={<Text style={{ fontFamily: FONT.regular, fontSize: ms(10.5), color: MUTED }}>Quick actions</Text>} />
+                    <Card style={{ padding: 0, overflow: "hidden" }}>
+                        {[
+                            { icon: "create" as const, label: "Edit bus details", hint: "Vehicle, helper and assignment", color: BLUE, soft: BLUE_SOFT, fn: openEdit },
+                            { icon: "swap-horizontal" as const, label: "Replace bus", hint: "Change the assigned vehicle", color: PURPLE, soft: PURPLE_SOFT, fn: () => act("Replacement request saved") },
+                            { icon: selected.status === "Disabled" ? "play-circle" as const : "pause-circle" as const, label: selected.status === "Disabled" ? "Enable bus" : "Disable bus", hint: selected.status === "Disabled" ? "Return this bus to the fleet" : "Pause operations temporarily", color: ORANGE, soft: ORANGE_SOFT, fn: toggleBusAvailability },
+                            { icon: "time" as const, label: "Bus history", hint: "Trips, status and updates", color: GREEN, soft: GREEN_SOFT, fn: () => act("Bus history opened") },
+                            { icon: "trash" as const, label: "Delete bus", hint: "Remove this bus permanently", color: RED, soft: RED_SOFT, fn: () => Alert.alert("Delete Bus?", "Students assigned to it will become unassigned.", [{ text: "Cancel", style: "cancel" }, { text: "Delete", style: "destructive", onPress: () => { removeBus(selected.id); setSelected(null); } }]) },
+                        ].map((a, index) => (
+                            <Press key={a.label} onPress={a.fn} style={{ minHeight: ms(58), paddingHorizontal: ms(12), paddingVertical: ms(9), flexDirection: "row", alignItems: "center", gap: ms(10), borderBottomWidth: index === 4 ? 0 : 1, borderBottomColor: BORDER }}>
+                                <View style={{ width: ms(34), height: ms(34), borderRadius: ms(11), backgroundColor: a.soft, alignItems: "center", justifyContent: "center" }}><Ionicons name={a.icon} size={ms(16)} color={a.color} /></View>
+                                <View style={{ flex: 1, minWidth: 0 }}><Text style={{ fontFamily: FONT.semibold, fontSize: ms(12.5), color: a.label === "Delete bus" ? RED : INK }}>{a.label}</Text><Text numberOfLines={1} style={{ fontFamily: FONT.regular, fontSize: ms(10.5), color: MUTED, marginTop: 1 }}>{a.hint}</Text></View>
+                                <Ionicons name="chevron-forward" size={ms(15)} color={FAINT} />
                             </Press>
                         ))}
-                    </View>
+                    </Card>
                 </ScrollView>
             </View>
         );
@@ -203,7 +208,7 @@ export default function BusManagementPage({ onBack }: { onBack: () => void }) {
                 ) : (
                     list.map((b) => {
                         const st = busStatusColor(b.status);
-                        const drv = driverForBus(b.id);
+                        const drv = driverForBus(b.id, drivers);
                         return (
                             <Press key={b.id} onPress={() => setSelected(b)} style={{ backgroundColor: CARD_BG, borderRadius: ms(18), borderWidth: 1, borderColor: BORDER, padding: ms(13), marginBottom: ms(10) }}>
                                 <View style={{ flexDirection: "row", alignItems: "center", gap: ms(10) }}>

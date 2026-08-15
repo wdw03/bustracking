@@ -172,7 +172,6 @@ export default function SchoolDetailsForHerserds({ onBack }: { onBack?: () => vo
                             style={{ width: "100%", height: "100%" }}
                             contentFit="cover"
                             nativeControls={false}
-                            allowsFullscreen={false}
                         />
                         {/* Overlay Glass Badge */}
                         <View

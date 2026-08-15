@@ -38,6 +38,18 @@
       ],
       "expo-video",
       "expo-font",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow BusTracker to use your location to save your child's home stop and show nearby buses."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "sounds": []
+        }
+      ],
       "@maplibre/maplibre-react-native"
     ],
     "experiments": {

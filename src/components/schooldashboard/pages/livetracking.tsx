@@ -5,7 +5,7 @@
    MAP PROVIDER: MapLibre + OpenFreeMap (OpenStreetMap tiles) — FREE, no key.
    ========================================================================== */
 
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Linking, ScrollView, Text, TextInput, View, Pressable, BackHandler } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -15,8 +15,9 @@ import {
 
 import {
     Card, Chip, DBus, FONT,
-    InfoRow, PageHeader, Press, SectionTitle, busStatusColor, driverForBus, ms, useSchoolData, useTheme
+    InfoRow, PageHeader, Press, SectionTitle, busStatusColor, driverForBus, ms, useSchoolData, useSettings, useTheme
 } from "../common";
+import { subscribeToDriverLocation } from "../../../services/locationService";
 
 /* Free vector style — OpenFreeMap (OpenStreetMap data), no API key */
 const MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
@@ -33,27 +34,57 @@ const BUS_COORDS: Record<string, [number, number]> = {
 
 export default function LiveTrackingPage({ onBack, initialBusId }: { onBack: () => void; initialBusId?: string | null }) {
     const insets = useSafeAreaInsets();
+    const { schoolCoordinate } = useSettings();
     const [selected, setSelected] = useState<DBus | null>(null);
     const [detail, setDetail] = useState<DBus | null>(null);
     const [query, setQuery] = useState("");
     const [singleBusMode, setSingleBusMode] = useState(!!initialBusId);
     const [zoom, setZoom] = useState(initialBusId ? 15 : 13.2);
+    const [autoFollow, setAutoFollow] = useState(!!initialBusId);
+    const [detailZoom, setDetailZoom] = useState(14.6);
     const [center, setCenter] = useState<[number, number]>(
-        initialBusId && BUS_COORDS[initialBusId] ? BUS_COORDS[initialBusId] : SCHOOL_COORD
+        initialBusId && BUS_COORDS[initialBusId] ? BUS_COORDS[initialBusId] : schoolCoordinate
     );
     const camKey = useRef(0);
-    const { buses } = useSchoolData();
+    const { buses, drivers } = useSchoolData();
     const { INK, PAGE_BG, CARD_BG, BORDER, ACCENT, ACCENT_DEEP, ACCENT_SOFT, MUTED, FAINT, BLUE, BLUE_SOFT, GREEN, GREEN_SOFT, RED, RED_SOFT, PURPLE, PURPLE_SOFT, ORANGE, ORANGE_SOFT } = useTheme();
+    const [livePositions, setLivePositions] = useState<Record<string, [number, number]>>({ ...BUS_COORDS });
+    const liveTargets = useRef<Record<string, [number, number]>>({ ...BUS_COORDS });
+    const driverFeeds = useRef(new Set<string>());
+    const motionPhase = useRef(0);
+
+    useEffect(() => {
+        const cleanups = buses.map((bus) => subscribeToDriverLocation(bus.id, (location) => {
+            liveTargets.current[bus.id] = [location.longitude, location.latitude];
+            driverFeeds.current.add(bus.id);
+        }));
+        const timer = setInterval(() => {
+            motionPhase.current += 0.045;
+            setLivePositions((current) => {
+                const next = { ...current };
+                buses.forEach((bus, index) => {
+                    const base = BUS_COORDS[bus.id] ?? schoolCoordinate;
+                    if (!driverFeeds.current.has(bus.id) && bus.status === "Running") {
+                        liveTargets.current[bus.id] = [base[0] + Math.sin(motionPhase.current + index) * 0.0008, base[1] + Math.cos(motionPhase.current + index) * 0.00055];
+                    }
+                    const target = liveTargets.current[bus.id] ?? base;
+                    const previous = current[bus.id] ?? base;
+                    next[bus.id] = [previous[0] + (target[0] - previous[0]) * 0.16, previous[1] + (target[1] - previous[1]) * 0.16];
+                });
+                return next;
+            });
+        }, 50);
+        return () => { cleanups.forEach((cleanup) => cleanup()); clearInterval(timer); };
+    }, [buses, schoolCoordinate]);
 
     /* If initialBusId is set, auto-select that bus */
     const initialBus = initialBusId ? buses.find(b => b.id === initialBusId) ?? null : null;
     const [autoSelected] = useState(initialBus);
 
-    // Set the selected bus if we came from fleet status
-    if (autoSelected && !selected && !detail) {
-        // Use setTimeout to avoid setState during render
-        setTimeout(() => setSelected(autoSelected), 0);
-    }
+    // Select a bus after the map screen mounts; avoid mutating state during render.
+    useEffect(() => {
+        if (autoSelected) setSelected(autoSelected);
+    }, [autoSelected]);
 
     React.useEffect(() => {
         const onHardwareBack = () => {
@@ -80,14 +111,16 @@ export default function LiveTrackingPage({ onBack, initialBusId }: { onBack: () 
 
     const focusBus = (b: DBus) => {
         setSelected(b);
-        setCenter(BUS_COORDS[b.id] ?? SCHOOL_COORD);
+        setAutoFollow(true);
+        setCenter(livePositions[b.id] ?? BUS_COORDS[b.id] ?? schoolCoordinate);
         setZoom(14.5);
         camKey.current += 1;
     };
 
     const showAllBuses = () => {
         setSingleBusMode(false);
-        setCenter(SCHOOL_COORD);
+        setAutoFollow(false);
+        setCenter(schoolCoordinate);
         setZoom(13.2);
         camKey.current += 1;
     };
@@ -95,7 +128,7 @@ export default function LiveTrackingPage({ onBack, initialBusId }: { onBack: () 
     /* ── FULL BUS DETAIL SCREEN ── */
     if (detail) {
         const st = busStatusColor(detail.status);
-        const drv = driverForBus(detail.id);
+        const drv = driverForBus(detail.id, drivers);
         return (
             <View style={{ flex: 1, backgroundColor: PAGE_BG }}>
                 <PageHeader title={detail.number} subtitle={`${detail.vehicleNumber} · ${detail.route}`} onBack={() => setDetail(null)} topInset={insets.top}
@@ -103,11 +136,22 @@ export default function LiveTrackingPage({ onBack, initialBusId }: { onBack: () 
                 <ScrollView contentContainerStyle={{ padding: ms(16), paddingBottom: ms(40) }} showsVerticalScrollIndicator={false}>
                     {/* Mini live map for THIS bus only */}
                     <View style={{ height: ms(190), borderRadius: ms(20), overflow: "hidden", borderWidth: 1, borderColor: BORDER, marginBottom: ms(14) }}>
-                        <Map style={{ flex: 1 }} mapStyle={MAP_STYLE} logo={false} attribution={false}>
-                            <Camera center={BUS_COORDS[detail.id] ?? SCHOOL_COORD} zoom={14.6} duration={0} />
-                            <Marker id={`det-${detail.id}`} lngLat={BUS_COORDS[detail.id] ?? SCHOOL_COORD}>
-                                <View style={{ width: ms(38), height: ms(38), borderRadius: ms(13), backgroundColor: detail.color, alignItems: "center", justifyContent: "center", borderWidth: 3, borderColor: "#FFFFFF" }}>
-                                    <Ionicons name="bus" size={ms(18)} color="#FFFFFF" />
+                        <Map
+                            style={{ flex: 1 }} mapStyle={MAP_STYLE} logo={false} attribution={false}
+                            dragPan touchZoom doubleTapZoom doubleTapHoldZoom
+                            onRegionDidChange={(event) => {
+                                if (event.nativeEvent.userInteraction) setDetailZoom(event.nativeEvent.zoom);
+                            }}
+                        >
+                            <Camera center={livePositions[detail.id] ?? BUS_COORDS[detail.id] ?? schoolCoordinate} zoom={detailZoom} duration={120} />
+                            <Marker id={`det-${detail.id}`} lngLat={livePositions[detail.id] ?? BUS_COORDS[detail.id] ?? schoolCoordinate}>
+                                <View style={{ alignItems: "center" }}>
+                                    <View style={{ width: ms(38), height: ms(38), borderRadius: ms(13), backgroundColor: detail.color, alignItems: "center", justifyContent: "center", borderWidth: 3, borderColor: "#FFFFFF" }}>
+                                        <Ionicons name="bus" size={ms(18)} color="#FFFFFF" />
+                                    </View>
+                                    <View style={{ marginTop: ms(3), maxWidth: ms(132), backgroundColor: "#FFFFFF", borderRadius: ms(8), paddingHorizontal: ms(7), paddingVertical: ms(3), borderWidth: 1, borderColor: "rgba(0,0,0,0.08)", shadowColor: "#000", shadowOpacity: 0.14, shadowRadius: 5, shadowOffset: { width: 0, height: 2 }, elevation: 4 }}>
+                                        <Text numberOfLines={1} style={{ fontFamily: FONT.semibold, fontSize: ms(9.5), color: INK }}>{detail.name || detail.number}</Text>
+                                    </View>
                                 </View>
                             </Marker>
                         </Map>
@@ -168,11 +212,20 @@ export default function LiveTrackingPage({ onBack, initialBusId }: { onBack: () 
     /* ── FULL-SCREEN MAP ── */
     return (
         <View style={{ flex: 1, backgroundColor: PAGE_BG }}>
-            <Map style={{ flex: 1 }} mapStyle={MAP_STYLE} logo={false} attribution={false}>
-                <Camera key={camKey.current} center={center} zoom={zoom} duration={600} />
+            <Map
+                style={{ flex: 1 }} mapStyle={MAP_STYLE} logo={false} attribution={false}
+                dragPan touchZoom doubleTapZoom doubleTapHoldZoom
+                onRegionDidChange={(event) => {
+                    if (event.nativeEvent.userInteraction) {
+                        setZoom(event.nativeEvent.zoom);
+                        setAutoFollow(false);
+                    }
+                }}
+            >
+                <Camera key={camKey.current} center={selected && autoFollow ? (livePositions[selected.id] ?? center) : center} zoom={zoom} duration={120} />
 
                 {/* School marker */}
-                <Marker id="school" lngLat={SCHOOL_COORD}>
+                <Marker id="school" lngLat={schoolCoordinate}>
                     <View style={{ alignItems: "center" }}>
                         <View style={{ width: ms(42), height: ms(42), borderRadius: ms(15), backgroundColor: ACCENT, alignItems: "center", justifyContent: "center", borderWidth: 3, borderColor: "#FFFFFF", shadowColor: "#000", shadowOpacity: 0.25, shadowRadius: 6, shadowOffset: { width: 0, height: 3 }, elevation: 6 }}>
                             <Ionicons name="school" size={ms(20)} color={INK} />
@@ -182,10 +235,10 @@ export default function LiveTrackingPage({ onBack, initialBusId }: { onBack: () 
 
                 {/* Bus markers — each bus its own color, with info popup */}
                 {visibleBuses.map((b) => {
-                    const drv = driverForBus(b.id);
+                    const drv = driverForBus(b.id, drivers);
                     const isSelected = selected?.id === b.id;
                     return (
-                        <Marker key={b.id} id={b.id} lngLat={BUS_COORDS[b.id] ?? SCHOOL_COORD}>
+                        <Marker key={b.id} id={b.id} lngLat={livePositions[b.id] ?? BUS_COORDS[b.id] ?? schoolCoordinate}>
                             <Pressable onPress={() => focusBus(b)} style={{ alignItems: "center" }}>
                                 {/* Google Maps style info bubble — shown when selected */}
                                 {isSelected && (
@@ -234,6 +287,9 @@ export default function LiveTrackingPage({ onBack, initialBusId }: { onBack: () 
                                 <View style={{ width: ms(36), height: ms(36), borderRadius: ms(12), backgroundColor: b.color, alignItems: "center", justifyContent: "center", borderWidth: 3, borderColor: isSelected ? ACCENT : "#FFFFFF", shadowColor: "#000", shadowOpacity: 0.25, shadowRadius: 5, shadowOffset: { width: 0, height: 3 }, elevation: 5 }}>
                                     <Ionicons name="bus" size={ms(16)} color="#FFFFFF" />
                                 </View>
+                                <View style={{ marginTop: ms(3), maxWidth: ms(142), backgroundColor: isSelected ? INK : "rgba(255,255,255,0.96)", borderRadius: ms(8), paddingHorizontal: ms(7), paddingVertical: ms(3), borderWidth: 1, borderColor: isSelected ? INK : "rgba(0,0,0,0.08)", shadowColor: "#000", shadowOpacity: 0.14, shadowRadius: 5, shadowOffset: { width: 0, height: 2 }, elevation: 4 }}>
+                                    <Text numberOfLines={1} style={{ fontFamily: FONT.semibold, fontSize: ms(9.5), color: isSelected ? "#FFFFFF" : INK }}>{b.name || b.number}</Text>
+                                </View>
                             </Pressable>
                         </Marker>
                     );
@@ -271,7 +327,7 @@ export default function LiveTrackingPage({ onBack, initialBusId }: { onBack: () 
                         { icon: "expand" as const, fn: () => act("Fullscreen") },
                         { icon: "add" as const, fn: () => { setZoom((z) => Math.min(z + 1, 18)); camKey.current += 1; } },
                         { icon: "remove" as const, fn: () => { setZoom((z) => Math.max(z - 1, 9)); camKey.current += 1; } },
-                        { icon: "locate" as const, fn: () => { setCenter(SCHOOL_COORD); setZoom(13.2); camKey.current += 1; } },
+                        { icon: "locate" as const, fn: () => { setCenter(selected ? (livePositions[selected.id] ?? center) : schoolCoordinate); setZoom(selected ? 14.5 : 13.2); setAutoFollow(!!selected); camKey.current += 1; } },
                     ]
                 ).map((c, i) => (
                     <Press key={i} onPress={c.fn} style={{ width: ms(42), height: ms(42), borderRadius: ms(14), backgroundColor: "rgba(255,255,255,0.92)", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(0,0,0,0.06)", shadowColor: "#000", shadowOpacity: 0.12, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 5 }}>
@@ -303,7 +359,7 @@ export default function LiveTrackingPage({ onBack, initialBusId }: { onBack: () 
                             <View style={{ flex: 1, minWidth: 0 }}>
                                 <Text style={{ fontFamily: FONT.display, fontSize: ms(15.5), color: INK }}>{selected.number} · {selected.vehicleNumber}</Text>
                                 <Text numberOfLines={1} style={{ fontFamily: FONT.regular, fontSize: ms(11.5), color: MUTED }}>
-                                    {driverForBus(selected.id)?.name ?? "Unassigned"} · {selected.location}
+                                    {driverForBus(selected.id, drivers)?.name ?? "Unassigned"} · {selected.location}
                                 </Text>
                             </View>
                             <Press onPress={() => setSelected(null)} style={{ width: ms(30), height: ms(30), borderRadius: ms(10), backgroundColor: PAGE_BG, alignItems: "center", justifyContent: "center" }}>
@@ -328,7 +384,7 @@ export default function LiveTrackingPage({ onBack, initialBusId }: { onBack: () 
                         </View>
 
                         <View style={{ flexDirection: "row", gap: ms(10), marginTop: ms(12) }}>
-                            <Press onPress={() => { const d = driverForBus(selected.id); if (d) Linking.openURL(`tel:${d.phone.replace(/\s/g, "")}`); }} style={{ flex: 1, height: ms(48), borderRadius: ms(16), backgroundColor: INK, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 7 }}>
+                            <Press onPress={() => { const d = driverForBus(selected.id, drivers); if (d) Linking.openURL(`tel:${d.phone.replace(/\s/g, "")}`); }} style={{ flex: 1, height: ms(48), borderRadius: ms(16), backgroundColor: INK, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 7 }}>
                                 <Ionicons name="call" size={ms(15)} color={ACCENT} />
                                 <Text style={{ fontFamily: FONT.semibold, fontSize: ms(13), color: "#FFFFFF" }}>Contact Driver</Text>
                             </Press>

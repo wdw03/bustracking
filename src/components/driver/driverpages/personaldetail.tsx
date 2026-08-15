@@ -238,7 +238,6 @@ export default function PersonalDetail({ onBack }: { onBack?: () => void }) {
                             style={{ width: "100%", height: "100%" }}
                             contentFit="cover"
                             nativeControls={false}
-                            allowsFullscreen={false}
                         />
                     </View>
                     {editing && (

@@ -22,6 +22,7 @@ import Animated, {
     Extrapolation,
     runOnJS,
     Easing,
+    type SharedValue,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -266,7 +267,7 @@ export default function RegisterNumberPage({
     }, []);
 
     /* ═══════════════════════ Exception Handlers ═══════════════════════ */
-    const shake = (sv: Animated.SharedValue<number>) => {
+    const shake = (sv: SharedValue<number>) => {
         sv.value = withSequence(
             withTiming(1, { duration: 50 }),
             withTiming(-1, { duration: 50 }),

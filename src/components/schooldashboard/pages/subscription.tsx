@@ -18,7 +18,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
-    BUSES, Card, Chip, FONT, InfoRow, PARENTS, PageHeader, Press,
+    ACCENT_DEEP, ACCENT_SOFT, BUSES, BORDER, Card, Chip, FAINT, FONT, INK, InfoRow, PARENTS, PageHeader, Press,
     SCHOOL, STUDENTS, SectionTitle, SkeletonItem, ms, useSchoolData, useTheme,
     ORANGE, ORANGE_SOFT, GREEN, GREEN_SOFT, BLUE, BLUE_SOFT
 } from "../common";

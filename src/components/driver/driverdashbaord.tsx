@@ -58,8 +58,9 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { VideoView, useVideoPlayer } from "expo-video";
-import { requestDeviceLocationPermission } from "../../services/locationService";
+import { requestDeviceLocationPermission, requestNotificationPermission } from "../../services/locationService";
 import { SkeletonCard, SkeletonItem, SkeletonList } from "../common/Skeleton";
+import DriverLiveMap from "./driverlivemap";
 
 /* ─────────────────────────── Theme ─────────────────────────── */
 const ACCENT = "#FFD500";
@@ -347,7 +348,7 @@ function HeroVideo({ player, badge, height = 168 }: { player: any; badge: string
                 backgroundColor: ACCENT_SOFT,
             }}
         >
-            <VideoView player={player} style={{ width: "100%", height: "100%" }} contentFit="cover" nativeControls={false} allowsFullscreen={false} />
+            <VideoView player={player} style={{ width: "100%", height: "100%" }} contentFit="cover" nativeControls={false} />
             <View
                 style={{
                     position: "absolute",
@@ -428,7 +429,8 @@ export default function DriverDashboard({
         onTabChange?.(newTab);
     }, [onTabChange]);
 
-    const [online, setOnline] = useState(true);
+    // Start offline until the driver explicitly grants real device location.
+    const [online, setOnline] = useState(false);
     const [isLoadingData, setIsLoadingData] = useState(true);
 
     useEffect(() => {
@@ -468,10 +470,12 @@ export default function DriverDashboard({
 
         const granted = await requestDeviceLocationPermission();
         if (granted) {
+            await requestNotificationPermission();
+            setOnline(true);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             setSharing((s) => ({ ...s, [schoolId]: true }));
         } else {
-            // Denied -> silently keep OFF!
+            Alert.alert("Location permission required", "Allow precise location access so your moving bus can be shared with the school and parents.");
             setSharing((s) => ({ ...s, [schoolId]: false }));
         }
     };
@@ -859,6 +863,7 @@ export default function DriverDashboard({
                 </View>
                 <LocationSwitch on={!!sharing[s.id]} onToggle={() => toggleSharing(s.id)} />
             </Card>
+            <DriverLiveMap active={!!sharing[s.id]} schoolName={s.name} busNumber={s.buses[0]?.number} busId={s.buses[0]?.id} />
 
             {/* Buses assigned at this school */}
             <SectionTitle
@@ -1117,6 +1122,8 @@ export default function DriverDashboard({
                 </View>
             </View>
 
+            <DriverLiveMap active={!!sharing[b.school.id]} schoolName={b.school.name} busNumber={b.number} busId={b.id} />
+
             <SectionTitle>School & Team</SectionTitle>
             <View style={{ backgroundColor: CARD_BG, borderRadius: 22, borderTopLeftRadius: 26, borderWidth: 1, borderColor: BORDER, paddingHorizontal: ms(16), paddingVertical: ms(4) }}>
                 <InfoRow icon="school-outline" label="SCHOOL NAME" value={b.school.name} />
@@ -1168,7 +1175,7 @@ export default function DriverDashboard({
                         backgroundColor: ACCENT_SOFT,
                     }}
                 >
-                    <VideoView player={profilePlayer} style={{ width: "100%", height: "100%" }} contentFit="cover" nativeControls={false} allowsFullscreen={false} />
+                    <VideoView player={profilePlayer} style={{ width: "100%", height: "100%" }} contentFit="cover" nativeControls={false} />
                 </View>
                 <Text style={{ fontFamily: FONT.displayHeavy, fontSize: ms(18), color: INK, marginTop: ms(10) }}>{DRIVER.name}</Text>
                 <View style={{ flexDirection: "row", gap: 8, marginTop: 6 }}>
@@ -1273,13 +1280,19 @@ export default function DriverDashboard({
                         backgroundColor: ACCENT_SOFT,
                     }}
                 >
-                    <VideoView player={avatarPlayer} style={{ width: "100%", height: "100%" }} contentFit="cover" nativeControls={false} allowsFullscreen={false} />
+                    <VideoView player={avatarPlayer} style={{ width: "100%", height: "100%" }} contentFit="cover" nativeControls={false} />
                 </View>
                 <View style={{ flex: 1 }}>
                     <Text style={{ fontFamily: FONT.displayHeavy, fontSize: ms(14.5), color: INK }} numberOfLines={1}>{DRIVER.name}</Text>
                     <Text style={{ fontFamily: FONT.semibold, fontSize: ms(10.5), color: "#00000088" }}>ID: {DRIVER.driverId}</Text>
                 </View>
-                <Press onPress={() => setOnline((o) => !o)} label={online ? "Go offline" : "Go online"}>
+                <Press onPress={async () => {
+                    if (online) { setOnline(false); setSharing({}); return; }
+                    const granted = await requestDeviceLocationPermission();
+                    if (!granted) { Alert.alert("Location permission required", "Allow location access before going online."); return; }
+                    await requestNotificationPermission();
+                    setOnline(true);
+                }} label={online ? "Go offline" : "Go online"}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#FFFFFF", borderRadius: 999, paddingHorizontal: ms(8), paddingVertical: ms(5) }}>
                         <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: online ? GREEN : FAINT }} />
                         <Text style={{ fontFamily: FONT.semibold, fontSize: ms(10.5), color: INK }}>{online ? "Online" : "Offline"}</Text>

@@ -184,13 +184,21 @@ Here is a detailed breakdown of every key component and directory in this reposi
 - 📄 **`loadter.tsx`**: Animated Splash loader.
 
 ### 📂 3. School Admin Dashboard (`src/components/schooldashboard/`)
-- 📄 **`schooldashbaordmain.tsx`**: **School Root Hub.** Provides 2x2 dynamic grid statistics (Students, Parents, Drivers, Buses) and quick-action access.
-- 📄 **`pages/livetracking.tsx`**: Full-screen interactive fleet tracking Map UI.
-- 📄 **`pages/studentmanagement.tsx`** & **`parentmanagement.tsx`**: Detailed CRUD pages for students and parents.
-- 📄 **`pages/drivermanagement.tsx`** & **`busmanagement.tsx`**: Add/remove buses and drivers with instant search.
-- 📄 **`pages/busassignment.tsx`**: Maps a student to a specific bus route.
-- 📄 **`pages/subscription.tsx`**: Comprehensive financial center for viewing limits, commission earnings, parent payments, and withdrawing funds.
-- 📄 **`pages/notificationcenter.tsx`**, **`contactcenter.tsx`**, **`reports.tsx`**, **`settings.tsx`**: System operations, broadcasting, audits, and configuration.
+- 📄 **`schooldashbaordmain.tsx`**: **School Root Hub.** Provides 2x2 dynamic grid statistics (Students, Parents, Drivers, Buses). Manages deep-linking internal stack navigation for the dashboard. Handles Android Hardware Back Button to properly exit sub-pages without crashing or exiting the entire app.
+- 📄 **`pages/livetracking.tsx`**: **Live GPS Fleet Map.** Full-screen interactive fleet tracking Map UI (powered by `MapLibre` & `OpenFreeMap`). Fetches real-time JSON coordinates and renders custom SVG Bus Markers. Displays current vehicle speed, online status, driver name, and active route.
+- 📄 **`pages/studentmanagement.tsx`**: **Student CRUD Hub.** Features an intelligent search bar, dynamic skeleton loaders, and a visually appealing list of all enrolled students. Allows admins to add new students, edit details, call linked parents directly via `Linking.openURL()`, or completely remove a student.
+- 📄 **`pages/parentmanagement.tsx`**: **Parent CRM.** Allows bulk management of parent records. Displays connected students per parent. Can directly initiate WhatsApp chats or SMS blasts for fee reminders. Includes full search capabilities by name or mobile number.
+- 📄 **`pages/drivermanagement.tsx`**: **Driver Fleet Control.** Displays all hired/contracted drivers. Includes visual status chips (Active, Off-Duty) and colored profiles. Admins can view driver DL numbers, assign new drivers, or revoke access from the platform.
+- 📄 **`pages/busmanagement.tsx`**: **Bus Fleet Inventory.** Lists all school buses with their license plates, seating capacity, assigned helpers/conductors, and live running status. Supports detailed breakdowns and adding new buses to the fleet.
+- 📄 **`pages/busassignment.tsx`**: **Route Assignment Logic.** An interface designed to map a student to a specific bus route, ensuring the correct bus is tracked in the parent app.
+- 📄 **`pages/subscription.tsx`**: **Financial & Analytics Center.** A comprehensive dashboard showing:
+  - Total Revenue limits & active subscription tiers.
+  - Driver & School Commission split analytics.
+  - Recent payment ledgers from parents.
+  - A highly animated, one-tap IMPS/UPI "Withdraw Funds" modal with success/failure animations.
+- 📄 **`pages/notificationcenter.tsx`**: **System Broadcasts.** Push notification dispatcher. Allows the principal or admin to broadcast emergency alerts (e.g., "School closed tomorrow due to rain") directly to all drivers and parents simultaneously.
+- 📄 **`pages/contactcenter.tsx` & `reports.tsx`**: **Audits & Helpdesk.** Automated daily attendance logs, fuel expenditure reports, and support ticket management for parents.
+- 📄 **`pages/settings.tsx`**: **Dashboard Config.** System operations and theme configuration.
 
 ### 📂 4. Driver Portal & Dashboard (`src/components/driver/`)
 - 📄 **`driverdashbaord.tsx`**: **Driver Main Dashboard.** 4 Bottom Tabs (`Home`, `Schools`, `Bus`, `Profile`) featuring dynamic video hero headers.
