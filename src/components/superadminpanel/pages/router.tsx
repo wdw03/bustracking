@@ -64,14 +64,14 @@ export default function SuperAdminPagesRouter({ onLogout }: { onLogout?: () => v
   const body = page === "dashboard" ? <DashboardPage onNavigate={navigate} />
     : page === "schools" ? <SchoolManagementPage />
       : page === "requests" ? <SchoolRequestsPage />
-        : page === "parents" ? <ParentsPage />
+        : page === "parents" ? <ParentsPage onNavigate={navigate} />
           : page === "students" ? <StudentsPage />
-            : page === "drivers" ? <DriversPage />
+            : page === "drivers" ? <DriversPage onNavigate={navigate} />
               : page === "buses" ? <BusesPage />
                 : page === "tracking" ? <LiveTrackingPage />
                   : page === "routes" ? <RoutesPage />
                     : page === "subscriptions" ? <SubscriptionsPage />
-                      : page === "payments" ? <PaymentRequestsPage />
+                      : page === "payments" ? <PaymentRequestsPage onNavigate={navigate} />
                         : page === "withdrawals" ? <WithdrawalRequestsPage />
                           : page === "refunds" ? <RefundRequestsPage />
                             : page === "notifications" ? <NotificationsPage />
