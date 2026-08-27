@@ -108,7 +108,7 @@ export default function SuperAdminSettingsPage({
           </View>
           <View style={{ flex: 1 }}>
             <Text style={set.itemTitle}>SOS & Over-Speed Audio Siren</Text>
-            <Text style={set.itemSub}>Play high-priority chime on bus overspeed (>50 km/h) or SOS</Text>
+            <Text style={set.itemSub}>Play high-priority chime on bus overspeed (&gt;50 km/h) or SOS</Text>
           </View>
           <View style={[set.statusPill, { backgroundColor: soundAlerts ? "#ECFDF3" : "#F2F4F7" }]}>
             <Text style={[set.statusPillText, { color: soundAlerts ? COLORS.green : COLORS.muted }]}>

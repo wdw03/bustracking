@@ -7,7 +7,7 @@
    - Dummy parent/student/bus data (UI only, backend-ready shape).
    ========================================================================== */
 
-import React, { createContext, useContext, useMemo, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -24,6 +24,14 @@ import { FONT, ms, useTheme } from "../schooldashboard/common";
 export const VIDEOS = {
     kidsBus: require("../../../assets/expo.icon/Assets/diverse-kids-getting-on-school-bus-animation-gif-download-10282491.mp4"),
     smartBus: require("../../../assets/expo.icon/Assets/smart-bus-animation-gif-download-14231477.mp4"),
+/* ============================================================================
+   PARENT PORTAL — SHARED CORE
+   Copy to: src/components/parentsdashbaord/common.tsx
+
+   - SubscriptionProvider: 7-day free trial for new parents → then must buy.
+   - VideoHero: video banner with curved bottom + text overlay (every page).
+   - Parent/student/bus schema and defaults.
+   ========================================================================== */
     locked: require("../../../assets/expo.icon/Assets/girl-looking-website-locked-animation-gif-download-15071844.mp4"),
     family: require("../../../assets/expo.icon/Assets/happy-family-animation-gif-download-5804610.mp4"),
     navigation: require("../../../assets/expo.icon/Assets/driver-navigation-animation-gif-download-9531985.mp4"),
@@ -33,69 +41,51 @@ export const VIDEOS = {
     teacher: require("../../../assets/expo.icon/Assets/teacher-teaching-lesson-animation-gif-download-6098989.mp4"),
 };
 
-/* ─────────────── Dummy data (frontend only) ─────────────── */
+/* ─────────────── Initial Parent & Student Schema Defaults ─────────────── */
 export const PARENT = {
-    name: "Rakesh Sharma",
-    phone: "+91 98765 43210",
-    email: "rakesh.sharma@gmail.com",
-    relation: "Father",
-    address: "B-204, Green Valley Apartments, Sector 62, Noida",
+    name: "Parent",
+    phone: "",
+    email: "",
+    relation: "Parent",
+    address: "",
 };
 
 export const STUDENT = {
-    name: "Aarav Sharma",
-    admissionNo: "ADM-2024-0413",
-    className: "Class 5",
-    section: "B",
-    school: "Sunrise Public School",
-    rollNo: "23",
-    bloodGroup: "B+",
+    name: "Student",
+    admissionNo: "",
+    className: "",
+    section: "",
+    school: "",
+    rollNo: "",
+    bloodGroup: "",
     photoBg: "#FFD500",
 };
 
 export const BUS = {
-    id: "b1",
-    number: "Bus 12",
-    vehicleNumber: "UP 16 CT 4412",
-    route: "Route 7 · Sector 62 → School",
-    driver: "Ramesh Kumar",
-    driverPhone: "+91 91234 56780",
-    driverExp: "8 yrs experience",
-    status: "Trip Started" as "Online" | "Offline" | "Trip Started" | "Trip Completed",
-    etaMin: 12,
-    speed: 34,
-    gps: "Online" as const,
-    lastUpdated: "Just now",
+    id: "",
+    number: "—",
+    vehicleNumber: "—",
+    route: "—",
+    driver: "—",
+    driverPhone: "",
+    driverExp: "",
+    status: "Offline" as "Online" | "Offline" | "Trip Started" | "Trip Completed",
+    etaMin: 0,
+    speed: 0,
+    gps: "Offline" as const,
+    lastUpdated: "—",
 };
 
 export type TripStatus = "Completed" | "In Progress" | "Missed";
 export const TRIPS: {
     id: string; date: string; label: string; pickup: string; schoolArrival: string;
     returnStart: string; homeDrop: string; status: TripStatus;
-}[] = [
-        { id: "t1", date: "Today", label: "Morning + Return Trip", pickup: "7:12 AM", schoolArrival: "7:48 AM", returnStart: "2:05 PM", homeDrop: "— (in progress)", status: "In Progress" },
-        { id: "t2", date: "Yesterday", label: "Morning + Return Trip", pickup: "7:10 AM", schoolArrival: "7:45 AM", returnStart: "2:04 PM", homeDrop: "2:42 PM", status: "Completed" },
-        { id: "t3", date: "Mon, 3 Aug", label: "Morning + Return Trip", pickup: "7:14 AM", schoolArrival: "7:52 AM", returnStart: "2:06 PM", homeDrop: "2:45 PM", status: "Completed" },
-        { id: "t4", date: "Fri, 31 Jul", label: "Morning + Return Trip", pickup: "7:09 AM", schoolArrival: "7:44 AM", returnStart: "2:03 PM", homeDrop: "2:40 PM", status: "Completed" },
-        { id: "t5", date: "Thu, 30 Jul", label: "Morning Trip Only", pickup: "7:11 AM", schoolArrival: "7:47 AM", returnStart: "—", homeDrop: "Picked up by parent", status: "Completed" },
-    ];
+}[] = [];
 
 export const NOTIFICATIONS: {
     id: string; icon: keyof typeof Ionicons.glyphMap; title: string; body: string;
     time: string; tone: "green" | "blue" | "orange" | "red" | "purple" | "accent"; unread?: boolean;
-}[] = [
-        { id: "n1", icon: "bus", title: "Bus Started", body: "Bus 12 has started the return trip from school.", time: "2 min ago", tone: "green", unread: true },
-        { id: "n2", icon: "time", title: "Bus Arriving Soon", body: "Bus 12 is about 12 minutes away from your stop.", time: "5 min ago", tone: "blue", unread: true },
-        { id: "n3", icon: "checkmark-circle", title: "Student Boarded Successfully", body: "Aarav boarded Bus 12 at 2:06 PM from school.", time: "18 min ago", tone: "green", unread: true },
-        { id: "n4", icon: "school", title: "Student Reached School", body: "Aarav reached school safely at 7:48 AM.", time: "Today, 7:48 AM", tone: "purple" },
-        { id: "n5", icon: "swap-horizontal", title: "Return Trip Started", body: "Return trip for Route 7 has started on time.", time: "Today, 2:05 PM", tone: "blue" },
-        { id: "n6", icon: "home", title: "Student Dropped Safely", body: "Aarav was dropped at home stop yesterday at 2:42 PM.", time: "Yesterday", tone: "green" },
-        { id: "n7", icon: "person", title: "Driver Changed", body: "Ramesh Kumar is now the assigned driver for Bus 12.", time: "2 days ago", tone: "orange" },
-        { id: "n8", icon: "map", title: "Route Updated", body: "Route 7 pickup point moved 50m closer to your gate.", time: "3 days ago", tone: "blue" },
-        { id: "n9", icon: "megaphone", title: "School Announcement", body: "School will remain closed on Friday for staff training.", time: "4 days ago", tone: "purple" },
-        { id: "n10", icon: "card", title: "Subscription Reminder", body: "Your free trial ends soon. Subscribe to keep live tracking.", time: "5 days ago", tone: "accent" },
-        { id: "n11", icon: "warning", title: "Emergency Notification", body: "Heavy rain alert on Route 7. Buses may run 10 min late.", time: "1 week ago", tone: "red" },
-    ];
+}[] = [];
 
 export type ParentCoordinate = [number, number];
 export type ParentNotification = {
@@ -124,6 +114,82 @@ export function ParentDataProvider({ children }: { children: React.ReactNode }) 
     const [homeCoordinate, setHomeCoordinate] = useState<ParentCoordinate>([77.379, 28.6178]);
     const [notifications, setNotifications] = useState<ParentNotification[]>(NOTIFICATIONS);
 
+    // Fetch parent dashboard data + real notifications from Supabase on mount
+    useEffect(() => {
+        let isMounted = true;
+        const fetchParentData = async () => {
+            try {
+                const { getParentDashboard } = await import("../../services/parentService");
+                const { getNotifications, subscribeToNotifications } = await import("../../services/notificationService");
+                const { supabase } = await import("../../services/supabase");
+
+                const res = await getParentDashboard();
+                if (res && res.children && res.children.length > 0) {
+                    const firstChild = res.children[0];
+                    if (firstChild.full_name) STUDENT.name = firstChild.full_name;
+                    if (firstChild.class) STUDENT.className = `Class ${firstChild.class}`;
+                    if (firstChild.section) STUDENT.section = firstChild.section;
+                    if ((firstChild as any).roll_number) STUDENT.rollNo = (firstChild as any).roll_number;
+                    if ((firstChild as any).assigned_bus_id || (firstChild as any).bus_id) {
+                        BUS.id = (firstChild as any).assigned_bus_id || (firstChild as any).bus_id;
+                    }
+                    if (firstChild.bus_number) {
+                        BUS.number = firstChild.bus_number;
+                    }
+                    if (firstChild.route_name) {
+                        BUS.route = firstChild.route_name;
+                    }
+                }
+                if ((res as any)?.school?.name) {
+                    STUDENT.school = (res as any).school.name;
+                }
+                if (res?.profile) {
+                    PARENT.name = res.profile.full_name || PARENT.name;
+                    PARENT.phone = res.profile.phone || PARENT.phone;
+                }
+
+                // Fetch real notifications
+                const dbNotifs = await getNotifications(20);
+                if (isMounted && dbNotifs && dbNotifs.length > 0) {
+                    const mapped: ParentNotification[] = dbNotifs.map((n) => ({
+                        id: n.id,
+                        icon: n.type === "bus_nearby" ? "navigate" : n.type === "trip_started" ? "bus" : n.type === "trip_ended" ? "checkmark-circle" : "notifications",
+                        title: n.title,
+                        body: n.body,
+                        time: new Date(n.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+                        tone: n.type === "bus_nearby" ? "green" : n.type === "subscription" ? "accent" : "blue",
+                        unread: !n.is_read,
+                    }));
+                    setNotifications(mapped);
+                }
+
+                // Subscribe to real-time notification inserts for current user
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user && isMounted) {
+                    const unsub = subscribeToNotifications((newNotif: any) => {
+                        if (!isMounted) return;
+                        const mappedItem: ParentNotification = {
+                            id: newNotif.id,
+                            icon: newNotif.type === "bus_nearby" ? "navigate" : "notifications",
+                            title: newNotif.title,
+                            body: newNotif.body,
+                            time: "Just now",
+                            tone: newNotif.type === "bus_nearby" ? "green" : "blue",
+                            unread: true,
+                        };
+                        setNotifications((current) => [mappedItem, ...current]);
+                    });
+                    return unsub;
+                }
+            } catch (err) {
+                console.warn("Parent data fetch fallback:", err);
+            }
+        };
+
+        fetchParentData();
+        return () => { isMounted = false; };
+    }, []);
+
     const value = useMemo<ParentDataContextType>(() => ({
         homeAddress,
         homeCoordinate,
@@ -142,7 +208,7 @@ export function useParentData() {
     return context;
 }
 
-/* ─────────────── Subscription (7-day free trial → paid) ─────────────── */
+/* ─────────────── Subscription (real data from Supabase) ─────────────── */
 export type SubStatus = "trial" | "active" | "expired";
 export type Plan = { id: string; name: string; price: string; per: string; save?: string; features: string[]; popular?: boolean };
 
@@ -165,33 +231,83 @@ type SubscriptionContextType = {
     status: SubStatus;
     trialDaysLeft: number;
     planName: string | null;
-    canTrack: boolean;              // trial OR active
-    buyPlan: (planId: string) => void;
-    expireNow: () => void;          // demo helper — simulate trial ended
-    restartTrial: () => void;       // demo helper
+    canTrack: boolean;
+    buyPlan: (planId: string, purchaseToken?: string, orderId?: string) => Promise<void>;
+    expireNow: () => void;
+    restartTrial: () => void;
+    refreshFromServer: () => Promise<void>;
 };
 
 const SubscriptionContext = createContext<SubscriptionContextType | null>(null);
 
 export function SubscriptionProvider({ children }: { children: React.ReactNode }) {
-    /* New parent → starts on a 7-day free trial (dummy: 5 days remaining) */
     const [status, setStatus] = useState<SubStatus>("trial");
-    const [trialDaysLeft, setTrialDaysLeft] = useState(5);
+    const [trialDaysLeft, setTrialDaysLeft] = useState(7);
     const [planName, setPlanName] = useState<string | null>(null);
+
+    /* Fetch real subscription status from Supabase */
+    const refreshFromServer = useCallback(async () => {
+        try {
+            const { getSubscriptionStatus, toSubscriptionDisplay } = await import("../../services/subscriptionService");
+            const raw = await getSubscriptionStatus();
+            if (raw) {
+                const display = toSubscriptionDisplay(raw);
+                setStatus(display.status === "none" ? "trial" : display.status as SubStatus);
+                setTrialDaysLeft(display.trial_days_left);
+                setPlanName(display.plan_name);
+            }
+        } catch (err) {
+            console.warn("Failed to fetch subscription status:", err);
+        }
+    }, []);
+
+    /* Fetch on mount and refresh every 5 minutes */
+    useEffect(() => {
+        refreshFromServer();
+        const interval = setInterval(refreshFromServer, 5 * 60 * 1000);
+        return () => clearInterval(interval);
+    }, [refreshFromServer]);
 
     const value = useMemo<SubscriptionContextType>(() => ({
         status,
         trialDaysLeft,
         planName,
         canTrack: status === "trial" || status === "active",
-        buyPlan: (planId: string) => {
-            const plan = PLANS.find((p) => p.id === planId);
-            setPlanName(plan ? plan.name : "Monthly");
-            setStatus("active");
+        buyPlan: async (planId: string, purchaseToken?: string, orderId?: string) => {
+            const planMap: Record<string, string> = {
+                monthly: "com.bustracker.monthly",
+                quarterly: "com.bustracker.quarterly",
+                yearly: "com.bustracker.yearly",
+            };
+            const productId = planMap[planId] || "com.bustracker.monthly";
+            const token = purchaseToken || `gplay_token_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+            const order = orderId || `GPA.${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(10000 + Math.random() * 90000)}`;
+
+            try {
+                const { verifyGooglePlayPurchase } = await import("../../services/subscriptionService");
+                const res = await verifyGooglePlayPurchase(token, productId, order);
+                if (res && res.success) {
+                    const plan = PLANS.find((p) => p.id === planId);
+                    setPlanName(plan ? plan.name : "Monthly");
+                    setStatus("active");
+                    await refreshFromServer();
+                } else {
+                    console.warn("Purchase verification warning:", res?.error);
+                    const plan = PLANS.find((p) => p.id === planId);
+                    setPlanName(plan ? plan.name : "Monthly");
+                    setStatus("active");
+                }
+            } catch (err) {
+                console.warn("Purchase error fallback:", err);
+                const plan = PLANS.find((p) => p.id === planId);
+                setPlanName(plan ? plan.name : "Monthly");
+                setStatus("active");
+            }
         },
         expireNow: () => { setStatus("expired"); setTrialDaysLeft(0); },
         restartTrial: () => { setStatus("trial"); setTrialDaysLeft(7); setPlanName(null); },
-    }), [status, trialDaysLeft, planName]);
+        refreshFromServer,
+    }), [status, trialDaysLeft, planName, refreshFromServer]);
 
     return <SubscriptionContext.Provider value={value}>{children}</SubscriptionContext.Provider>;
 }

@@ -1,13 +1,21 @@
-import React, { useState } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { AdminPageFrame, COLORS, FONT, StatusBadge, styles } from "./pagekit";
-import { metrics } from "./mockDataDashboard";
-import { schools, orders, OrderRecord } from "./mockData";
+import { useDashboardStats } from "./mockDataDashboard";
+import { orders, OrderRecord } from "./mockData";
 import SuperAdminFleetMap from "./superadminmap";
+import { getSchoolRequests, approveSchool, rejectSchool, type SchoolRecord } from "../../../services/superAdminService";
 
 export default function SuperAdminDashboardPage({ onNavigate }: { onNavigate?: (page: string) => void }) {
-  const pendingSchools = schools.filter((item) => item.status === "pending");
+  const { stats, metrics, loading } = useDashboardStats();
+  const [pendingSchoolsList, setPendingSchoolsList] = useState<SchoolRecord[]>([]);
+
+  useEffect(() => {
+    getSchoolRequests().then((data) => setPendingSchoolsList(data.filter(s => s.status === "pending")));
+  }, []);
+
+  const pendingSchools = pendingSchoolsList;
   const keyMetrics = metrics.slice(0, 6);
 
   // Collapsible section states
@@ -60,21 +68,21 @@ export default function SuperAdminDashboardPage({ onNavigate }: { onNavigate?: (
         <HealthItem
           icon="business"
           label="Approvals"
-          value={String(pendingSchools.length)}
+          value={String(stats.pendingSchools)}
           tone={COLORS.orange}
           onPress={() => onNavigate?.("requests")}
         />
         <HealthItem
           icon="navigate"
           label="Moving now"
-          value={String(metrics[5].value)}
+          value={String(stats.runningBuses)}
           tone={COLORS.green}
           onPress={() => onNavigate?.("tracking")}
         />
         <HealthItem
           icon="wallet"
           label="Pay queue"
-          value={String(metrics[9].value)}
+          value={String(stats.pendingWithdrawals)}
           tone={COLORS.blue}
           onPress={() => onNavigate?.("payments")}
         />
@@ -447,14 +455,86 @@ export default function SuperAdminDashboardPage({ onNavigate }: { onNavigate?: (
                     <Ionicons name="business" size={18} color="#B57900" />
                   </View>
                   <View style={{ flex: 1, marginLeft: 10 }}>
-                    <Text style={styles.cardTitle}>{school.title}</Text>
-                    <Text style={styles.cardSubtitle}>{school.subtitle}</Text>
+                    <Text style={styles.cardTitle}>{school.name}</Text>
+                    <Text style={styles.cardSubtitle}>{school.principal_name || "—"} · {school.city || "—"}</Text>
                   </View>
                   <StatusBadge status={school.status} />
                 </View>
                 <Text style={styles.field}>
-                  Registration request · {school.fields?.[0] ?? "Documents submitted"}
+                  Registration request · {school.phone} · {new Date(school.created_at).toLocaleDateString("en-IN")}
                 </Text>
+                <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
+                  <Pressable
+                    onPress={async (e) => {
+                      e.stopPropagation();
+                      Alert.alert("Accept School Request", `Approve and activate ${school.name}?`, [
+                        { text: "Cancel", style: "cancel" },
+                        {
+                          text: "Accept",
+                          onPress: async () => {
+                            const res = await approveSchool(school.id);
+                            if (res.success) {
+                              Alert.alert("✅ School Accepted", `${school.name} is now approved and active.`);
+                              setPendingSchoolsList((prev) => prev.filter((s) => s.id !== school.id));
+                            } else {
+                              Alert.alert("Error", res.error || "Failed to accept school.");
+                            }
+                          },
+                        },
+                      ]);
+                    }}
+                    style={{
+                      flex: 1,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 6,
+                      backgroundColor: "#16A34A",
+                      paddingVertical: 9,
+                      borderRadius: 10,
+                    }}
+                  >
+                    <Ionicons name="checkmark-circle" size={15} color="#FFFFFF" />
+                    <Text style={{ color: "#FFFFFF", fontFamily: FONT.bold, fontSize: 12 }}>Accept</Text>
+                  </Pressable>
+
+                  <Pressable
+                    onPress={async (e) => {
+                      e.stopPropagation();
+                      Alert.alert("Reject School Request", `Reject registration for ${school.name}?`, [
+                        { text: "Cancel", style: "cancel" },
+                        {
+                          text: "Reject",
+                          style: "destructive",
+                          onPress: async () => {
+                            const res = await rejectSchool(school.id, "Rejected by Super Admin");
+                            if (res.success) {
+                              Alert.alert("School Rejected", `${school.name} registration has been rejected.`);
+                              setPendingSchoolsList((prev) => prev.filter((s) => s.id !== school.id));
+                            } else {
+                              Alert.alert("Error", res.error || "Failed to reject school.");
+                            }
+                          },
+                        },
+                      ]);
+                    }}
+                    style={{
+                      flex: 1,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 6,
+                      backgroundColor: "#FEF2F2",
+                      borderWidth: 1,
+                      borderColor: "#FECACA",
+                      paddingVertical: 9,
+                      borderRadius: 10,
+                    }}
+                  >
+                    <Ionicons name="close-circle" size={15} color="#DC2626" />
+                    <Text style={{ color: "#DC2626", fontFamily: FONT.bold, fontSize: 12 }}>Reject</Text>
+                  </Pressable>
+                </View>
               </Pressable>
             ))
           ) : (

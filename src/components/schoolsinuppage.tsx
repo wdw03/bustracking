@@ -8,6 +8,7 @@ import {
     Keyboard,
     KeyboardAvoidingView,
     Platform,
+    Alert,
     useWindowDimensions,
 } from "react-native";
 import Animated, {
@@ -27,7 +28,7 @@ import * as Haptics from "expo-haptics";
 import { VideoView, useVideoPlayer } from "expo-video";
 import TermsAndConditionsModal from "./termsandconditions";
 
-/* ─────────────────────────── Design Tokens ───────────────────────────
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Design Tokens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Same palette as the login / forgot-password / OTP / role pages. */
 const ACCENT = "#FFD60A";
 const ACCENT_SOFT = "#FFF6CC";
@@ -40,8 +41,8 @@ const BG_IDLE = "#F7F8FA";
 const SUCCESS = "#16A34A";
 const DANGER = "#DC2626";
 
-/* ─────────────────────────── Fonts ───────────────────────────
-   Premium pairing — Sora (display headings) + Inter (body).
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Fonts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   Premium pairing â€” Sora (display headings) + Inter (body).
    Already loaded in your root App.tsx (same as the login page). */
 const FONT = {
     light: "Inter-Light",
@@ -52,13 +53,13 @@ const FONT = {
     displayHeavy: "Sora-ExtraBold",
 };
 
-/* ─────────────────────────── Assets ───────────────────────────
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Assets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Adjust the relative path to match where you place this file.
    (This matches src/components/ inside your BusTracker project.) */
 const HERO_VIDEO = require("../../assets/expo.icon/Assets/school-animation-gif-download-7813556.mp4");
 
-/* ─────────────────────────── Steps ───────────────────────────
-   13 fields would force scrolling on one screen — a 4-step wizard keeps
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Steps â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   13 fields would force scrolling on one screen â€” a 4-step wizard keeps
    every field visible WITHOUT scrolling on any screen size, and users
    fill 3-4 short fields at a time (easiest possible data entry). */
 type FieldKey =
@@ -140,7 +141,7 @@ const STEPS: StepConfig[] = [
     },
 ];
 
-/* ─────────────────────────── Validation ─────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Validation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^[6-9]\d{9}$/;
 
@@ -166,7 +167,7 @@ function validateField(key: FieldKey, value: string, all: Record<FieldKey, strin
 export type SchoolSignupData = Record<FieldKey, string>;
 
 type SchoolSignupPageProps = {
-    /** Back arrow in the header — e.g. () => navigation.goBack() */
+    /** Back arrow in the header â€” e.g. () => navigation.goBack() */
     onBack?: () => void;
     /** Fires with ALL form data after the final submit succeeds */
     onSubmit?: (data: SchoolSignupData) => void;
@@ -179,7 +180,7 @@ const EMPTY: SchoolSignupData = {
     password: "", confirmPassword: "",
 };
 
-/* ═══════════════════════════ Ultra Premium Big Field ═══════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Ultra Premium Big Field â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 function Field({
     cfg, value, error, shakeTrigger, onChange, onFocusField, secureShown, onToggleSecure,
     inputRef, onSubmitEditing, isLast, ms,
@@ -236,7 +237,7 @@ function Field({
                 </Text>
                 {error ? (
                     <Text numberOfLines={1} style={{ fontSize: ms(11), color: DANGER, fontFamily: FONT.regular, flexShrink: 1 }}>
-                        {"· " + error}
+                        {"Â· " + error}
                     </Text>
                 ) : null}
             </View>
@@ -315,18 +316,18 @@ function Field({
     );
 }
 
-/* ═══════════════════════════ Page ═══════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Page â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 export default function SchoolSignupPage({ onBack, onSubmit }: SchoolSignupPageProps) {
     const insets = useSafeAreaInsets();
     const { width, height } = useWindowDimensions();
 
-    /* Responsive scale — auto-adjusts on small & big screens */
+    /* Responsive scale â€” auto-adjusts on small & big screens */
     const BASE = 390;
     const scale = Math.min(Math.max(width / BASE, 0.82), 1.15);
     const ms = useCallback((n: number, f = 0.35) => n + (n * scale - n) * (1 - f), [scale]);
     const isShort = height < 700;
 
-    /* Hero video sizing — compact so the form owns the screen */
+    /* Hero video sizing â€” compact so the form owns the screen */
     const BLOB_SIZE = Math.min(width * (isShort ? 0.3 : 0.38), 150);
 
     const player = useVideoPlayer(HERO_VIDEO, (p) => {
@@ -335,7 +336,7 @@ export default function SchoolSignupPage({ onBack, onSubmit }: SchoolSignupPageP
         p.play();
     });
 
-    /* ── Form state ── */
+    /* â”€â”€ Form state â”€â”€ */
     const [data, setData] = useState<SchoolSignupData>(EMPTY);
     const [errors, setErrors] = useState<Partial<Record<FieldKey, string | null>>>({});
     const [shakeTriggers, setShakeTriggers] = useState<Partial<Record<FieldKey, number>>>({});
@@ -356,7 +357,7 @@ export default function SchoolSignupPage({ onBack, onSubmit }: SchoolSignupPageP
 
     useEffect(() => () => { if (submitTimerRef.current) clearTimeout(submitTimerRef.current); }, []);
 
-    /* ── Keyboard-aware hero collapse (focus-driven — zero jitter) ── */
+    /* â”€â”€ Keyboard-aware hero collapse (focus-driven â€” zero jitter) â”€â”€ */
     const headerAnim = useSharedValue(0);
     const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -392,7 +393,7 @@ export default function SchoolSignupPage({ onBack, onSubmit }: SchoolSignupPageP
         overflow: "hidden" as const,
     }));
 
-    /* ── Step transition (slide + fade) ── */
+    /* â”€â”€ Step transition (slide + fade) â”€â”€ */
     const stepAnim = useSharedValue(1);
     const stepDir = useSharedValue(1);
 
@@ -408,7 +409,7 @@ export default function SchoolSignupPage({ onBack, onSubmit }: SchoolSignupPageP
         transform: [{ translateX: interpolate(stepAnim.value, [0, 1], [stepDir.value * 46, 0]) }],
     }));
 
-    /* ── Button press ── */
+    /* â”€â”€ Button press â”€â”€ */
     const btnPress = useSharedValue(1);
     const btnStyle = useAnimatedStyle(() => ({
         transform: [{ scale: btnPress.value }],
@@ -423,7 +424,7 @@ export default function SchoolSignupPage({ onBack, onSubmit }: SchoolSignupPageP
         );
     };
 
-    /* ── Handlers ── */
+    /* â”€â”€ Handlers â”€â”€ */
     const setField = (key: FieldKey, raw: string) => {
         const isNumeric = key === "schoolPhone" || key === "adminMobile" || key === "postalCode";
         const v = isNumeric ? raw.replace(/[^0-9]/g, "") : raw;
@@ -472,7 +473,7 @@ export default function SchoolSignupPage({ onBack, onSubmit }: SchoolSignupPageP
         else goToStep(step - 1);
     };
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         if (submitting || submitted) return;
         if (!validateStep(step)) return;
         if (!termsAccepted) {
@@ -485,13 +486,35 @@ export default function SchoolSignupPage({ onBack, onSubmit }: SchoolSignupPageP
         setSubmitting(true);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-        // TODO: replace this timeout with your real "register school" API call
-        submitTimerRef.current = setTimeout(() => {
-            setSubmitting(false);
-            setSubmitted(true);
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            onSubmit?.(data); // navigate to your success page here
-        }, 1600);
+        try {
+            const phone = data.adminMobile || data.schoolPhone;
+            const { checkPhoneAuthorization, sendOtp } = await import("../services/authService");
+
+            // Check if phone number is already registered
+            const checkRes = await checkPhoneAuthorization(phone, "school");
+            if (!checkRes.success && (checkRes.code === "ALREADY_REGISTERED" || checkRes.error?.toLowerCase().includes("already registered"))) {
+                setSubmitting(false);
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                Alert.alert(
+                    "Account Already Exists",
+                    checkRes.error || "This mobile number is already registered in BusTracker. You cannot register the same number twice. Please log in directly."
+                );
+                return;
+            }
+
+            // Send OTP to admin mobile before proceeding to OTP screen
+            const otpResult = await sendOtp(phone);
+            if (!otpResult.success) {
+                console.warn("OTP send failed:", otpResult.error);
+            }
+        } catch (err) {
+            console.warn("School signup validation error:", err);
+        }
+
+        setSubmitting(false);
+        setSubmitted(true);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        onSubmit?.(data);
     };
 
     /* Focus chain: pressing "next" on the keyboard jumps to the next field */
@@ -523,7 +546,7 @@ export default function SchoolSignupPage({ onBack, onSubmit }: SchoolSignupPageP
 
     return (
         <View style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
-            {/* ── Curved background sweeps ── */}
+            {/* â”€â”€ Curved background sweeps â”€â”€ */}
             <View
                 pointerEvents="none"
                 style={{
@@ -564,7 +587,7 @@ export default function SchoolSignupPage({ onBack, onSubmit }: SchoolSignupPageP
                     showsVerticalScrollIndicator={false}
                     bounces={false}
                 >
-                    {/* ── Header row: back button + progress bar + step count ── */}
+                    {/* â”€â”€ Header row: back button + progress bar + step count â”€â”€ */}
                     <View style={{ flexDirection: "row", alignItems: "center", gap: ms(12) }}>
                         <Pressable
                             onPress={handleBackStep}
@@ -606,7 +629,7 @@ export default function SchoolSignupPage({ onBack, onSubmit }: SchoolSignupPageP
                         </View>
                     </View>
 
-                    {/* ── Hero video in curved blob — collapses when typing ── */}
+                    {/* â”€â”€ Hero video in curved blob â€” collapses when typing â”€â”€ */}
                     <Animated.View style={[heroStyle, { alignItems: "center", marginTop: ms(8) }]}>
                         <View style={{ width: BLOB_SIZE, height: BLOB_SIZE, alignItems: "center", justifyContent: "center" }}>
                             {/* Watermark word behind the blob */}
@@ -663,7 +686,7 @@ export default function SchoolSignupPage({ onBack, onSubmit }: SchoolSignupPageP
                         </View>
                     </Animated.View>
 
-                    {/* ── Title with curved brush-stroke highlight ── */}
+                    {/* â”€â”€ Title with curved brush-stroke highlight â”€â”€ */}
                     <View style={{ alignItems: "center", marginTop: ms(6) }}>
                         <View style={{ alignItems: "center", justifyContent: "center" }}>
                             <View
@@ -688,12 +711,12 @@ export default function SchoolSignupPage({ onBack, onSubmit }: SchoolSignupPageP
                                 {STEPS[step].title}
                             </Text>
                             <Text style={{ fontSize: ms(12), color: FAINT, fontFamily: FONT.regular }}>
-                                {"— " + STEPS[step].subtitle}
+                                {"â€” " + STEPS[step].subtitle}
                             </Text>
                         </View>
                     </View>
 
-                    {/* ── Step fields (slide + fade between steps) ── */}
+                    {/* â”€â”€ Step fields (slide + fade between steps) â”€â”€ */}
                     <Animated.View style={[stepStyle, { marginTop: ms(12), gap: ms(10), flexGrow: 1 }]}>
                         {rows.map((row, rIdx) =>
                             row.length === 2 ? (
@@ -748,7 +771,7 @@ export default function SchoolSignupPage({ onBack, onSubmit }: SchoolSignupPageP
                             ),
                         )}
 
-                        {/* ── Terms & Conditions (final step only) ── */}
+                        {/* â”€â”€ Terms & Conditions (final step only) â”€â”€ */}
                         {isLastStep && (
                             <Pressable
                                 onPress={() => {
@@ -813,7 +836,7 @@ export default function SchoolSignupPage({ onBack, onSubmit }: SchoolSignupPageP
                         )}
                     </Animated.View>
 
-                    {/* ── Bottom action button — Next / Submit ── */}
+                    {/* â”€â”€ Bottom action button â€” Next / Submit â”€â”€ */}
                     <Animated.View style={[btnStyle, { marginTop: ms(12) }]}>
                         <Pressable
                             onPressIn={() => { btnPress.value = withSpring(0.97, { damping: 20, stiffness: 300 }); }}
@@ -842,7 +865,7 @@ export default function SchoolSignupPage({ onBack, onSubmit }: SchoolSignupPageP
                                 </>
                             ) : submitting ? (
                                 <Text style={{ fontSize: ms(15), fontFamily: FONT.display, color: INK }}>
-                                    Submitting…
+                                    Submittingâ€¦
                                 </Text>
                             ) : (
                                 <>
@@ -866,7 +889,7 @@ export default function SchoolSignupPage({ onBack, onSubmit }: SchoolSignupPageP
                         </Pressable>
                     </Animated.View>
 
-                    {/* ── Step dots ── */}
+                    {/* â”€â”€ Step dots â”€â”€ */}
                     <View style={{ flexDirection: "row", justifyContent: "center", gap: 6, marginTop: ms(10) }}>
                         {STEPS.map((_, i) => (
                             <View

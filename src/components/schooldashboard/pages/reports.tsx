@@ -16,13 +16,13 @@ import {
 } from "../common";
 
 const DAILY = [
-    { day: "Mon", trips: 14 }, { day: "Tue", trips: 14 }, { day: "Wed", trips: 12 },
-    { day: "Thu", trips: 14 }, { day: "Fri", trips: 13 }, { day: "Sat", trips: 8 }, { day: "Sun", trips: 0 },
+    { day: "Mon", trips: 0 }, { day: "Tue", trips: 0 }, { day: "Wed", trips: 0 },
+    { day: "Thu", trips: 0 }, { day: "Fri", trips: 0 }, { day: "Sat", trips: 0 }, { day: "Sun", trips: 0 },
 ];
 
 const MONTHLY = [
-    { m: "Sep", trips: 296 }, { m: "Oct", trips: 312 }, { m: "Nov", trips: 288 },
-    { m: "Dec", trips: 214 }, { m: "Jan", trips: 324 },
+    { m: "Jan", trips: 0 }, { m: "Feb", trips: 0 }, { m: "Mar", trips: 0 },
+    { m: "Apr", trips: 0 }, { m: "May", trips: 0 },
 ];
 
 export default function ReportsPage({ onBack }: { onBack: () => void }) {

@@ -1,9 +1,16 @@
 /* ============================================================================
-   PARENT PORTAL — SUBSCRIPTION (7-day free trial → paid plans)
-   Copy to: src/components/parentsdashbaord/pages/subscriptionparents.tsx
+   PARENT PORTAL — SUBSCRIPTION (7-day free trial → Google Play paid plans)
+   Path: src/components/parentsdashbaord/pages/subscriptionparents.tsx
+   
+   REAL Google Play Billing via react-native-iap:
+   1. initIAP() connects to Google Play Billing on mount
+   2. requestPurchase() opens Google Play purchase sheet
+   3. Purchase token sent to google-play-webhook Edge Function
+   4. Server verifies with Google Play Developer API
+   5. Subscription activated in DB
    ========================================================================== */
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -12,30 +19,51 @@ import {
     Chip, FONT, PLANS, PageHeader, Press, VIDEOS, VideoHero,
     ms, useSubscription, useTheme,
 } from "../common";
+import { initIAP, requestPurchase, type PlanId } from "../../../services/paymentService";
 
 export default function SubscriptionParentsPage({ onBack }: { onBack: () => void }) {
     const insets = useSafeAreaInsets();
     const { INK, MUTED, FAINT, BORDER, CARD_BG, PAGE_BG, ACCENT, ACCENT_DEEP, ACCENT_SOFT, GREEN, GREEN_SOFT, BLUE, BLUE_SOFT, RED, RED_SOFT, isDark } = useTheme();
     const sub = useSubscription();
     const [selected, setSelected] = useState("quarterly");
-    const [paymentMethod, setPaymentMethod] = useState<"googlePay" | "upi">("googlePay");
     const [processing, setProcessing] = useState(false);
     const [paymentReference, setPaymentReference] = useState<string | null>(null);
 
-    const buy = () => {
+    // Initialize Google Play Billing on mount
+    useEffect(() => {
+        initIAP().catch(() => {});
+    }, []);
+
+    const buy = async () => {
         if (processing) return;
         setProcessing(true);
         setPaymentReference(null);
 
-        // Frontend-only checkout simulation. Replace this timer with the real
-        // provider flow after a payment backend is available.
-        setTimeout(() => {
-            const ref = `${paymentMethod === "googlePay" ? "GPAY" : "UPI"}-${Date.now().toString().slice(-8)}`;
-            sub.buyPlan(selected);
-            setPaymentReference(ref);
+        try {
+            // 1. Open Google Play purchase sheet
+            const purchase = await requestPurchase(selected as PlanId);
+
+            if (!purchase.success) {
+                if (purchase.error !== "Purchase cancelled by user.") {
+                    Alert.alert("Payment Failed", purchase.error || "Could not complete purchase.");
+                }
+                return;
+            }
+
+            // 2. Verify purchase on server + activate subscription
+            await sub.buyPlan(selected, purchase.purchaseToken, purchase.orderId);
+
+            setPaymentReference(purchase.orderId || `GPA-${Date.now().toString().slice(-8)}`);
+            Alert.alert(
+                "✅ Subscription Activated!",
+                "Your Google Play payment was verified server-side and live tracking is now active!",
+                [{ text: "Great!" }]
+            );
+        } catch (e: any) {
+            Alert.alert("Payment Error", e?.message || "Failed to activate subscription. Please try again.");
+        } finally {
             setProcessing(false);
-            Alert.alert("Subscription Activated", "Your selected plan is now active and live tracking is unlocked.", [{ text: "Great!" }]);
-        }, 900);
+        }
     };
 
     const statusChip =
@@ -136,35 +164,13 @@ export default function SubscriptionParentsPage({ onBack }: { onBack: () => void
                     })}
                 </View>
 
-                {/* Payment method */}
-                <Text style={{ fontFamily: FONT.display, fontSize: ms(15), color: INK, marginTop: ms(20), marginBottom: ms(10) }}>
-                    Choose Payment Method
-                </Text>
-                <View style={{ gap: ms(9) }}>
-                    {([
-                        { id: "googlePay" as const, title: "Google Pay", subtitle: "Fast checkout with your saved payment method", icon: "logo-google" as const, color: "#4285F4", soft: "#EAF2FF" },
-                        { id: "upi" as const, title: "UPI", subtitle: "Pay with any UPI app", icon: "flash" as const, color: ACCENT_DEEP, soft: ACCENT_SOFT },
-                    ]).map((method) => {
-                        const active = paymentMethod === method.id;
-                        return (
-                            <Press key={method.id} onPress={() => setPaymentMethod(method.id)} style={{
-                                flexDirection: "row", alignItems: "center", gap: ms(11), padding: ms(13),
-                                borderRadius: ms(17), borderWidth: 1.5, borderColor: active ? method.color : BORDER,
-                                backgroundColor: active ? method.soft : CARD_BG,
-                            }}>
-                                <View style={{ width: ms(40), height: ms(40), borderRadius: ms(13), backgroundColor: active ? method.color : method.soft, alignItems: "center", justifyContent: "center" }}>
-                                    <Ionicons name={method.icon} size={ms(19)} color={active ? "#FFFFFF" : method.color} />
-                                </View>
-                                <View style={{ flex: 1 }}>
-                                    <Text style={{ fontFamily: FONT.display, fontSize: ms(13), color: INK }}>{method.title}</Text>
-                                    <Text style={{ fontFamily: FONT.regular, fontSize: ms(11), color: MUTED, marginTop: 2 }}>{method.subtitle}</Text>
-                                </View>
-                                <View style={{ width: ms(21), height: ms(21), borderRadius: 99, borderWidth: 2, borderColor: active ? method.color : FAINT, alignItems: "center", justifyContent: "center" }}>
-                                    {active ? <View style={{ width: ms(11), height: ms(11), borderRadius: 99, backgroundColor: method.color }} /> : null}
-                                </View>
-                            </Press>
-                        );
-                    })}
+                {/* Google Play payment info */}
+                <View style={{ marginTop: ms(16), flexDirection: "row", alignItems: "center", gap: ms(10), backgroundColor: isDark ? "#1F2937" : "#F8F9FB", borderRadius: ms(16), padding: ms(13) }}>
+                    <Ionicons name="logo-google" size={ms(22)} color="#4285F4" />
+                    <View style={{ flex: 1 }}>
+                        <Text style={{ fontFamily: FONT.semibold, fontSize: ms(12.5), color: INK }}>Google Play Billing</Text>
+                        <Text style={{ fontFamily: FONT.regular, fontSize: ms(11), color: MUTED, marginTop: 2 }}>Payment processed securely by Google Play Store. Cancel anytime from Play Store settings.</Text>
+                    </View>
                 </View>
 
                 {paymentReference ? (
@@ -172,7 +178,7 @@ export default function SubscriptionParentsPage({ onBack }: { onBack: () => void
                         <Ionicons name="checkmark-circle" size={ms(22)} color={GREEN} />
                         <View style={{ flex: 1 }}>
                             <Text style={{ fontFamily: FONT.display, fontSize: ms(12.5), color: INK }}>Payment completed</Text>
-                            <Text style={{ fontFamily: FONT.regular, fontSize: ms(10.5), color: MUTED, marginTop: 2 }}>Reference: {paymentReference}</Text>
+                            <Text style={{ fontFamily: FONT.regular, fontSize: ms(10.5), color: MUTED, marginTop: 2 }}>Order ID: {paymentReference}</Text>
                         </View>
                     </View>
                 ) : null}
@@ -182,13 +188,13 @@ export default function SubscriptionParentsPage({ onBack }: { onBack: () => void
                     marginTop: ms(16), flexDirection: "row", alignItems: "center", justifyContent: "center",
                     gap: ms(8), backgroundColor: processing ? "#E5E7EB" : ACCENT, borderRadius: ms(18), paddingVertical: ms(15),
                 }}>
-                    {processing ? <ActivityIndicator size="small" color={INK} /> : <Ionicons name={paymentMethod === "googlePay" ? "logo-google" : "flash"} size={ms(18)} color="#111827" />}
+                    {processing ? <ActivityIndicator size="small" color={INK} /> : <Ionicons name="logo-google" size={ms(18)} color="#111827" />}
                     <Text style={{ fontFamily: FONT.display, fontSize: ms(15), color: "#111827" }}>
-                        {processing ? "Preparing secure checkout..." : sub.status === "active" ? "Change Plan" : `Continue with ${paymentMethod === "googlePay" ? "Google Pay" : "UPI"}`}
+                        {processing ? "Opening Google Play..." : sub.status === "active" ? "Change Plan" : "Subscribe with Google Play"}
                     </Text>
                 </Press>
                 <Text style={{ fontFamily: FONT.regular, fontSize: ms(11), color: FAINT, textAlign: "center", marginTop: ms(10) }}>
-                    Secure payment · Cancel anytime · Instant activation
+                    Secure payment via Google Play · Cancel anytime · Instant activation
                 </Text>
 
             </ScrollView>

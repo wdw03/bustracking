@@ -22,6 +22,8 @@ const FONT = {
 };
 
 import { VideoView, useVideoPlayer } from "expo-video";
+import { useAuth } from "../../../contexts/AuthContext";
+import { supabase } from "../../../services/supabase";
 
 const { width } = Dimensions.get("window");
 const ms = (s: number) => Math.round((width / 390) * s);
@@ -105,9 +107,33 @@ function Field({
 
 export default function PersonalDetail({ onBack }: { onBack?: () => void }) {
     const insets = useSafeAreaInsets();
+    const { profile } = useAuth();
     const [editing, setEditing] = useState(false);
     const [data, setData] = useState(INITIAL);
     const [saved, setSaved] = useState(false);
+
+    // Fetch live driver details from Supabase on mount
+    React.useEffect(() => {
+        let isMounted = true;
+        (async () => {
+            try {
+                const { getDriverDashboard } = await import("../../../services/driverService");
+                const dash = await getDriverDashboard();
+                if (isMounted && dash) {
+                    setData((d) => ({
+                        ...d,
+                        name: dash.profile?.full_name || profile?.full_name || d.name,
+                        phone: dash.profile?.phone || profile?.phone || d.phone,
+                        license: dash.driver?.license_number || d.license,
+                        experience: `${(dash.driver as any)?.experience_years || 5} years`,
+                    }));
+                }
+            } catch (err) {
+                console.warn("Personal details fetch fallback:", err);
+            }
+        })();
+        return () => { isMounted = false; };
+    }, [profile]);
 
     const profilePlayer = useVideoPlayer(PROFILE_VIDEO, (p) => {
         p.loop = true;
@@ -117,9 +143,26 @@ export default function PersonalDetail({ onBack }: { onBack?: () => void }) {
 
     const set = (k: keyof typeof INITIAL) => (v: string) => setData((d) => ({ ...d, [k]: v }));
 
-    const toggleEdit = () => {
+    const toggleEdit = async () => {
         Haptics.selectionAsync();
         if (editing) {
+            // Save updates to Supabase
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    await supabase.from("profiles").update({
+                        full_name: data.name,
+                        updated_at: new Date().toISOString(),
+                    }).eq("id", user.id);
+
+                    await supabase.from("drivers").update({
+                        license_number: data.license,
+                        updated_at: new Date().toISOString(),
+                    }).eq("user_id", user.id);
+                }
+            } catch (e) {
+                console.warn("Save driver details error:", e);
+            }
             setSaved(true);
             setTimeout(() => setSaved(false), 1800);
         }

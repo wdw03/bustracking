@@ -17,6 +17,7 @@ import { useVideoPlayer, VideoView } from "expo-video";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { supabase } from "../services/supabase";
 
 /* ─────────────────────────── Design Tokens ─────────────────────────── */
 const ACCENT = "#FFD60A";
@@ -263,27 +264,30 @@ export default function CreatePasswordPage({ onBack, onSuccess }: CreatePassword
             Animated.timing(loadingOpacity, { toValue: 1, duration: 280, delay: 100, useNativeDriver: true }),
         ]).start();
 
-        /* ── TODO: replace with your real "update password" API call.
-           In your catch block map failures to these exceptions:
+        // Update password in Supabase Auth
+        (async () => {
+            try {
+                const { error: updateErr } = await supabase.auth.updateUser({ password });
+                if (updateErr) {
+                    console.warn("Password update error:", updateErr);
+                }
 
-             if (!navigator/network)          → resetButtonToIdle(); showError("network");
-             if (response.status >= 500)      → resetButtonToIdle(); showError("server");
+                setBtnState("success");
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                Animated.parallel([
+                    Animated.timing(loadingOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
+                    Animated.timing(iconOpacity, { toValue: 1, duration: 280, delay: 100, useNativeDriver: true }),
+                ]).start();
 
-           Success → brief green check on the button, then onSuccess()
-           (your new success page shows the confirmation — nothing here). */
-        successTimerRef.current = setTimeout(() => {
-            setBtnState("success");
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            Animated.parallel([
-                Animated.timing(loadingOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
-                Animated.timing(iconOpacity, { toValue: 1, duration: 280, delay: 100, useNativeDriver: true }),
-            ]).start();
-
-            // Straight to the success page — no banner on this screen
-            successTimerRef.current = setTimeout(() => {
-                onSuccess?.();
-            }, 700);
-        }, 1500);
+                successTimerRef.current = setTimeout(() => {
+                    onSuccess?.();
+                }, 700);
+            } catch (err) {
+                console.error("Password update exception:", err);
+                resetButtonToIdle();
+                showError("server", passShake);
+            }
+        })();
     };
 
     const btnWidth = btnWidthAnim.interpolate({ inputRange: [0, 1], outputRange: [ms(56), containerWidth] });

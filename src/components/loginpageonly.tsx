@@ -5,6 +5,7 @@ import {
     TextInput,
     Pressable,
     ActivityIndicator,
+    Alert,
     Platform,
     Keyboard,
     ScrollView,
@@ -29,6 +30,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import TermsAndConditionsModal from "./termsandconditions";
+import { useAuth } from "@/contexts/AuthContext";
 
 /* ─────────────────────────── Design Tokens ─────────────────────────── */
 const ACCENT = "#FFD60A";
@@ -52,20 +54,9 @@ const FONT = {
     displayHeavy: "Sora-ExtraBold",
 };
 
-/* ── DEMO ONLY — replace with your real login API. */
-const DEMO_ACCOUNTS: Record<string, string> = {
-    "9876543210": "1234",
-    "8789968980": "1234",
-    "9102765934": "1234",
-    "9810839381": "1234",
-    "9826751348": "1234",
-};
-
-// Frontend-only credential store used by the demo flows. A real deployment
-// should replace this with the authentication API/database.
-export const setDemoAccountPassword = (phone: string, password: string) => {
-    DEMO_ACCOUNTS[phone] = password;
-};
+/* ── Supabase Auth login — Phone OTP only.
+   Flow: enter phone → tap login → OTP sent → enter OTP → verify → navigate.
+   No hardcoded credentials. All auth goes through Supabase. */
 
 type SinuploginProps = {
     onSignUp?: () => void;
@@ -76,6 +67,11 @@ type SinuploginProps = {
 export default function Sinuplogin({ onSignUp, onLoginSuccess, onForgotPassword }: SinuploginProps) {
     const insets = useSafeAreaInsets();
     const { width, height } = useWindowDimensions();
+    const { sendOtp, login } = useAuth();
+
+    /* ── Login mode: "phone" = enter phone → send OTP, "otp" = enter OTP → verify ── */
+    const [loginMode, setLoginMode] = useState<"phone" | "otp">("phone");
+    const [otpSent, setOtpSent] = useState(false);
 
     /* ── Responsive scale ── */
     const ms = useCallback(
@@ -367,29 +363,39 @@ export default function Sinuplogin({ onSignUp, onLoginSuccess, onForgotPassword 
         textOpacity.value = withTiming(0, { duration: 180 });
         loadingOpacity.value = withDelay(100, withTiming(1, { duration: 280 }));
 
-        successTimerRef.current = setTimeout(() => {
-            const registeredPassword = DEMO_ACCOUNTS[phoneNumber];
+        successTimerRef.current = setTimeout(async () => {
+            try {
+                // Authenticate directly with Supabase via phone and password
+                const result = await login(phoneNumber, password);
+                
+                if (!result.success) {
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                    resetButtonToIdle();
+                    if (result.error && (result.error.includes("pending approval") || result.error.includes("rejected"))) {
+                        Alert.alert("School Registration", result.error);
+                    } else {
+                        shake(passwordShake);
+                        showLoginError("wrongPassword");
+                    }
+                    return;
+                }
 
-            if (registeredPassword === undefined) {
+                // Login success!
+                setBtnState("success");
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                loadingOpacity.value = withTiming(0, { duration: 180 });
+                iconOpacity.value = withDelay(100, withTiming(1, { duration: 280 }));
+                // Small delay to show success animation, then navigate
+                successTimerRef.current = setTimeout(() => {
+                    onLoginSuccess?.(phoneNumber);
+                }, 600);
+            } catch (err) {
+                console.error("Login error:", err);
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
                 resetButtonToIdle();
                 showLoginError("notFound");
-                return;
             }
-            if (password !== registeredPassword) {
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-                resetButtonToIdle();
-                shake(passwordShake);
-                showLoginError("wrongPassword");
-                return;
-            }
-
-            setBtnState("success");
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            loadingOpacity.value = withTiming(0, { duration: 180 });
-            iconOpacity.value = withDelay(100, withTiming(1, { duration: 280 }));
-            onLoginSuccess?.(phoneNumber);
-        }, 1800);
+        }, 600);
     };
 
     /* ── Static styles ��─ */

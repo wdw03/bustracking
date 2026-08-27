@@ -20,7 +20,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "softwareKeyboardLayoutMode": "resize",
-      "package": "com.anonymous.BusTracker"
+      "package": "com.bustracker.app"
     },
     "web": {
       "output": "static",

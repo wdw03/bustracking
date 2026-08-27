@@ -49,7 +49,7 @@ function SchoolDashboardContent({ onLogout }: { onLogout?: () => void }) {
     const [history, setHistory] = useState<PageKey[]>(["home"]);
     const page = history[history.length - 1];
     const [tab, setTab] = useState<Tab>("home");
-    const { buses, drivers, students, parents, isLoading } = useSchoolData();
+    const { schoolName, buses, drivers, students, parents, isLoading } = useSchoolData();
     const [focusedBusId, setFocusedBusId] = useState<string | null>(null);
     const [dashboardQuery, setDashboardQuery] = useState("");
 
@@ -242,7 +242,7 @@ function SchoolDashboardContent({ onLogout }: { onLogout?: () => void }) {
                     <View style={{ flex: 1 }}>
                         <Text style={{ fontFamily: FONT.semibold, fontSize: ms(10), color: "#8B7300", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>{currentDate}</Text>
                         <Text style={{ fontFamily: FONT.displayHeavy, fontSize: ms(17), color: INK }} numberOfLines={1}>Good Morning, Admin!</Text>
-                        <Text style={{ fontFamily: FONT.regular, fontSize: ms(10.5), color: "#6B5900", marginTop: 2 }} numberOfLines={1}>{SCHOOL.name}</Text>
+                        <Text style={{ fontFamily: FONT.regular, fontSize: ms(10.5), color: "#6B5900", marginTop: 2 }} numberOfLines={1}>{schoolName || "School Dashboard"}</Text>
                     </View>
                     <Press onPress={() => go("subscription")}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: CARD_BG, borderRadius: 999, paddingHorizontal: ms(8), paddingVertical: ms(6), shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 3, shadowOffset: { width: 0, height: 2 } }}>

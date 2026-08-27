@@ -15,6 +15,8 @@ export type AdminRecord = {
     email?: string;
     address?: string;
     details?: Array<{ label: string; value: string; icon?: IconName }>;
+    onApprove?: () => void;
+    onReject?: () => void;
 };
 export type Metric = { label: string; value: string | number; icon: IconName; color?: string; note?: string };
 
@@ -456,6 +458,32 @@ export function RecordCard({
                 </Text>
             ))}
             <View style={styles.cardActions}>
+                {record.onApprove && record.status === "pending" ? (
+                    <Pressable
+                        disabled={busy}
+                        onPress={(e) => {
+                            e.stopPropagation();
+                            record.onApprove?.();
+                        }}
+                        style={[styles.outline, { borderColor: `${COLORS.green}88`, backgroundColor: "#F0FDF4" }]}
+                    >
+                        <Ionicons name="checkmark-circle-outline" size={15} color={COLORS.green} />
+                        <Text style={[styles.outlineText, { color: COLORS.green, fontFamily: FONT.bold }]}>Approve</Text>
+                    </Pressable>
+                ) : null}
+                {record.onReject && record.status === "pending" ? (
+                    <Pressable
+                        disabled={busy}
+                        onPress={(e) => {
+                            e.stopPropagation();
+                            record.onReject?.();
+                        }}
+                        style={[styles.outline, { borderColor: `${COLORS.red}88`, backgroundColor: "#FEF2F2" }]}
+                    >
+                        <Ionicons name="close-circle-outline" size={15} color={COLORS.red} />
+                        <Text style={[styles.outlineText, { color: COLORS.red, fontFamily: FONT.bold }]}>Reject</Text>
+                    </Pressable>
+                ) : null}
                 <Pressable
                     onPress={(e) => {
                         e.stopPropagation();
@@ -566,6 +594,7 @@ export function EntityPage({
     searchPlaceholder,
     metrics = [],
     actionLabel = "Add record",
+    onAction,
     workflow = "access",
     schoolNames = [],
     onNavigate,
@@ -577,11 +606,14 @@ export function EntityPage({
     searchPlaceholder?: string;
     metrics?: Metric[];
     actionLabel?: string;
+    onAction?: () => void;
     workflow?: "access" | "payment";
     schoolNames?: string[];
     onNavigate?: (page: string) => void;
 }) {
     const [records, setRecords] = useState(seed);
+    // Sync records when seed changes (e.g. after async fetch from Supabase)
+    useEffect(() => { setRecords(seed); }, [seed]);
     const [query, setQuery] = useState("");
     const [filter, setFilter] = useState("All");
     const [schoolFilter, setSchoolFilter] = useState("All Schools");
@@ -679,7 +711,7 @@ export function EntityPage({
             activeFilter={filter}
             onFilter={setFilter}
             actionLabel={actionLabel}
-            onAction={addRecord}
+            onAction={onAction ?? addRecord}
             onMetricPress={
                 onNavigate
                     ? (m) => {
@@ -846,6 +878,32 @@ export function EntityPage({
                         </ScrollView>
 
                         <View style={styles.modalFooterActions}>
+                            {selected?.onApprove && selected.status === "pending" ? (
+                                <Pressable
+                                    onPress={() => {
+                                        const fn = selected.onApprove;
+                                        setSelected(null);
+                                        fn?.();
+                                    }}
+                                    style={[styles.action, { flex: 1, backgroundColor: COLORS.green, justifyContent: "center", minHeight: 44, borderRadius: 12 }]}
+                                >
+                                    <Ionicons name="checkmark-circle" size={16} color="#FFFFFF" />
+                                    <Text style={[styles.actionText, { color: "#FFFFFF", fontSize: 12 }]}>Approve</Text>
+                                </Pressable>
+                            ) : null}
+                            {selected?.onReject && selected.status === "pending" ? (
+                                <Pressable
+                                    onPress={() => {
+                                        const fn = selected.onReject;
+                                        setSelected(null);
+                                        fn?.();
+                                    }}
+                                    style={[styles.action, { flex: 1, backgroundColor: COLORS.red, justifyContent: "center", minHeight: 44, borderRadius: 12 }]}
+                                >
+                                    <Ionicons name="close-circle" size={16} color="#FFFFFF" />
+                                    <Text style={[styles.actionText, { color: "#FFFFFF", fontSize: 12 }]}>Reject</Text>
+                                </Pressable>
+                            ) : null}
                             <Pressable
                                 onPress={() => {
                                     const target = selected;
@@ -857,31 +915,33 @@ export function EntityPage({
                                 <Ionicons name="create-outline" size={16} color={COLORS.ink} />
                                 <Text style={[styles.outlineText, { fontSize: 12 }]}>Edit Record</Text>
                             </Pressable>
-                            <Pressable
-                                onPress={() => {
-                                    if (selected) performToggle(selected);
-                                    setSelected(null);
-                                }}
-                                style={[
-                                    styles.action,
-                                    {
-                                        flex: 1,
-                                        justifyContent: "center",
-                                        minHeight: 44,
-                                        borderRadius: 12,
-                                        backgroundColor: selected?.status === "blocked" ? COLORS.green : COLORS.navy,
-                                    },
-                                ]}
-                            >
-                                <Ionicons
-                                    name={selected?.status === "blocked" ? "lock-open" : "ban"}
-                                    size={16}
-                                    color="#FFFFFF"
-                                />
-                                <Text style={[styles.actionText, { color: "#FFFFFF", fontSize: 12 }]}>
-                                    {selected?.status === "blocked" ? "Unblock Access" : "Block Access"}
-                                </Text>
-                            </Pressable>
+                            {!selected?.onApprove && !selected?.onReject ? (
+                                <Pressable
+                                    onPress={() => {
+                                        if (selected) performToggle(selected);
+                                        setSelected(null);
+                                    }}
+                                    style={[
+                                        styles.action,
+                                        {
+                                            flex: 1,
+                                            justifyContent: "center",
+                                            minHeight: 44,
+                                            borderRadius: 12,
+                                            backgroundColor: selected?.status === "blocked" ? COLORS.green : COLORS.navy,
+                                        },
+                                    ]}
+                                >
+                                    <Ionicons
+                                        name={selected?.status === "blocked" ? "lock-open" : "ban"}
+                                        size={16}
+                                        color="#FFFFFF"
+                                    />
+                                    <Text style={[styles.actionText, { color: "#FFFFFF", fontSize: 12 }]}>
+                                        {selected?.status === "blocked" ? "Unblock Access" : "Block Access"}
+                                    </Text>
+                                </Pressable>
+                            ) : null}
                         </View>
                     </View>
                 </View>
@@ -1117,7 +1177,7 @@ export const styles = StyleSheet.create({
     primarySheetAction: { minHeight: 40, borderRadius: 11, backgroundColor: COLORS.yellow, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, marginTop: 10 },
     sheetActions: { flexDirection: "row", gap: 8, marginTop: 8 },
     countPill: { borderRadius: 99, backgroundColor: "#F2F4F7", paddingHorizontal: 7, paddingVertical: 4 },
-    countText: { color: "#667085", fontFamily: FONT.Bold ?? FONT.bold, fontSize: 9 },
+    countText: { color: "#667085", fontFamily: FONT.bold, fontSize: 9 },
 
     // Dossier Modal styles
     phoneChip: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#ECFDF3", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
@@ -1128,6 +1188,14 @@ export const styles = StyleSheet.create({
     detailCardLabel: { color: COLORS.muted, fontFamily: FONT.semibold, fontSize: 9.5 },
     detailCardValue: { color: COLORS.ink, fontFamily: FONT.bold, fontSize: 11.5, marginTop: 2, lineHeight: 16 },
     modalFooterActions: { flexDirection: "row", gap: 8, marginTop: 8 },
+
+    // Map styles
+    mapTitle: { color: COLORS.ink, fontFamily: FONT.display, fontSize: 16, marginBottom: 8 },
+    mapPreview: { height: 180, borderRadius: 14, overflow: "hidden", position: "relative", marginBottom: 12, backgroundColor: "#E0E7FF" },
+    mapPin: { position: "absolute", alignItems: "center" },
+    pinCircle: { width: 28, height: 28, borderRadius: 14, backgroundColor: COLORS.blue, alignItems: "center", justifyContent: "center" },
+    pinText: { color: "#FFFFFF", fontFamily: FONT.bold, fontSize: 10 },
+    mapLegend: { flexDirection: "row", gap: 12, marginTop: 8 },
 
     // Form styles
     formCard: { backgroundColor: "#FFFFFF", borderRadius: 16, borderWidth: 1, borderColor: COLORS.border, padding: 13, marginBottom: 14 },

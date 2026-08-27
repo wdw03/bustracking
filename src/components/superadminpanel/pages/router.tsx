@@ -21,6 +21,7 @@ import AdminSecurityPage from "./adminsecurity";
 import AuditLogsPage from "./auditlogs";
 import SuperAdminSettingsPage from "./settings";
 import { styles } from "./pagekit";
+import { SuperAdminProvider } from "./store";
 
 type Page =
   | "dashboard"
@@ -82,7 +83,7 @@ const NAV: NavItem[] = [
   { key: "settings", label: "Settings & System", category: "System", icon: "settings-outline" },
 ];
 
-export default function SuperAdminPagesRouter({ onLogout }: { onLogout?: () => void }) {
+function SuperAdminPagesRouterInner({ onLogout }: { onLogout?: () => void }) {
   const insets = useSafeAreaInsets();
   const [page, setPage] = useState<Page>("dashboard");
   const [drawer, setDrawer] = useState(false);
@@ -436,3 +437,11 @@ const ui = {
   },
   logoutText: { color: "#DC2626", fontFamily: "Inter-Bold", fontSize: 12 },
 };
+
+export default function SuperAdminPagesRouter({ onLogout }: { onLogout?: () => void }) {
+  return (
+    <SuperAdminProvider>
+      <SuperAdminPagesRouterInner onLogout={onLogout} />
+    </SuperAdminProvider>
+  );
+}

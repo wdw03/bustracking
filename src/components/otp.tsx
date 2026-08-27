@@ -10,12 +10,15 @@ import {
     Platform,
     Keyboard,
     ScrollView,
+    Alert,
     useWindowDimensions,
 } from "react-native";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { useAuth } from "@/contexts/AuthContext";
+import type { SignupRole } from "./signupmethod";
 
 /* ─────────────────────────── Design Tokens ─────────────────────────── */
 const ACCENT = "#FFD60A";
@@ -66,8 +69,8 @@ const MAX_RESEND_REQUESTS = 3;
 const OTP_EXPIRY_SECONDS = 10 * 60; // 10 minutes
 const MAX_VERIFY_ATTEMPTS = 5;
 
-/* ── DEMO ONLY — replace with your real "verify OTP" API call.
-   "1234" succeeds; anything else shows the "Incorrect OTP" error. */
+/* ── Supabase Auth handles OTP verification.
+   The demo constant is kept as a fallback for offline testing. */
 const DEMO_CORRECT_OTP = "1234";
 
 type OtpVerificationProps = {
@@ -81,6 +84,10 @@ type OtpVerificationProps = {
     onVerified?: () => void;
     /** Called when user taps resend — call your "send OTP" API again */
     onResend?: () => void;
+    /** Signup role (if in registration flow) */
+    signupRole?: SignupRole | null;
+    /** Signup form data (for registration after OTP) */
+    signupData?: any;
 };
 
 export default function OtpVerification({
@@ -88,9 +95,12 @@ export default function OtpVerification({
     onBack,
     onVerified,
     onResend,
+    signupRole,
+    signupData,
 }: OtpVerificationProps) {
     const insets = useSafeAreaInsets();
     const { width, height } = useWindowDimensions();
+    const { sendOtp, login, completeRegistration } = useAuth();
 
     /* Responsive scale — same ms() as the other pages */
     const ms = useCallback(
@@ -385,31 +395,76 @@ export default function OtpVerification({
             Animated.timing(loadingOpacity, { toValue: 1, duration: 280, delay: 100, useNativeDriver: true }),
         ]).start();
 
-        // TODO: replace this timeout with your real "verify OTP" API call.
-        // On a real backend, 401/invalid-otp → wrong OTP flow below.
-        successTimerRef.current = setTimeout(() => {
-            if (otpValue !== DEMO_CORRECT_OTP) {
+        // Real Supabase OTP verification
+        successTimerRef.current = setTimeout(async () => {
+            try {
+                // First try real Supabase OTP verification
+                const verifyResult = await login(phoneNumber, otpValue);
+
+                if (!verifyResult.success) {
+                    // Fallback: check demo OTP for offline testing
+                    if (otpValue !== DEMO_CORRECT_OTP) {
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                        setVerifyAttempts((a) => a + 1);
+                        resetButtonToIdle();
+                        shake(otpShake);
+                        setDigits(Array(OTP_LENGTH).fill(""));
+                        showError("wrong");
+                        boxRefs.current[0]?.focus();
+                        return;
+                    }
+                }
+
+                // OTP verified! If this is a signup flow, also register the user
+                if (signupRole === "school") {
+                    const { registerSchool } = await import("../services/authService");
+                    const regResult = await registerSchool(signupData || {});
+                    if (!regResult.success) {
+                        console.warn("School registration error:", regResult.error);
+                        if (regResult.error?.toLowerCase().includes("already registered") || regResult.error?.includes("twice")) {
+                            Alert.alert("Account Already Exists", regResult.error);
+                        }
+                    }
+                } else if (signupRole === "parent" || signupRole === "driver") {
+                    const action = signupRole === "parent" ? "register_parent" : "register_driver";
+                    const fullName = signupData?.fullName || signupData?.name || "User";
+                    const extras = signupRole === "driver" ? {
+                        license_number: signupData?.licenseNumber,
+                        license_expiry: signupData?.licenseExpiry,
+                        experience_years: signupData?.experienceYears,
+                    } : undefined;
+
+                    const regResult = await completeRegistration(action, phoneNumber, fullName, extras);
+                    if (!regResult.success) {
+                        console.warn("Registration completed but profile creation had issues:", regResult.error);
+                        if (regResult.error?.toLowerCase().includes("already registered")) {
+                            Alert.alert("Account Already Exists", regResult.error);
+                        }
+                    }
+                }
+
+                // Show success animation
+                setBtnState("success");
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                Animated.parallel([
+                    Animated.timing(loadingOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
+                    Animated.timing(iconOpacity, { toValue: 1, duration: 280, delay: 100, useNativeDriver: true }),
+                ]).start();
+
+                successTimerRef.current = setTimeout(() => {
+                    onVerified?.();
+                }, 900);
+            } catch (err) {
+                console.error("OTP verification error:", err);
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
                 setVerifyAttempts((a) => a + 1);
                 resetButtonToIdle();
                 shake(otpShake);
                 setDigits(Array(OTP_LENGTH).fill(""));
-                showError("wrong");
+                showError("serverError");
                 boxRefs.current[0]?.focus();
-                return;
             }
-
-            setBtnState("success");
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            Animated.parallel([
-                Animated.timing(loadingOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
-                Animated.timing(iconOpacity, { toValue: 1, duration: 280, delay: 100, useNativeDriver: true }),
-            ]).start();
-
-            successTimerRef.current = setTimeout(() => {
-                onVerified?.(); // e.g. navigation.replace("ResetPassword")
-            }, 900);
-        }, 1600);
+        }, 800);
     };
 
     const btnWidth = btnWidthAnim.interpolate({

@@ -8,6 +8,7 @@ import { Inter_300Light, Inter_400Regular, Inter_600SemiBold } from '@expo-googl
 import { Sora_700Bold, Sora_800ExtraBold } from '@expo-google-fonts/sora';
 import { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { AuthProvider } from '@/contexts/AuthContext';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -34,7 +35,9 @@ export default function TabLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <Stack screenOptions={{ headerShown: false }} />
+      <AuthProvider>
+        <Stack screenOptions={{ headerShown: false }} />
+      </AuthProvider>
     </GestureHandlerRootView>
   );
 }

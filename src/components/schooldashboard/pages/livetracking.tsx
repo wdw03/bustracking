@@ -18,19 +18,14 @@ import {
     InfoRow, PageHeader, Press, SectionTitle, busStatusColor, driverForBus, ms, useSchoolData, useSettings, useTheme
 } from "../common";
 import { subscribeToDriverLocation } from "../../../services/locationService";
+import { subscribeToBusLocation } from "../../../services/trackingService";
 
 /* Free vector style — OpenFreeMap (OpenStreetMap data), no API key */
 const MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
 
 /* Dummy coordinates around Noida Sector 62 (school) */
 const SCHOOL_COORD: [number, number] = [77.364, 28.6271];
-const BUS_COORDS: Record<string, [number, number]> = {
-    b1: [77.372, 28.632],
-    b2: [77.354, 28.6205],
-    b3: [77.3645, 28.6268], // parked at school
-    b4: [77.381, 28.6175],
-    b5: [77.346, 28.635],
-};
+const BUS_COORDS: Record<string, [number, number]> = {};
 
 export default function LiveTrackingPage({ onBack, initialBusId }: { onBack: () => void; initialBusId?: string | null }) {
     const insets = useSafeAreaInsets();
@@ -54,10 +49,22 @@ export default function LiveTrackingPage({ onBack, initialBusId }: { onBack: () 
     const motionPhase = useRef(0);
 
     useEffect(() => {
-        const cleanups = buses.map((bus) => subscribeToDriverLocation(bus.id, (location) => {
-            liveTargets.current[bus.id] = [location.longitude, location.latitude];
-            driverFeeds.current.add(bus.id);
-        }));
+        const cleanups = buses.map((bus) => {
+            const unsubLocal = subscribeToDriverLocation(bus.id, (location) => {
+                liveTargets.current[bus.id] = [location.longitude, location.latitude];
+                driverFeeds.current.add(bus.id);
+            });
+            const unsubRealtime = subscribeToBusLocation(bus.id, (loc) => {
+                if (loc.latitude && loc.longitude) {
+                    liveTargets.current[bus.id] = [loc.longitude, loc.latitude];
+                    driverFeeds.current.add(bus.id);
+                }
+            });
+            return () => {
+                unsubLocal();
+                unsubRealtime();
+            };
+        });
         const timer = setInterval(() => {
             motionPhase.current += 0.045;
             setLivePositions((current) => {

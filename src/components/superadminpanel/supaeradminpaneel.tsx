@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
     Modal,
@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { setDemoAccountPassword } from "../loginpageonly";
+import { supabase } from "../../services/supabase";
 
 type IconName = keyof typeof Ionicons.glyphMap;
 type Section = "overview" | "schools" | "schoolRequests" | "parents" | "students" | "drivers" | "buses" | "liveTracking" | "routes" | "subscriptions" | "payments" | "withdrawals" | "refunds" | "notifications" | "reports" | "admins" | "audit" | "settings";
@@ -106,16 +106,9 @@ const NAV: { key: Section; label: string; icon: IconName }[] = [
     { key: "settings", label: "Settings", icon: "settings-outline" },
 ];
 
-const INITIAL_SCHOOLS: School[] = [
-    { id: "SCH-101", name: "Bluebells Public School", city: "New Delhi", admin: "Rohan Mehta", phone: "9876543210", buses: 12, drivers: 14, students: 842, parents: 714, joined: "12 Aug 2026", plan: "Enterprise", status: "active" },
-    { id: "SCH-102", name: "St. Xavier's Academy", city: "Gurugram", admin: "Ananya Singh", phone: "9811122233", buses: 8, drivers: 9, students: 510, parents: 466, joined: "10 Aug 2026", plan: "Growth", status: "active" },
-    { id: "SCH-103", name: "Green Valley School", city: "Noida", admin: "Amit Sharma", phone: "9898989898", buses: 6, drivers: 7, students: 328, parents: 289, joined: "14 Aug 2026", plan: "Growth", status: "pending" },
-    { id: "SCH-104", name: "Little Stars International", city: "Jaipur", admin: "Priya Kapoor", phone: "9765432100", buses: 4, drivers: 5, students: 214, parents: 190, joined: "30 Jul 2026", plan: "Starter", status: "blocked" },
-];
+const INITIAL_SCHOOLS: School[] = [];
 
-// Keeps school registrations available while the app is running. This is a
-// lightweight frontend store; the backend can replace it later without
-// changing the panel UI.
+// Keeps school registrations available while the app is running.
 let pendingSchoolRegistrations: School[] = [];
 export const getSchoolRegistrationRequests = () => [...pendingSchoolRegistrations];
 export const addSchoolRegistrationRequest = (data: { schoolName: string; city: string; adminName: string; adminMobile: string; schoolPhone: string }) => {
@@ -136,30 +129,9 @@ export const addSchoolRegistrationRequest = (data: { schoolName: string; city: s
     pendingSchoolRegistrations = [request, ...pendingSchoolRegistrations];
 };
 
-const INITIAL_USERS: AppUser[] = [
-    { id: "PAR-201", name: "Neha Verma", role: "Parent", school: "Bluebells Public School", phone: "9876543210", className: "Class 6 · A", bus: "Bus 101", status: "active" },
-    { id: "PAR-202", name: "Sanjay Gupta", role: "Parent", school: "St. Xavier's Academy", phone: "9102765934", className: "Class 9 · B", bus: "Bus 203", status: "active" },
-    { id: "PAR-203", name: "Meera Joshi", role: "Parent", school: "Green Valley School", phone: "9999000011", className: "Class 4 · A", bus: "Bus 305", status: "blocked" },
-    { id: "DRV-301", name: "Vikram Yadav", role: "Driver", school: "Bluebells Public School", phone: "9810839381", bus: "Bus 101", status: "active" },
-    { id: "DRV-302", name: "Rahul Khan", role: "Driver", school: "St. Xavier's Academy", phone: "9899001122", bus: "Bus 203", status: "active" },
-    { id: "STU-401", name: "Aarav Verma", role: "Student", school: "Bluebells Public School", phone: "—", className: "Class 6 · A", bus: "Bus 101", status: "active" },
-    { id: "STU-402", name: "Ishita Singh", role: "Student", school: "St. Xavier's Academy", phone: "—", className: "Class 9 · B", bus: "Bus 203", status: "active" },
-];
-
-const INITIAL_BUSES: Bus[] = [
-    { id: "BUS-101", number: "Bus 101", registration: "DL 01 AB 1021", school: "Bluebells Public School", driver: "Vikram Yadav", status: "running", speed: 34, route: "Dwarka → School Campus", lastUpdated: "Just now", students: 42, parents: 38 },
-    { id: "BUS-203", number: "Bus 203", registration: "HR 26 C 8872", school: "St. Xavier's Academy", driver: "Rahul Khan", status: "running", speed: 22, route: "Golf Course Road → School", lastUpdated: "1 min ago", students: 36, parents: 31 },
-    { id: "BUS-305", number: "Bus 305", registration: "UP 16 Y 2024", school: "Green Valley School", driver: "Arjun Malik", status: "stopped", speed: 0, route: "Sector 62 → School Campus", lastUpdated: "8 min ago", students: 28, parents: 25 },
-    { id: "BUS-410", number: "Bus 410", registration: "RJ 14 P 4511", school: "Little Stars International", driver: "—", status: "offline", speed: 0, route: "Mansarovar → School", lastUpdated: "Yesterday", students: 20, parents: 18 },
-];
-
-const INITIAL_PAYMENTS: PaymentRequest[] = [
-    { id: "PAY-8401", type: "Withdrawal", requestedBy: "Bluebells Public School", school: "Bluebells Public School", amount: 28400, status: "pending", reference: "WD-20260814-01", date: "14 Aug 2026, 10:42 AM", method: "Bank transfer · HDFC **** 4482" },
-    { id: "PAY-8402", type: "Subscription", requestedBy: "Sanjay Gupta", school: "St. Xavier's Academy", amount: 999, status: "completed", reference: "SUB-20260813-92", date: "13 Aug 2026, 04:18 PM", method: "UPI · sanjay@upi" },
-    { id: "PAY-8403", type: "Withdrawal", requestedBy: "St. Xavier's Academy", school: "St. Xavier's Academy", amount: 12600, status: "processing", reference: "WD-20260812-08", date: "12 Aug 2026, 01:09 PM", method: "Bank transfer · ICICI **** 0901" },
-    { id: "PAY-8404", type: "Subscription", requestedBy: "Neha Verma", school: "Bluebells Public School", amount: 1499, status: "rejected", reference: "SUB-20260811-48", date: "11 Aug 2026, 11:24 AM", method: "UPI · neha@upi" },
-    { id: "PAY-8405", type: "Refund", requestedBy: "Meera Joshi", school: "Green Valley School", amount: 999, status: "pending", reference: "REF-20260810-12", date: "10 Aug 2026, 02:32 PM", method: "UPI · meera@upi" },
-];
+const INITIAL_USERS: AppUser[] = [];
+const INITIAL_BUSES: Bus[] = [];
+const INITIAL_PAYMENTS: PaymentRequest[] = [];
 
 const money = (amount: number) => `₹${amount.toLocaleString("en-IN")}`;
 const statusColor = (status: string) => ({ active: GREEN, running: GREEN, approved: GREEN, completed: GREEN, pending: ORANGE, processing: BLUE, stopped: ORANGE, inactive: FAINT, blocked: RED, offline: FAINT, rejected: RED }[status] ?? MUTED);
@@ -197,22 +169,10 @@ export default function SuperAdminPanel({ onLogout }: { onLogout?: () => void })
     const [admins, setAdmins] = useState([
         { id: "ADM-001", name: "Super Admin", phone: "+91 98267 51348", role: "Owner", status: "active", lastLogin: "Today, 09:14 AM" },
     ]);
-    const [notifications, setNotifications] = useState([
-        { icon: "school", title: "New school registration received", body: "Green Valley School is waiting for approval.", time: "12 min ago", color: ORANGE },
-        { icon: "wallet", title: "Withdrawal request submitted", body: "Bluebells Public School requested ₹28,400.", time: "38 min ago", color: BLUE },
-        { icon: "bus", title: "Bus 410 went offline", body: "Little Stars International · yesterday", time: "Yesterday", color: RED },
-    ]);
+    const [notifications, setNotifications] = useState<{ icon: string; title: string; body: string; time: string; color: string }[]>([]);
     const [busyId, setBusyId] = useState("");
-    const [routes, setRoutes] = useState([
-        { id: "R-101", name: "Dwarka Morning Route", school: "Bluebells Public School", bus: "Bus 101", driver: "Vikram Yadav", stops: 8, students: 42, status: "active" },
-        { id: "R-203", name: "Golf Course Road Route", school: "St. Xavier's Academy", bus: "Bus 203", driver: "Rahul Khan", stops: 6, students: 36, status: "active" },
-        { id: "R-305", name: "Sector 62 Evening Route", school: "Green Valley School", bus: "Bus 305", driver: "Arjun Malik", stops: 5, students: 28, status: "inactive" },
-    ]);
-    const [auditLogs, setAuditLogs] = useState([
-        { action: "Approved school", target: "Bluebells Public School", admin: "Super Admin", time: "Today, 09:12 AM", status: "completed" },
-        { action: "Completed payment", target: "SUB-20260813-92", admin: "Super Admin", time: "Yesterday, 04:20 PM", status: "completed" },
-        { action: "Blocked parent", target: "Meera Joshi", admin: "Super Admin", time: "Yesterday, 01:10 PM", status: "completed" },
-    ]);
+    const [routes, setRoutes] = useState<{ id: string; name: string; school: string; bus: string; driver: string; stops: number; students: number; status: string }[]>([]);
+    const [auditLogs, setAuditLogs] = useState<{ action: string; target: string; admin: string; time: string; status: string }[]>([]);
 
     const notify = (message: string) => {
         setToast(message);
@@ -257,10 +217,55 @@ export default function SuperAdminPanel({ onLogout }: { onLogout?: () => void })
         revenue: payments.filter((item) => item.type === "Subscription" && item.status === "completed").reduce((sum, item) => sum + item.amount, 0) + 384920,
     }), [schools, users, buses, payments]);
 
+    // Load live schools from Supabase
+    useEffect(() => {
+        const fetchLiveSchools = async () => {
+            try {
+                const { data: dbSchools } = await supabase.from("schools").select("*").order("created_at", { ascending: false });
+                if (dbSchools && dbSchools.length > 0) {
+                    const mapped: School[] = dbSchools.map((s: any) => ({
+                        id: s.id,
+                        name: s.name,
+                        city: s.city || "Noida",
+                        admin: s.settings?.admin_name || s.principal_name || "Admin",
+                        phone: s.phone || s.settings?.admin_mobile || "—",
+                        buses: 0,
+                        drivers: 0,
+                        students: 0,
+                        parents: 0,
+                        joined: s.created_at ? new Date(s.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "Recently",
+                        plan: s.status === "approved" ? "Active" : s.status === "pending" ? "Pending review" : "Blocked",
+                        status: s.status === "approved" ? "active" : s.status === "pending" ? "pending" : "blocked",
+                    }));
+                    setSchools(mapped);
+                }
+            } catch (err) {
+                console.warn("Failed to fetch live schools for super admin:", err);
+            }
+        };
+        fetchLiveSchools();
+    }, []);
+
     const moveSection = (next: Section) => { setSection(next); setSearch(""); setStatusFilter("All"); setRoleFilter("All"); };
-    const performUpdateSchool = (school: School, next: School["status"]) => {
+    const performUpdateSchool = async (school: School, next: School["status"]) => {
         setBusyId(school.id);
-        setTimeout(() => { setSchools((items) => items.map((item) => item.id === school.id ? { ...item, status: next } : item)); pendingSchoolRegistrations = pendingSchoolRegistrations.map((item) => item.id === school.id ? { ...item, status: next } : item); setBusyId(""); logAction(`${next === "active" ? "Approved" : next === "blocked" ? "Blocked" : "Updated"} school`, school.name); notify(`${school.name} marked ${next}.`); setDetail(null); }, 220);
+        try {
+            if (next === "active") {
+                await supabase.rpc("approve_school", { p_school_id: school.id });
+            } else if (next === "blocked") {
+                await supabase.rpc("block_school", { p_school_id: school.id });
+            } else {
+                await supabase.from("schools").update({ status: next }).eq("id", school.id);
+            }
+        } catch (err) {
+            console.warn("Supabase RPC school update error (fallback updating UI):", err);
+        }
+        setSchools((items) => items.map((item) => item.id === school.id ? { ...item, status: next } : item));
+        pendingSchoolRegistrations = pendingSchoolRegistrations.map((item) => item.id === school.id ? { ...item, status: next } : item);
+        setBusyId("");
+        logAction(`${next === "active" ? "Approved" : next === "blocked" ? "Blocked" : "Updated"} school`, school.name);
+        notify(`${school.name} marked ${next}.`);
+        setDetail(null);
     };
     const updateSchool = (school: School, next: School["status"]) => { if (next === "blocked") return askConfirm("Block this school?", `${school.name} will lose access until activated again.`, () => performUpdateSchool(school, next)); performUpdateSchool(school, next); };
     const performToggleUser = (user: AppUser) => { setUsers((items) => items.map((item) => item.id === user.id ? { ...item, status: item.status === "blocked" ? "active" : "blocked" } : item)); logAction(`${user.status === "blocked" ? "Unblocked" : "Blocked"} ${user.role.toLowerCase()}`, user.name); notify(`${user.name} access ${user.status === "blocked" ? "restored" : "blocked"}.`); setDetail(null); };
@@ -369,7 +374,7 @@ export default function SuperAdminPanel({ onLogout }: { onLogout?: () => void })
 
     const FormModal = ({ type }: { type: "broadcast" | "password" | "admin" }) => {
         const isBroadcast = type === "broadcast"; const isPassword = type === "password";
-        return <Modal visible={isBroadcast ? broadcastOpen : isPassword ? passwordOpen : adminOpen} transparent animationType="fade" onRequestClose={() => { setBroadcastOpen(false); setPasswordOpen(false); setAdminOpen(false); }}><View style={styles.modalBackdrop}><View style={[styles.formSheet, { padding: ms(18), paddingBottom: Math.max(insets.bottom, ms(18)) }]}><View style={styles.sheetHeader}><View style={{ flex: 1 }}><Text style={[styles.eyebrow, { fontSize: ms(9.5) }]}>{isBroadcast ? "BROADCAST" : isPassword ? "SECURITY" : "ADMIN ACCESS"}</Text><Text style={[styles.sheetTitle, { fontSize: ms(20) }]}>{isBroadcast ? "Send notification" : isPassword ? "Update password" : "Create admin"}</Text></View><Pressable onPress={() => { setBroadcastOpen(false); setPasswordOpen(false); setAdminOpen(false); }} style={styles.closeButton}><Ionicons name="close" size={ms(19)} color={INK} /></Pressable></View>{isBroadcast ? <><Text style={styles.formLabel}>Audience</Text><FilterRow values={["Everyone", "Parents", "Drivers", "School admins"]} value={broadcastAudience} onChange={setBroadcastAudience} /><Text style={styles.formLabel}>Message</Text><TextInput multiline value={broadcastText} onChangeText={setBroadcastText} placeholder="Write an important update..." placeholderTextColor={FAINT} style={[styles.textArea, { fontSize: ms(12) }]} /><Pressable disabled={!broadcastText.trim()} onPress={() => { setNotifications((items) => [{ icon: "megaphone", title: `Broadcast to ${broadcastAudience}`, body: broadcastText.trim(), time: "Just now", color: NAVY }, ...items]); setBroadcastText(""); setBroadcastOpen(false); notify("Broadcast sent successfully."); }} style={[styles.primaryButton, { marginTop: ms(12), opacity: broadcastText.trim() ? 1 : 0.5 }]}><Ionicons name="send" size={ms(16)} color={INK} /><Text style={styles.primaryButtonText}>Send broadcast</Text></Pressable></> : isPassword ? <><Text style={styles.formLabel}>New password</Text><TextInput value={newPassword} onChangeText={setNewPassword} secureTextEntry placeholder="Minimum 4 characters" placeholderTextColor={FAINT} style={[styles.formInput, { fontSize: ms(13) }]} /><Text style={styles.formLabel}>Confirm password</Text><TextInput value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry placeholder="Repeat new password" placeholderTextColor={FAINT} style={[styles.formInput, { fontSize: ms(13) }]} /><Pressable disabled={newPassword.length < 4 || newPassword !== confirmPassword} onPress={() => { setDemoAccountPassword("9826751348", newPassword); setPasswordOpen(false); setNewPassword(""); setConfirmPassword(""); notify("Super admin password updated locally."); }} style={[styles.primaryButton, { marginTop: ms(12), opacity: newPassword.length >= 4 && newPassword === confirmPassword ? 1 : 0.5 }]}><Ionicons name="checkmark-circle" size={ms(17)} color={INK} /><Text style={styles.primaryButtonText}>Save password</Text></Pressable></> : <><Text style={styles.formLabel}>Admin name</Text><TextInput value={adminName} onChangeText={setAdminName} placeholder="Enter full name" placeholderTextColor={FAINT} style={[styles.formInput, { fontSize: ms(13) }]} /><Text style={styles.formLabel}>Mobile number</Text><TextInput value={adminPhone} onChangeText={setAdminPhone} keyboardType="phone-pad" placeholder="10-digit mobile" placeholderTextColor={FAINT} style={[styles.formInput, { fontSize: ms(13) }]} /><Pressable disabled={adminName.trim().length < 3 || adminPhone.replace(/\D/g, "").length < 10} onPress={() => { setAdmins((items) => [...items, { id: `ADM-${String(items.length + 1).padStart(3, "0")}`, name: adminName.trim(), phone: adminPhone, role: "Operations admin", status: "active", lastLogin: "Never" }]); setAdminName(""); setAdminPhone(""); setAdminOpen(false); notify("Admin created with active access."); }} style={[styles.primaryButton, { marginTop: ms(12), opacity: adminName.trim().length >= 3 && adminPhone.replace(/\D/g, "").length >= 10 ? 1 : 0.5 }]}><Ionicons name="person-add" size={ms(16)} color={INK} /><Text style={styles.primaryButtonText}>Create admin</Text></Pressable></>}</View></View></Modal>;
+        return <Modal visible={isBroadcast ? broadcastOpen : isPassword ? passwordOpen : adminOpen} transparent animationType="fade" onRequestClose={() => { setBroadcastOpen(false); setPasswordOpen(false); setAdminOpen(false); }}><View style={styles.modalBackdrop}><View style={[styles.formSheet, { padding: ms(18), paddingBottom: Math.max(insets.bottom, ms(18)) }]}><View style={styles.sheetHeader}><View style={{ flex: 1 }}><Text style={[styles.eyebrow, { fontSize: ms(9.5) }]}>{isBroadcast ? "BROADCAST" : isPassword ? "SECURITY" : "ADMIN ACCESS"}</Text><Text style={[styles.sheetTitle, { fontSize: ms(20) }]}>{isBroadcast ? "Send notification" : isPassword ? "Update password" : "Create admin"}</Text></View><Pressable onPress={() => { setBroadcastOpen(false); setPasswordOpen(false); setAdminOpen(false); }} style={styles.closeButton}><Ionicons name="close" size={ms(19)} color={INK} /></Pressable></View>{isBroadcast ? <><Text style={styles.formLabel}>Audience</Text><FilterRow values={["Everyone", "Parents", "Drivers", "School admins"]} value={broadcastAudience} onChange={setBroadcastAudience} /><Text style={styles.formLabel}>Message</Text><TextInput multiline value={broadcastText} onChangeText={setBroadcastText} placeholder="Write an important update..." placeholderTextColor={FAINT} style={[styles.textArea, { fontSize: ms(12) }]} /><Pressable disabled={!broadcastText.trim()} onPress={() => { setNotifications((items) => [{ icon: "megaphone", title: `Broadcast to ${broadcastAudience}`, body: broadcastText.trim(), time: "Just now", color: NAVY }, ...items]); setBroadcastText(""); setBroadcastOpen(false); notify("Broadcast sent successfully."); }} style={[styles.primaryButton, { marginTop: ms(12), opacity: broadcastText.trim() ? 1 : 0.5 }]}><Ionicons name="send" size={ms(16)} color={INK} /><Text style={styles.primaryButtonText}>Send broadcast</Text></Pressable></> : isPassword ? <><Text style={styles.formLabel}>New password</Text><TextInput value={newPassword} onChangeText={setNewPassword} secureTextEntry placeholder="Minimum 4 characters" placeholderTextColor={FAINT} style={[styles.formInput, { fontSize: ms(13) }]} /><Text style={styles.formLabel}>Confirm password</Text><TextInput value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry placeholder="Repeat new password" placeholderTextColor={FAINT} style={[styles.formInput, { fontSize: ms(13) }]} /><Pressable disabled={newPassword.length < 4 || newPassword !== confirmPassword} onPress={async () => { try { await supabase.auth.updateUser({ password: newPassword }); setPasswordOpen(false); setNewPassword(""); setConfirmPassword(""); notify("Password updated successfully."); } catch { notify("Failed to update password."); } }} style={[styles.primaryButton, { marginTop: ms(12), opacity: newPassword.length >= 4 && newPassword === confirmPassword ? 1 : 0.5 }]}><Ionicons name="checkmark-circle" size={ms(17)} color={INK} /><Text style={styles.primaryButtonText}>Save password</Text></Pressable></> : <><Text style={styles.formLabel}>Admin name</Text><TextInput value={adminName} onChangeText={setAdminName} placeholder="Enter full name" placeholderTextColor={FAINT} style={[styles.formInput, { fontSize: ms(13) }]} /><Text style={styles.formLabel}>Mobile number</Text><TextInput value={adminPhone} onChangeText={setAdminPhone} keyboardType="phone-pad" placeholder="10-digit mobile" placeholderTextColor={FAINT} style={[styles.formInput, { fontSize: ms(13) }]} /><Pressable disabled={adminName.trim().length < 3 || adminPhone.replace(/\D/g, "").length < 10} onPress={() => { setAdmins((items) => [...items, { id: `ADM-${String(items.length + 1).padStart(3, "0")}`, name: adminName.trim(), phone: adminPhone, role: "Operations admin", status: "active", lastLogin: "Never" }]); setAdminName(""); setAdminPhone(""); setAdminOpen(false); notify("Admin created with active access."); }} style={[styles.primaryButton, { marginTop: ms(12), opacity: adminName.trim().length >= 3 && adminPhone.replace(/\D/g, "").length >= 10 ? 1 : 0.5 }]}><Ionicons name="person-add" size={ms(16)} color={INK} /><Text style={styles.primaryButtonText}>Create admin</Text></Pressable></>}</View></View></Modal>;
     };
 
     return <View style={styles.screen}><Header /><NavBar /><ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: ms(16), paddingBottom: Math.max(insets.bottom, ms(30)) }}><View style={styles.pageIntro}><View><Text style={[styles.pageEyebrow, { fontSize: ms(9.5) }]}>SUPER ADMIN · FULL ACCESS</Text><Text style={[styles.pageTitle, { fontSize: ms(25) }]}>{title}</Text></View><Text style={[styles.pageDate, { fontSize: ms(10) }]}>All systems operational</Text></View>{section === "overview" ? <Overview /> : null}{section === "schools" ? <SchoolList /> : null}{section === "schoolRequests" ? <SchoolList pendingOnly /> : null}{section === "parents" ? <UserList forcedRole="Parent" /> : null}{section === "students" ? <UserList forcedRole="Student" /> : null}{section === "drivers" ? <UserList forcedRole="Driver" /> : null}{section === "buses" ? <BusList /> : null}{section === "liveTracking" ? <LiveTracking /> : null}{section === "routes" ? <RoutesList /> : null}{section === "subscriptions" ? <SubscriptionList /> : null}{section === "payments" ? <PaymentList /> : null}{section === "withdrawals" ? <PaymentList kind="Withdrawal" /> : null}{section === "refunds" ? <PaymentList kind="Refund" /> : null}{section === "notifications" ? <NotificationList /> : null}{section === "reports" ? <Reports /> : null}{section === "admins" ? <AdminList /> : null}{section === "audit" ? <AuditList /> : null}{section === "settings" ? <Settings /> : null}</ScrollView>{renderDetail()}<FormModal type="broadcast" /><FormModal type="password" /><FormModal type="admin" />{confirmDialog ? <Modal visible transparent animationType="fade" onRequestClose={() => setConfirmDialog(null)}><View style={styles.modalBackdrop}><View style={styles.confirmSheet}><View style={styles.confirmIcon}><Ionicons name="alert-circle" size={24} color={RED} /></View><Text style={styles.sheetTitle}>{confirmDialog.title}</Text><Text style={styles.confirmBody}>{confirmDialog.body}</Text><View style={styles.detailActions}><Pressable onPress={() => setConfirmDialog(null)} style={[styles.outlineButton, { flex: 1, justifyContent: "center" }]}><Text style={styles.outlineButtonText}>Cancel</Text></Pressable><Pressable onPress={() => { const action = confirmDialog.action; setConfirmDialog(null); action(); }} style={[styles.dangerButton, { flex: 1 }]}><Text style={styles.dangerButtonText}>Confirm</Text></Pressable></View></View></View></Modal> : null}{menuOpen ? <Modal visible transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}><View style={styles.modalBackdrop}><View style={styles.drawer}><View style={styles.sheetHeader}><Text style={styles.sheetTitle}>Control centre</Text><Pressable onPress={() => setMenuOpen(false)} style={styles.closeButton}><Ionicons name="close" size={19} color={INK} /></Pressable></View>{NAV.map((item) => <Pressable key={item.key} onPress={() => { setMenuOpen(false); moveSection(item.key); }} style={styles.drawerItem}><Ionicons name={item.icon} size={17} color={section === item.key ? BLUE : MUTED} /><Text style={[styles.drawerText, section === item.key && { color: BLUE }]}>{item.label}</Text></Pressable>)}<Pressable onPress={onLogout} style={styles.logoutButton}><Ionicons name="log-out-outline" size={18} color={RED} /><Text style={styles.logoutText}>Logout</Text></Pressable></View></View></Modal> : null}{toast ? <View style={[styles.toast, { bottom: Math.max(insets.bottom, ms(18)) }]}><Ionicons name="checkmark-circle" size={ms(17)} color="#FFFFFF" /><Text style={[styles.toastText, { fontSize: ms(11) }]}>{toast}</Text></View> : null}</View>;

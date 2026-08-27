@@ -3,14 +3,46 @@
    Copy to: src/components/parentsdashbaord/pages/triphistoryparents.tsx
    ========================================================================== */
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { Chip, FONT, TRIPS, VIDEOS, VideoHero, ms, useTheme } from "../common";
+import { getTripHistory } from "../../../services/parentService";
 
 export default function TripHistoryParentsPage() {
     const { INK, MUTED, FAINT, BORDER, CARD_BG, PAGE_BG, ACCENT_DEEP, ACCENT_SOFT, GREEN, GREEN_SOFT, BLUE, BLUE_SOFT, RED, RED_SOFT } = useTheme();
+    const [tripsList, setTripsList] = useState(TRIPS);
+
+    useEffect(() => {
+        let isMounted = true;
+        (async () => {
+            try {
+                const { getParentDashboard } = await import("../../../services/parentService");
+                const dash = await getParentDashboard();
+                if (dash?.children && dash.children.length > 0) {
+                    const firstChild = dash.children[0];
+                    const realTrips = await getTripHistory(firstChild.id, 15);
+                    if (isMounted && realTrips && realTrips.length > 0) {
+                        const mapped = realTrips.map((t: any) => ({
+                            id: t.id,
+                            date: new Date(t.started_at).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" }),
+                            label: `${t.trip_type === "pickup" ? "Morning Pickup" : "Afternoon Drop"} · ${t.buses?.bus_number || "Bus"}`,
+                            pickup: new Date(t.started_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+                            schoolArrival: t.ended_at ? new Date(t.ended_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "—",
+                            returnStart: "—",
+                            homeDrop: t.status === "completed" ? "Completed" : "In Progress",
+                            status: t.status === "completed" ? "Completed" as const : t.status === "in_progress" ? "In Progress" as const : "Missed" as const,
+                        }));
+                        setTripsList(mapped);
+                    }
+                }
+            } catch (err) {
+                console.warn("Trip history live fetch fallback:", err);
+            }
+        })();
+        return () => { isMounted = false; };
+    }, []);
 
     const statusChip = (status: string) =>
         status === "Completed"
@@ -48,7 +80,7 @@ export default function TripHistoryParentsPage() {
 
             {/* Trip cards */}
             <View style={{ gap: ms(12), marginTop: ms(16) }}>
-                {TRIPS.map((trip) => {
+                {tripsList.map((trip) => {
                     const chip = statusChip(trip.status);
                     return (
                         <View key={trip.id} style={{ backgroundColor: CARD_BG, borderRadius: ms(20), borderWidth: 1, borderColor: BORDER, padding: ms(14) }}>

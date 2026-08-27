@@ -75,14 +75,39 @@ function InfoRow({ icon, label, value, last }: { icon: any; label: string; value
 
 export default function SchoolDetails({ onBack }: { onBack?: () => void }) {
     const insets = useSafeAreaInsets();
+    const [schoolInfo, setSchoolInfo] = React.useState(SCHOOL);
+
+    React.useEffect(() => {
+        let isMounted = true;
+        (async () => {
+            try {
+                const { getDriverDashboard } = await import("../../../services/driverService");
+                const dash = await getDriverDashboard();
+                if (isMounted && dash?.school) {
+                    setSchoolInfo({
+                        name: dash.school.name || SCHOOL.name,
+                        code: (dash.school as any).code || dash.school.id.slice(0, 8).toUpperCase(),
+                        address: (dash.school as any).address || SCHOOL.address,
+                        principal: (dash.school as any).principal_name || SCHOOL.principal,
+                        contact: dash.school.phone || SCHOOL.contact,
+                        email: (dash.school as any).email || SCHOOL.email,
+                        logo: null,
+                    });
+                }
+            } catch (err) {
+                console.warn("School details fetch fallback:", err);
+            }
+        })();
+        return () => { isMounted = false; };
+    }, []);
 
     const call = () => {
         Haptics.selectionAsync();
-        Linking.openURL(`tel:${SCHOOL.contact.replace(/\s/g, "")}`);
+        Linking.openURL(`tel:${schoolInfo.contact.replace(/\s/g, "")}`);
     };
     const email = () => {
         Haptics.selectionAsync();
-        Linking.openURL(`mailto:${SCHOOL.email}`);
+        Linking.openURL(`mailto:${schoolInfo.email}`);
     };
 
     return (
@@ -165,14 +190,14 @@ export default function SchoolDetails({ onBack }: { onBack?: () => void }) {
                             overflow: "hidden",
                         }}
                     >
-                        {SCHOOL.logo ? (
-                            <Image source={SCHOOL.logo} style={{ width: "70%", height: "70%" }} resizeMode="contain" />
+                        {schoolInfo.logo ? (
+                            <Image source={schoolInfo.logo} style={{ width: "70%", height: "70%" }} resizeMode="contain" />
                         ) : (
                             <Ionicons name="school" size={ms(38)} color={ACCENT_DEEP} />
                         )}
                     </View>
                     <Text style={{ fontFamily: FONT.displayHeavy, fontSize: ms(18), color: INK, marginTop: ms(12) }}>
-                        {SCHOOL.name}
+                        {schoolInfo.name}
                     </Text>
                     <View
                         style={{
@@ -186,7 +211,7 @@ export default function SchoolDetails({ onBack }: { onBack?: () => void }) {
                         }}
                     >
                         <Text style={{ fontFamily: FONT.semibold, fontSize: ms(11.5), color: MUTED }}>
-                            School Code: {SCHOOL.code}
+                            School Code: {schoolInfo.code}
                         </Text>
                     </View>
 
@@ -235,11 +260,11 @@ export default function SchoolDetails({ onBack }: { onBack?: () => void }) {
                         marginTop: ms(16),
                     }}
                 >
-                    <InfoRow icon="school-outline" label="SCHOOL NAME" value={SCHOOL.name} />
-                    <InfoRow icon="pricetag-outline" label="SCHOOL CODE" value={SCHOOL.code} />
-                    <InfoRow icon="location-outline" label="SCHOOL ADDRESS" value={SCHOOL.address} />
-                    <InfoRow icon="person-outline" label="PRINCIPAL NAME" value={SCHOOL.principal} />
-                    <InfoRow icon="call-outline" label="SCHOOL CONTACT NUMBER" value={SCHOOL.contact} last />
+                    <InfoRow icon="school-outline" label="SCHOOL NAME" value={schoolInfo.name} />
+                    <InfoRow icon="pricetag-outline" label="SCHOOL CODE" value={schoolInfo.code} />
+                    <InfoRow icon="location-outline" label="SCHOOL ADDRESS" value={schoolInfo.address} />
+                    <InfoRow icon="person-outline" label="PRINCIPAL NAME" value={schoolInfo.principal} />
+                    <InfoRow icon="call-outline" label="SCHOOL CONTACT NUMBER" value={schoolInfo.contact} last />
                 </View>
             </ScrollView>
         </View>

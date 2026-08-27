@@ -58,7 +58,11 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { VideoView, useVideoPlayer } from "expo-video";
-import { requestDeviceLocationPermission, requestNotificationPermission } from "../../services/locationService";
+import { requestDeviceLocationPermission, requestNotificationPermission, publishDriverLocation, subscribeToLiveGPS } from "../../services/locationService";
+import { stopBusLocation } from "../../services/trackingService";
+import { startTrip, stopTrip, getDriverDashboard } from "../../services/driverService";
+import type { DriverDashboardData } from "../../services/types";
+import { useAuth } from "../../contexts/AuthContext";
 import { SkeletonCard, SkeletonItem, SkeletonList } from "../common/Skeleton";
 import DriverLiveMap from "./driverlivemap";
 
@@ -131,93 +135,7 @@ type School = {
     buses: Bus[];
 };
 
-const SCHOOLS: School[] = [
-    {
-        id: "s1",
-        name: "Green Valley School",
-        code: "GVS-2024-113",
-        address: "Plot 7, Knowledge Park, Sector 62, Noida, UP 201301",
-        principal: "Dr. Meena Sharma",
-        contact: "+91 120 456 7890",
-        email: "office@greenvalley.edu.in",
-        shift: "Morning · 7:00 AM – 2:30 PM",
-        route: "Route A",
-        buses: [
-            { id: "b1", number: "DL01AB1234", route: "Route A", model: "Tata Starbus 32-Seater", capacity: "32 seats", partner: "Suresh Yadav", partnerPhone: "+91 98111 22334", pickupTime: "7:10 AM", stops: 12 },
-            { id: "b2", number: "DL01CD5678", route: "Route B (backup)", model: "Eicher Skyline Pro", capacity: "40 seats", partner: "Mohan Lal", partnerPhone: "+91 98222 33445", pickupTime: "7:25 AM", stops: 9 },
-        ],
-    },
-    {
-        id: "s2",
-        name: "Sunrise Public School",
-        code: "SPS-2024-078",
-        address: "B-14, Vasundhara, Ghaziabad, UP 201012",
-        principal: "Mr. Ashok Verma",
-        contact: "+91 120 998 7766",
-        email: "info@sunrisepublic.edu.in",
-        shift: "Morning · 7:30 AM – 1:45 PM",
-        route: "Route C",
-        buses: [
-            { id: "b3", number: "UP14EF9012", route: "Route C", model: "Ashok Leyland Sunshine", capacity: "36 seats", partner: "Ramesh Gupta", partnerPhone: "+91 97333 44556", pickupTime: "7:35 AM", stops: 10 },
-        ],
-    },
-    {
-        id: "s3",
-        name: "Little Flowers Academy",
-        code: "LFA-2024-201",
-        address: "Sector 45, Gurugram, Haryana 122003",
-        principal: "Mrs. Kavita Nair",
-        contact: "+91 124 455 6677",
-        email: "contact@littleflowers.edu.in",
-        shift: "Morning · 8:00 AM – 2:00 PM",
-        route: "Route D",
-        buses: [
-            { id: "b4", number: "HR26GH3456", route: "Route D", model: "Tata Starbus 28-Seater", capacity: "28 seats", partner: "Vinod Kumar", partnerPhone: "+91 96444 55667", pickupTime: "8:05 AM", stops: 8 },
-        ],
-    },
-    {
-        id: "s4",
-        name: "St. Mary's Convent",
-        code: "SMC-2024-054",
-        address: "Civil Lines, Delhi 110054",
-        principal: "Sr. Teresa D'Souza",
-        contact: "+91 11 2345 6789",
-        email: "office@stmarys.edu.in",
-        shift: "Morning · 7:15 AM – 1:30 PM",
-        route: "Route E",
-        buses: [
-            { id: "b5", number: "DL02IJ7890", route: "Route E", model: "Eicher Starline", capacity: "34 seats", partner: "Dinesh Rawat", partnerPhone: "+91 95555 66778", pickupTime: "7:20 AM", stops: 11 },
-        ],
-    },
-    {
-        id: "s5",
-        name: "Blue Bells International",
-        code: "BBI-2024-167",
-        address: "Sector 10, Dwarka, Delhi 110075",
-        principal: "Dr. Rajiv Malhotra",
-        contact: "+91 11 4455 6677",
-        email: "admin@bluebells.edu.in",
-        shift: "Morning · 7:45 AM – 2:15 PM",
-        route: "Route F",
-        buses: [
-            { id: "b6", number: "DL09KL2345", route: "Route F", model: "Force Traveller School", capacity: "26 seats", partner: "Sanjay Bisht", partnerPhone: "+91 94666 77889", pickupTime: "7:50 AM", stops: 7 },
-        ],
-    },
-    // {
-    //     id: "s6",
-    //     name: "Modern Era School",
-    //     code: "MES-2024-092",
-    //     address: "Raj Nagar Extension, Ghaziabad, UP 201017",
-    //     principal: "Mrs. Anita Chauhan",
-    //     contact: "+91 120 887 7665",
-    //     email: "help@modernera.edu.in",
-    //     shift: "Morning · 7:00 AM – 1:00 PM",
-    //     route: "Route G",
-    //     buses: [
-    //         { id: "b7", number: "UP14MN6789", route: "Route G", model: "Tata Starbus 32-Seater", capacity: "32 seats", partner: "Prakash Joshi", partnerPhone: "+91 93777 88990", pickupTime: "7:05 AM", stops: 9 },
-    //     ],
-    // },
-];
+const SCHOOLS: School[] = [];
 
 const TOTAL_BUSES = SCHOOLS.reduce((n, s) => n + s.buses.length, 0);
 const ALL_BUSES = SCHOOLS.flatMap((s) => s.buses.map((b) => ({ ...b, school: s })));
@@ -422,6 +340,25 @@ export default function DriverDashboard({
     const busPlayer = useVideoPlayer(BUS_VIDEO, (p) => { p.loop = true; p.muted = true; p.play(); });
     const profilePlayer = useVideoPlayer(PROFILE_VIDEO, (p) => { p.loop = true; p.muted = true; p.play(); });
 
+    const { profile } = useAuth();
+    const [driverData, setDriverData] = useState<DriverDashboardData | null>(null);
+
+    // Fetch live driver dashboard data from Supabase
+    useEffect(() => {
+        let isMounted = true;
+        getDriverDashboard().then((res) => {
+            if (isMounted && res) {
+                setDriverData(res);
+            }
+        }).catch((err) => console.warn("DriverDashboard live fetch fallback:", err));
+        return () => { isMounted = false; };
+    }, []);
+
+    const activeDriverName = profile?.full_name || driverData?.profile?.full_name || DRIVER.name;
+    const activeDriverPhone = profile?.phone || driverData?.profile?.phone || DRIVER.phone;
+    const activeDriverLicense = driverData?.driver?.license_number || DRIVER.license;
+    const activeBusId = profile?.assigned_bus_id || driverData?.bus?.id || "b1";
+
     const [tab, setTabState] = useState<Tab>(initialTab);
 
     const setTab = useCallback((newTab: Tab) => {
@@ -482,6 +419,26 @@ export default function DriverDashboard({
 
     const activeShares = Object.values(sharing).filter(Boolean).length;
 
+    // Real-time GPS location broadcasting whenever driver has active sharing enabled
+    useEffect(() => {
+        if (activeShares <= 0) return;
+
+        const currentBusId = activeBusId;
+        startTrip("pickup").catch(() => undefined);
+
+        let cleanupGPS: (() => void) | undefined;
+        subscribeToLiveGPS((loc) => {
+            publishDriverLocation(currentBusId, loc);
+        }).then((unsub) => {
+            cleanupGPS = unsub;
+        });
+
+        return () => {
+            cleanupGPS?.();
+            stopBusLocation(currentBusId).catch(() => undefined);
+        };
+    }, [activeShares, activeBusId]);
+
     /* Tab switch fade — instant response + ultra-fast 120ms smooth fade */
     const tabAnim = useRef(new Animated.Value(1)).current;
     const animateTo = useCallback(
@@ -529,7 +486,7 @@ export default function DriverDashboard({
             {/* STICKY TOP: Hero Video + Ultra-Compact Stats (Hides when search is active/keyboard open) */}
             {!hideHero && (
                 <View style={{ paddingHorizontal: ms(20) }}>
-                    <HeroVideo player={homePlayer} badge="Good morning, Rajesh — ready for today's trips?" height={125} />
+                    <HeroVideo player={homePlayer} badge={`Good morning, ${activeDriverName.split(" ")[0]} — ready for today's trips?`} height={125} />
 
                     {/* Ultra-compact stats cards */}
                     <View style={{ flexDirection: "row", gap: 6, marginTop: ms(8) }}>
@@ -1128,8 +1085,8 @@ export default function DriverDashboard({
             <View style={{ backgroundColor: CARD_BG, borderRadius: 22, borderTopLeftRadius: 26, borderWidth: 1, borderColor: BORDER, paddingHorizontal: ms(16), paddingVertical: ms(4) }}>
                 <InfoRow icon="school-outline" label="SCHOOL NAME" value={b.school.name} />
                 <InfoRow icon="bus-outline" label="BUS NUMBER" value={b.number} />
-                <InfoRow icon="person-outline" label="DRIVER" value={`${DRIVER.name} (${DRIVER.driverId})`} />
-                <InfoRow icon="call-outline" label="DRIVER NUMBER" value={DRIVER.phone} />
+                <InfoRow icon="person-outline" label="DRIVER" value={`${activeDriverName} (${DRIVER.driverId})`} />
+                <InfoRow icon="call-outline" label="DRIVER NUMBER" value={activeDriverPhone} />
                 <InfoRow icon="person-add-outline" label="PARTNER / HELPER" value={b.partner} />
                 <InfoRow icon="call-outline" label="PARTNER NUMBER" value={b.partnerPhone} />
                 <InfoRow icon="ribbon-outline" label="PRINCIPAL" value={b.school.principal} last />
@@ -1177,7 +1134,7 @@ export default function DriverDashboard({
                 >
                     <VideoView player={profilePlayer} style={{ width: "100%", height: "100%" }} contentFit="cover" nativeControls={false} />
                 </View>
-                <Text style={{ fontFamily: FONT.displayHeavy, fontSize: ms(18), color: INK, marginTop: ms(10) }}>{DRIVER.name}</Text>
+                <Text style={{ fontFamily: FONT.displayHeavy, fontSize: ms(18), color: INK, marginTop: ms(10) }}>{activeDriverName}</Text>
                 <View style={{ flexDirection: "row", gap: 8, marginTop: 6 }}>
                     <View style={{ backgroundColor: ACCENT_SOFT, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3, borderWidth: 1, borderColor: ACCENT_LINE }}>
                         <Text style={{ fontFamily: FONT.semibold, fontSize: ms(11), color: ACCENT_DEEP }}>Driver · {DRIVER.driverId}</Text>
@@ -1189,7 +1146,7 @@ export default function DriverDashboard({
                 </View>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 8 }}>
                     <Ionicons name="card-outline" size={ms(12)} color={MUTED} />
-                    <Text style={{ fontFamily: FONT.regular, fontSize: ms(12), color: MUTED }}>{DRIVER.license}</Text>
+                    <Text style={{ fontFamily: FONT.regular, fontSize: ms(12), color: MUTED }}>{activeDriverLicense}</Text>
                 </View>
             </Card>
 

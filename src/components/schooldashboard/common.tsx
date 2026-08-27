@@ -9,6 +9,7 @@ import { Animated, Dimensions, Pressable, Text, View, ViewStyle } from "react-na
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { SkeletonItem } from "../common/Skeleton";
+import { supabase } from "../../services/supabase";
 
 export { SkeletonItem };
 
@@ -250,15 +251,15 @@ export function Card({ children, style }: { children: React.ReactNode; style?: V
     );
 }
 
-/* ─────────────── Local starter data (single source of truth) ─────────────── */
+/* ─────────────── School schema & data defaults ─────────────── */
 export const SCHOOL = {
-    name: "Green Valley School",
-    code: "GVS-2024-113",
-    principal: "Dr. Meena Sharma",
-    phone: "+91 120 456 7890",
-    email: "office@greenvalley.edu.in",
-    address: "Plot 7, Knowledge Park, Sector 62, Noida, UP 201301",
-    subscription: { plan: "Premium Fleet", status: "Active", expiry: "12 Mar 2027", renewal: "12 Feb 2027", studentsAllowed: 1000, busesAllowed: 15, parentSubs: 486, commissionPct: 20, balance: 12440 },
+    name: "School Portal",
+    code: "SCH-000",
+    principal: "—",
+    phone: "—",
+    email: "—",
+    address: "—",
+    subscription: { plan: "Standard", status: "Active", expiry: "—", renewal: "—", studentsAllowed: 0, busesAllowed: 0, parentSubs: 0, commissionPct: 20, balance: 0 },
 };
 
 export type DBus = {
@@ -267,57 +268,33 @@ export type DBus = {
     students: number; route: string; lastUpdated: string; battery: number; gps: "Online" | "Offline";
 };
 
-export const BUSES: DBus[] = [
-    { id: "b1", number: "BUS-01", vehicleNumber: "DL01AB1234", name: "Yellow Falcon", driverId: "d1", helper: "Suresh Yadav", helperPhone: "+91 98111 22334", status: "Running", location: "Sector 62 Crossing, Noida", speed: 34, color: "#2563EB", students: 28, route: "Route A", lastUpdated: "12 sec ago", battery: 84, gps: "Online" },
-    { id: "b2", number: "BUS-02", vehicleNumber: "DL01CD5678", name: "Blue Comet", driverId: "d2", helper: "Mohan Lal", helperPhone: "+91 98222 33445", status: "Running", location: "Vasundhara Gate 2, Ghaziabad", speed: 22, color: "#16A34A", students: 34, route: "Route B", lastUpdated: "8 sec ago", battery: 71, gps: "Online" },
-    { id: "b3", number: "BUS-03", vehicleNumber: "UP14EF9012", name: "Green Arrow", driverId: "d3", helper: "Ramesh Gupta", helperPhone: "+91 97333 44556", status: "Offline", location: "School Parking Bay 3", speed: 0, color: "#EA580C", students: 30, route: "Route C", lastUpdated: "26 min ago", battery: 100, gps: "Offline" },
-    { id: "b4", number: "BUS-04", vehicleNumber: "HR26GH3456", name: "Red Rocket", driverId: "d4", helper: "Vinod Kumar", helperPhone: "+91 96444 55667", status: "Running", location: "Sector 45 Market, Gurugram", speed: 41, color: "#DC2626", students: 24, route: "Route D", lastUpdated: "4 sec ago", battery: 62, gps: "Online" },
-    { id: "b5", number: "BUS-05", vehicleNumber: "DL02IJ7890", name: "Silver Line", driverId: "d5", helper: "Dinesh Rawat", helperPhone: "+91 95555 66778", status: "Maintenance", location: "Service Center, Sector 8", speed: 0, color: "#7C3AED", students: 0, route: "Route E", lastUpdated: "2 hrs ago", battery: 45, gps: "Offline" },
-];
+export const BUSES: DBus[] = [];
 
 export type DDriver = {
     id: string; name: string; driverId: string; phone: string; license: string; busId: string | null;
     status: "Active" | "Suspended"; experience: string; trips: number; rating: number;
 };
 
-export const DRIVERS: DDriver[] = [
-    { id: "d1", name: "Rajesh Kumar", driverId: "DRV001", phone: "+91 98765 43210", license: "DL-0420110149646", busId: "b1", status: "Active", experience: "8 yrs", trips: 1240, rating: 4.8 },
-    { id: "d2", name: "Amit Singh", driverId: "DRV002", phone: "+91 98123 45678", license: "DL-0520130256781", busId: "b2", status: "Active", experience: "6 yrs", trips: 980, rating: 4.6 },
-    { id: "d3", name: "Prakash Joshi", driverId: "DRV003", phone: "+91 93777 88990", license: "UP-1420150367892", busId: "b3", status: "Active", experience: "5 yrs", trips: 745, rating: 4.5 },
-    { id: "d4", name: "Sandeep Rana", driverId: "DRV004", phone: "+91 92666 55443", license: "HR-2620170478903", busId: "b4", status: "Active", experience: "9 yrs", trips: 1510, rating: 4.9 },
-    { id: "d5", name: "Naveen Bisht", driverId: "DRV005", phone: "+91 91555 44332", license: "DL-0220190589014", busId: "b5", status: "Suspended", experience: "3 yrs", trips: 310, rating: 4.1 },
-];
+export const DRIVERS: DDriver[] = [];
 
 export type DStudent = {
     id: string; name: string; admissionNo: string; studentId: string; rollNo: string; klass: string; section: string;
     gender: string; dob: string; parentName: string; parentPhone: string; busId: string | null;
 };
 
-export const STUDENTS: DStudent[] = [
-    { id: "st1", name: "Aarav Sharma", admissionNo: "ADM-2024-0101", studentId: "STU-101", rollNo: "12", klass: "V", section: "A", gender: "Male", dob: "14 Jun 2015", parentName: "Rohit Sharma", parentPhone: "+91 98100 11223", busId: "b1" },
-    { id: "st2", name: "Diya Patel", admissionNo: "ADM-2024-0102", studentId: "STU-102", rollNo: "07", klass: "III", section: "B", gender: "Female", dob: "02 Nov 2017", parentName: "Kiran Patel", parentPhone: "+91 98200 22334", busId: "b1" },
-    { id: "st3", name: "Kabir Verma", admissionNo: "ADM-2024-0103", studentId: "STU-103", rollNo: "21", klass: "VII", section: "A", gender: "Male", dob: "23 Jan 2013", parentName: "Deepak Verma", parentPhone: "+91 98300 33445", busId: "b2" },
-    { id: "st4", name: "Ananya Iyer", admissionNo: "ADM-2024-0104", studentId: "STU-104", rollNo: "04", klass: "II", section: "C", gender: "Female", dob: "19 Aug 2018", parentName: "Suresh Iyer", parentPhone: "+91 98400 44556", busId: "b2" },
-    { id: "st5", name: "Vihaan Gupta", admissionNo: "ADM-2024-0105", studentId: "STU-105", rollNo: "15", klass: "VI", section: "B", gender: "Male", dob: "30 Mar 2014", parentName: "Manish Gupta", parentPhone: "+91 98500 55667", busId: "b3" },
-    { id: "st6", name: "Sara Khan", admissionNo: "ADM-2024-0106", studentId: "STU-106", rollNo: "09", klass: "IV", section: "A", gender: "Female", dob: "11 Dec 2016", parentName: "Imran Khan", parentPhone: "+91 98600 66778", busId: "b4" },
-];
+export const STUDENTS: DStudent[] = [];
 
 export type DParent = {
     id: string; name: string; father: string; mother: string; phone: string; email: string; address: string;
     studentIds: string[]; subscription: "Active" | "Expired";
 };
 
-export const PARENTS: DParent[] = [
-    { id: "p1", name: "Rohit Sharma", father: "Rohit Sharma", mother: "Neha Sharma", phone: "+91 98100 11223", email: "rohit.s@gmail.com", address: "A-101, Sector 62, Noida", studentIds: ["st1"], subscription: "Active" },
-    { id: "p2", name: "Kiran Patel", father: "Kiran Patel", mother: "Rekha Patel", phone: "+91 98200 22334", email: "kiran.p@gmail.com", address: "B-45, Indirapuram, Ghaziabad", studentIds: ["st2"], subscription: "Active" },
-    { id: "p3", name: "Deepak Verma", father: "Deepak Verma", mother: "Pooja Verma", phone: "+91 98300 33445", email: "deepak.v@gmail.com", address: "C-12, Vasundhara, Ghaziabad", studentIds: ["st3"], subscription: "Active" },
-    { id: "p4", name: "Suresh Iyer", father: "Suresh Iyer", mother: "Lakshmi Iyer", phone: "+91 98400 44556", email: "suresh.i@gmail.com", address: "D-78, Sector 45, Gurugram", studentIds: ["st4"], subscription: "Expired" },
-    { id: "p5", name: "Manish Gupta", father: "Manish Gupta", mother: "Ritu Gupta", phone: "+91 98500 55667", email: "manish.g@gmail.com", address: "E-23, Raj Nagar, Ghaziabad", studentIds: ["st5", "st6"], subscription: "Active" },
-];
+export const PARENTS: DParent[] = [];
 
-/* In-memory dashboard data.  This deliberately lives only while the app is open:
-   it makes the prototype behave like a real product without introducing a backend. */
+/* Dashboard data provider — hydates from Supabase database */
 type SchoolData = {
+    schoolId: string | null;
+    schoolName: string;
     buses: DBus[];
     drivers: DDriver[];
     students: DStudent[];
@@ -338,38 +315,326 @@ const SchoolDataContext = createContext<SchoolData | null>(null);
 
 export function SchoolDataProvider({ children }: { children: React.ReactNode }) {
     const [isLoading, setIsLoading] = useState(true);
-    const [buses, setBuses] = useState<DBus[]>(() => BUSES.map((bus) => ({ ...bus })));
-    const [drivers, setDrivers] = useState<DDriver[]>(() => DRIVERS.map((driver) => ({ ...driver })));
-    const [students, setStudents] = useState<DStudent[]>(() => STUDENTS.map((student) => ({ ...student })));
-    const [parents] = useState<DParent[]>(() => PARENTS.map((parent) => ({ ...parent, studentIds: [...parent.studentIds] })));
+    const [schoolId, setSchoolId] = useState<string | null>(null);
+    const [schoolName, setSchoolName] = useState<string>("School Dashboard");
+    const [buses, setBuses] = useState<DBus[]>([]);
+    const [drivers, setDrivers] = useState<DDriver[]>([]);
+    const [students, setStudents] = useState<DStudent[]>([]);
+    const [parents, setParents] = useState<DParent[]>([]);
 
+    // Fetch school_id + live fleet data from Supabase on mount
     useEffect(() => {
-        // Keep the first-frame skeleton brief while the local store hydrates.
-        const timer = setTimeout(() => {
-            setIsLoading(false);
-        }, 240);
-        return () => clearTimeout(timer);
+        const fetchSchoolData = async () => {
+            try {
+                // Step 1: Resolve school_id from school_members or schools for current user
+                const { data: { user } } = await supabase.auth.getUser();
+                let resolvedSchoolId: string | null = null;
+
+                if (user) {
+                    const { data: memberData } = await supabase
+                        .from("school_members")
+                        .select("school_id, schools:school_id(name)")
+                        .eq("user_id", user.id)
+                        .eq("is_active", true)
+                        .limit(1)
+                        .single();
+
+                    if (memberData) {
+                        resolvedSchoolId = memberData.school_id;
+                        setSchoolId(resolvedSchoolId);
+                        if ((memberData.schools as any)?.name) {
+                            setSchoolName((memberData.schools as any).name);
+                        }
+                    } else {
+                        const { data: ownedSchool } = await supabase
+                            .from("schools")
+                            .select("id, name")
+                            .eq("admin_user_id", user.id)
+                            .limit(1)
+                            .single();
+
+                        if (ownedSchool) {
+                            resolvedSchoolId = ownedSchool.id;
+                            setSchoolId(resolvedSchoolId);
+                            setSchoolName(ownedSchool.name);
+                        }
+                    }
+                }
+
+                // Step 2: Fetch buses, drivers, children (RLS will scope to school)
+                const [busesRes, driversRes, childrenRes, parentsRes] = await Promise.all([
+                    supabase.from("buses").select("*, bus_live_locations(latitude, longitude, speed, heading, is_live, updated_at)").eq("is_active", true).order("bus_number"),
+                    supabase.from("drivers").select("*, profiles:user_id(full_name, phone, avatar_url)").eq("is_active", true),
+                    supabase.from("children").select("*, child_parents(parent_user_id, profiles:parent_user_id(full_name, phone))").eq("is_active", true).order("full_name"),
+                    resolvedSchoolId
+                        ? supabase.from("child_parents").select("parent_user_id, relationship, children:child_id(id, school_id), profiles:parent_user_id(id, full_name, phone)")
+                        : Promise.resolve({ data: null }),
+                ]);
+
+                if (busesRes.data) {
+                    const mappedBuses: DBus[] = busesRes.data.map((b: any, idx: number) => {
+                        const loc = Array.isArray(b.bus_live_locations) ? b.bus_live_locations[0] : b.bus_live_locations;
+                        const isLive = loc?.is_live ?? false;
+                        const updatedAt = loc?.updated_at;
+                        const timeDiff = updatedAt ? Math.round((Date.now() - new Date(updatedAt).getTime()) / 1000) : 0;
+                        const lastUpdated = isLive
+                            ? (timeDiff < 60 ? `${timeDiff} sec ago` : `${Math.round(timeDiff / 60)} min ago`)
+                            : "Offline";
+
+                        return {
+                            id: b.id,
+                            number: b.bus_number || `BUS-${idx + 1}`,
+                            vehicleNumber: b.bus_number || `BUS-${idx + 1}`,
+                            name: b.route_name || b.bus_number || "School Bus",
+                            driverId: "",
+                            helper: "Staff Helper",
+                            helperPhone: "",
+                            status: isLive ? "Running" as const : "Offline" as const,
+                            location: isLive ? "On Route" : "Parked",
+                            speed: loc?.speed ? Number(loc.speed) : 0,
+                            color: ["#2563EB", "#16A34A", "#EA580C", "#DC2626", "#7C3AED"][idx % 5],
+                            students: b.capacity || 30,
+                            route: b.route_name || "Main Route",
+                            lastUpdated,
+                            battery: 85,
+                            gps: isLive ? "Online" as const : "Offline" as const,
+                        };
+                    });
+                    setBuses(mappedBuses);
+                }
+
+                if (driversRes.data) {
+                    const mappedDrivers: DDriver[] = driversRes.data.map((d: any, idx: number) => {
+                        const profile = d.profiles;
+                        return {
+                            id: d.id,
+                            name: profile?.full_name || `Driver ${idx + 1}`,
+                            driverId: `DRV-${String(idx + 1).padStart(3, "0")}`,
+                            phone: profile?.phone || "",
+                            license: d.license_number || "",
+                            busId: d.assigned_bus_id || null,
+                            status: d.is_active ? "Active" as const : "Suspended" as const,
+                            experience: `${d.experience_years || 0} yrs`,
+                            trips: 0,
+                            rating: d.rating ? Number(d.rating) : 5.0,
+                        };
+                    });
+                    setDrivers(mappedDrivers);
+                }
+
+                if (childrenRes.data) {
+                    const mappedStudents: DStudent[] = childrenRes.data.map((c: any) => {
+                        const parentInfo = Array.isArray(c.child_parents) && c.child_parents.length > 0
+                            ? c.child_parents[0]?.profiles
+                            : null;
+
+                        return {
+                            id: c.id,
+                            name: c.full_name,
+                            admissionNo: c.roll_number || "—",
+                            studentId: c.roll_number || "—",
+                            rollNo: c.roll_number || "—",
+                            klass: c.class || "—",
+                            section: c.section || "—",
+                            gender: "—",
+                            dob: "—",
+                            parentName: parentInfo?.full_name || "—",
+                            parentPhone: parentInfo?.phone || "—",
+                            busId: c.assigned_bus_id || null,
+                        };
+                    });
+                    setStudents(mappedStudents);
+                }
+
+                if (parentsRes.data) {
+                    const parentMap = new Map<string, DParent>();
+                    for (const row of parentsRes.data as any[]) {
+                        const profile = row.profiles;
+                        const child = row.children;
+                        if (!profile || !child) continue;
+                        if (resolvedSchoolId && child.school_id !== resolvedSchoolId) continue;
+
+                        if (!parentMap.has(profile.id)) {
+                            parentMap.set(profile.id, {
+                                id: profile.id,
+                                name: profile.full_name || "—",
+                                father: profile.full_name || "—",
+                                mother: "—",
+                                phone: profile.phone || "—",
+                                email: "—",
+                                address: "—",
+                                studentIds: [],
+                                subscription: "Active",
+                            });
+                        }
+                        parentMap.get(profile.id)!.studentIds.push(child.id);
+                    }
+                    setParents(Array.from(parentMap.values()));
+                }
+            } catch (err) {
+                console.warn("Supabase fetchSchoolData error:", err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchSchoolData();
     }, []);
 
     const value = useMemo<SchoolData>(() => ({
+        schoolId,
+        schoolName,
         buses,
         drivers,
         students,
         parents,
         isLoading,
-        addStudent: (student) => setStudents((current) => [student, ...current]),
-        updateStudent: (student) => setStudents((current) => current.map((item) => item.id === student.id ? student : item)),
-        removeStudent: (id) => setStudents((current) => current.filter((student) => student.id !== id)),
-        assignStudentToBus: (studentId, busId) => setStudents((current) => current.map((student) => student.id === studentId ? { ...student, busId } : student)),
-        addBus: (bus) => setBuses((current) => [bus, ...current]),
-        updateBus: (bus) => setBuses((current) => current.map((item) => item.id === bus.id ? bus : item)),
+        addStudent: (student) => {
+            setStudents((current) => [student, ...current]);
+            // Insert child in Supabase — school_id comes from RLS (auto-scoped)
+            const insertChild = async () => {
+                try {
+                    const sid = schoolId;
+                    if (!sid) { console.warn("addStudent: no school_id resolved"); return; }
+
+                    const { data: childData } = await supabase.from("children").insert({
+                        school_id: sid,
+                        full_name: student.name,
+                        roll_number: student.rollNo || null,
+                        class: student.klass || null,
+                        section: student.section || null,
+                        assigned_bus_id: student.busId || null,
+                    }).select("id").single();
+
+                    // Authorize parent phone for registration
+                    if (student.parentPhone && student.parentPhone !== "—") {
+                        const phone = student.parentPhone.replace(/[^0-9+]/g, "");
+                        const formatted = phone.startsWith("+") ? phone : `+91${phone}`;
+                        await supabase.from("authorized_contacts").upsert({
+                            school_id: sid,
+                            phone: formatted,
+                            contact_type: "parent" as const,
+                            child_id: childData?.id || null,
+                            is_registered: false,
+                        }, { onConflict: "school_id,phone,contact_type" });
+                    }
+                } catch (e) { console.warn("addStudent Supabase error:", e); }
+            };
+            insertChild();
+        },
+        updateStudent: (student) => {
+            setStudents((current) => current.map((item) => item.id === student.id ? student : item));
+            (async () => {
+                try {
+                    await supabase.from("children").update({
+                        full_name: student.name,
+                        class: student.klass || null,
+                        section: student.section || null,
+                        roll_number: student.rollNo || null,
+                        assigned_bus_id: student.busId || null,
+                        updated_at: new Date().toISOString(),
+                    }).eq("id", student.id);
+                } catch (e) { console.warn("updateStudent error:", e); }
+            })();
+        },
+        removeStudent: (id) => {
+            setStudents((current) => current.filter((student) => student.id !== id));
+            // Soft-delete: set is_active = false instead of hard delete
+            (async () => {
+                try {
+                    await supabase.from("children").update({
+                        is_active: false,
+                        updated_at: new Date().toISOString(),
+                    }).eq("id", id);
+                } catch (e) { console.warn("removeStudent error:", e); }
+            })();
+        },
+        assignStudentToBus: (studentId, busId) => {
+            setStudents((current) => current.map((student) => student.id === studentId ? { ...student, busId } : student));
+            (async () => {
+                try {
+                    await supabase.from("children").update({
+                        assigned_bus_id: busId,
+                        updated_at: new Date().toISOString(),
+                    }).eq("id", studentId);
+                } catch (e) { console.warn("assignStudentToBus error:", e); }
+            })();
+        },
+        addBus: (bus) => {
+            setBuses((current) => [bus, ...current]);
+            const insertBus = async () => {
+                try {
+                    const sid = schoolId;
+                    if (!sid) { console.warn("addBus: no school_id resolved"); return; }
+                    await supabase.from("buses").insert({
+                        school_id: sid,
+                        bus_number: bus.number,
+                        route_name: bus.route || null,
+                        capacity: bus.students || 32,
+                        is_active: true,
+                    });
+                } catch (e) { console.warn("addBus Supabase error:", e); }
+            };
+            insertBus();
+        },
+        updateBus: (bus) => {
+            setBuses((current) => current.map((item) => item.id === bus.id ? bus : item));
+            (async () => {
+                try {
+                    await supabase.from("buses").update({
+                        bus_number: bus.number,
+                        route_name: bus.route || null,
+                        capacity: bus.students || null,
+                        updated_at: new Date().toISOString(),
+                    }).eq("id", bus.id);
+                } catch (e) { console.warn("updateBus error:", e); }
+            })();
+        },
         removeBus: (id) => {
             setBuses((current) => current.filter((bus) => bus.id !== id));
             setStudents((current) => current.map((student) => student.busId === id ? { ...student, busId: null } : student));
+            // Soft-delete: set is_active = false
+            (async () => {
+                try {
+                    await supabase.from("buses").update({
+                        is_active: false,
+                        updated_at: new Date().toISOString(),
+                    }).eq("id", id);
+                } catch (e) { console.warn("removeBus error:", e); }
+            })();
         },
-        addDriver: (driver) => setDrivers((current) => [driver, ...current]),
-        removeDriver: (id) => setDrivers((current) => current.filter((driver) => driver.id !== id)),
-    }), [buses, drivers, students, parents, isLoading]);
+        addDriver: (driver) => {
+            setDrivers((current) => [driver, ...current]);
+            // Authorize driver phone for registration
+            const authorizeDriver = async () => {
+                try {
+                    const sid = schoolId;
+                    if (!sid || !driver.phone) return;
+                    const phone = driver.phone.replace(/[^0-9+]/g, "");
+                    const formatted = phone.startsWith("+") ? phone : `+91${phone}`;
+                    await supabase.from("authorized_contacts").upsert({
+                        school_id: sid,
+                        phone: formatted,
+                        contact_type: "driver" as const,
+                        is_registered: false,
+                    }, { onConflict: "school_id,phone,contact_type" });
+                } catch (e) { console.warn("addDriver authorize error:", e); }
+            };
+            authorizeDriver();
+        },
+        removeDriver: (id) => {
+            setDrivers((current) => current.filter((driver) => driver.id !== id));
+            // Soft-delete driver
+            (async () => {
+                try {
+                    await supabase.from("drivers").update({
+                        is_active: false,
+                        updated_at: new Date().toISOString(),
+                    }).eq("id", id);
+                } catch (e) { console.warn("removeDriver error:", e); }
+            })();
+        },
+    }), [buses, drivers, students, parents, isLoading, schoolId]);
 
     return <SchoolDataContext.Provider value={value}>{children}</SchoolDataContext.Provider>;
 }
@@ -380,13 +645,7 @@ export function useSchoolData() {
     return data;
 }
 
-export const RECENT_ACTIVITY = [
-    { id: "a1", icon: "bus" as const, color: GREEN, soft: GREEN_SOFT, text: "BUS-01 started Route A trip", time: "2 min ago" },
-    { id: "a2", icon: "person-add" as const, color: BLUE, soft: BLUE_SOFT, text: "New parent registered — Kiran Patel", time: "18 min ago" },
-    { id: "a3", icon: "warning" as const, color: ORANGE, soft: ORANGE_SOFT, text: "BUS-03 GPS went offline", time: "26 min ago" },
-    { id: "a4", icon: "checkmark-circle" as const, color: GREEN, soft: GREEN_SOFT, text: "BUS-02 completed morning pickup", time: "1 hr ago" },
-    { id: "a5", icon: "construct" as const, color: PURPLE, soft: PURPLE_SOFT, text: "BUS-05 sent for maintenance", time: "2 hrs ago" },
-];
+export const RECENT_ACTIVITY: { id: string; icon: keyof typeof Ionicons.glyphMap; color: string; soft: string; text: string; time: string }[] = [];
 
 export const busStatusColor = (s: DBus["status"]) =>
     s === "Running" ? { color: GREEN, soft: GREEN_SOFT } :

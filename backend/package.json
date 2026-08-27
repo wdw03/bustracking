@@ -1,0 +1,15 @@
+{
+  "name": "bustracker-backend",
+  "version": "1.0.0",
+  "description": "BusTracker Supabase Backend — Migrations, Edge Functions, RPCs, and Test Suite",
+  "type": "module",
+  "scripts": {
+    "test": "node scripts/test-backend.mjs",
+    "deploy:functions": "supabase functions deploy",
+    "db:push": "supabase db push",
+    "db:reset": "supabase db reset"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.1"
+  }
+}

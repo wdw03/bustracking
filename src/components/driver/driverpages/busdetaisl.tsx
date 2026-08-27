@@ -76,6 +76,34 @@ function InfoRow({ icon, label, value, valueColor, last }: { icon: any; label: s
 
 export default function BusDetails({ onBack }: { onBack?: () => void }) {
     const insets = useSafeAreaInsets();
+    const [busInfo, setBusInfo] = React.useState(BUS);
+
+    React.useEffect(() => {
+        let isMounted = true;
+        (async () => {
+            try {
+                const { getDriverDashboard } = await import("../../../services/driverService");
+                const dash = await getDriverDashboard();
+                if (isMounted && dash?.bus) {
+                    setBusInfo({
+                        number: dash.bus.bus_number || BUS.number,
+                        route: dash.bus.route_name || BUS.route,
+                        model: (dash.bus as any).model || BUS.model,
+                        capacity: `${dash.bus.capacity || 30} students`,
+                        driver: dash.profile?.full_name || BUS.driver,
+                        helper: (dash.bus as any).helper_name || BUS.helper,
+                        insuranceValid: "Active",
+                        fitnessValid: "Valid",
+                        gpsDevice: "Installed & Active",
+                        image: schoolBusIcon,
+                    });
+                }
+            } catch (err) {
+                console.warn("Bus details fetch fallback:", err);
+            }
+        })();
+        return () => { isMounted = false; };
+    }, []);
 
     return (
         <View style={{ flex: 1, backgroundColor: PAGE_BG }}>
@@ -254,6 +282,7 @@ export default function BusDetails({ onBack }: { onBack?: () => void }) {
                     </View>
                 </View>
 
+                {/* Details list */}
                 <View
                     style={{
                         backgroundColor: "#FFFFFF",
@@ -266,12 +295,12 @@ export default function BusDetails({ onBack }: { onBack?: () => void }) {
                         marginTop: ms(16),
                     }}
                 >
-                    <InfoRow icon="bus-outline" label="BUS NUMBER" value={BUS.number} />
-                    <InfoRow icon="map-outline" label="ROUTE" value={BUS.route} />
-                    <InfoRow icon="construct-outline" label="MODEL" value={BUS.model} />
-                    <InfoRow icon="people-outline" label="CAPACITY" value={BUS.capacity} />
-                    <InfoRow icon="person-outline" label="DRIVER NAME" value={BUS.driver} />
-                    <InfoRow icon="person-add-outline" label="HELPER" value={BUS.helper} last />
+                    <InfoRow icon="bus-outline" label="BUS NUMBER" value={busInfo.number} />
+                    <InfoRow icon="map-outline" label="ROUTE" value={busInfo.route} />
+                    <InfoRow icon="construct-outline" label="MODEL" value={busInfo.model} />
+                    <InfoRow icon="people-outline" label="CAPACITY" value={busInfo.capacity} />
+                    <InfoRow icon="person-outline" label="DRIVER NAME" value={busInfo.driver} />
+                    <InfoRow icon="person-add-outline" label="HELPER" value={busInfo.helper} last />
                 </View>
 
                 <Text style={{ fontFamily: FONT.display, fontSize: ms(15), color: INK, marginTop: ms(20), marginBottom: ms(10) }}>
@@ -288,9 +317,9 @@ export default function BusDetails({ onBack }: { onBack?: () => void }) {
                         paddingVertical: ms(4),
                     }}
                 >
-                    <InfoRow icon="shield-checkmark-outline" label="INSURANCE VALID TILL" value={BUS.insuranceValid} valueColor={GREEN} />
-                    <InfoRow icon="document-text-outline" label="FITNESS CERTIFICATE" value={BUS.fitnessValid} valueColor={GREEN} />
-                    <InfoRow icon="hardware-chip-outline" label="GPS DEVICE" value={BUS.gpsDevice} valueColor={GREEN} last />
+                    <InfoRow icon="shield-checkmark-outline" label="INSURANCE VALID TILL" value={busInfo.insuranceValid} valueColor={GREEN} />
+                    <InfoRow icon="document-text-outline" label="FITNESS CERTIFICATE" value={busInfo.fitnessValid} valueColor={GREEN} />
+                    <InfoRow icon="hardware-chip-outline" label="GPS DEVICE" value={busInfo.gpsDevice} valueColor={GREEN} last />
                 </View>
             </ScrollView>
         </View>

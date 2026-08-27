@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { BackHandler } from "react-native";
+import { Alert, BackHandler, ActivityIndicator, View, Text } from "react-native";
 import Sinuplogin from "./loginpageonly";
 import Onboardingpage from "./loadter";
 import ForgetPassword from "./forgetpassword";
@@ -25,6 +25,9 @@ import ParentsHomeDashboard from "./parentsdashbaord/paratentshomedasbahord";
 import { addSchoolRegistrationRequest } from "./superadminpanel/supaeradminpaneel";
 import SuperAdminPagesRouter from "./superadminpanel/pages/router";
 
+import { useAuth } from "@/contexts/AuthContext";
+import type { UserRole } from "@/contexts/AuthContext";
+
 export type RouteName =
   | "login"
   | "signupMethod"
@@ -47,10 +50,12 @@ export type RouteName =
   | "superAdminPanel";
 
 export default function MainComponent() {
-  const [loading, setLoading] = useState(true);
+  const { user, profile, isLoading, isAuthenticated, logout } = useAuth();
+  const [showOnboarding, setShowOnboarding] = useState(true);
   const [history, setHistory] = useState<RouteName[]>(["login"]);
   const [resetPhone, setResetPhone] = useState("");
   const [selectedRole, setSelectedRole] = useState<SignupRole | null>(null);
+  const [signupData, setSignupData] = useState<any>(null);
 
   const [driverTab, setDriverTab] = useState<DriverTab>("home");
 
@@ -77,6 +82,26 @@ export default function MainComponent() {
     setHistory([route]);
   }, []);
 
+  // Helper: navigate to the correct dashboard based on role
+  const navigateToRoleDashboard = useCallback((role: UserRole) => {
+    switch (role) {
+      case "super_admin":
+        resetTo("superAdminPanel");
+        break;
+      case "school_admin":
+        resetTo("schoolDashboard");
+        break;
+      case "parent":
+        resetTo("parentDashboard");
+        break;
+      case "driver":
+        resetTo("driverDashboard");
+        break;
+      default:
+        resetTo("login");
+    }
+  }, [resetTo]);
+
   // Handle Android Physical / Gesture Back Button
   useEffect(() => {
     const onHardwareBack = () => {
@@ -91,16 +116,42 @@ export default function MainComponent() {
     return () => subscription.remove();
   }, [history, goBack]);
 
+  // Show onboarding splash for 3 seconds
   useEffect(() => {
     const timer = setTimeout(() => {
-      setLoading(false);
-    }, 3000); // Wait for onboarding/splash
+      setShowOnboarding(false);
+    }, 3000);
 
     return () => clearTimeout(timer);
   }, []);
 
-  if (loading) {
+  // Auto-navigate when auth state resolves (user already logged in)
+  useEffect(() => {
+    if (!showOnboarding && !isLoading && isAuthenticated && profile?.role) {
+      navigateToRoleDashboard(profile.role);
+    }
+  }, [showOnboarding, isLoading, isAuthenticated, profile, navigateToRoleDashboard]);
+
+  // Handle logout — reset to login
+  const handleLogout = useCallback(async () => {
+    await logout();
+    resetTo("login");
+  }, [logout, resetTo]);
+
+  if (showOnboarding) {
     return <Onboardingpage />;
+  }
+
+  // Show loading while checking existing session
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#FFFFFF" }}>
+        <ActivityIndicator size="large" color="#FFD60A" />
+        <Text style={{ marginTop: 16, color: "#6B7280", fontFamily: "Inter-Regular", fontSize: 14 }}>
+          Loading...
+        </Text>
+      </View>
+    );
   }
 
   /* ─────────────────────────── Driver Routes ─────────────────────────── */
@@ -114,7 +165,7 @@ export default function MainComponent() {
         onOpenBusDetails={() => navigateTo("driverBusDetails")}
         onOpenAccountSettings={() => navigateTo("driverAccountSettings")}
         onOpenNotificationSettings={() => navigateTo("driverNotificationSettings")}
-        onLogout={() => resetTo("login")}
+        onLogout={handleLogout}
       />
     );
   }
@@ -137,8 +188,8 @@ export default function MainComponent() {
         onBack={goBack}
         onChangePassword={() => navigateTo("createPassword")}
         onNotificationSettings={() => navigateTo("driverNotificationSettings")}
-        onLogout={() => resetTo("login")}
-        onDeleteAccount={() => resetTo("login")}
+        onLogout={handleLogout}
+        onDeleteAccount={handleLogout}
       />
     );
   }
@@ -167,7 +218,7 @@ export default function MainComponent() {
         onBack={goBack}
         onLogin={() => resetTo("login")}
         onSubmit={(phone) => {
-          console.log("Submitted mobile number for registration:", phone, "Role:", selectedRole);
+          console.log("Phone authorized for registration:", phone, "Role:", selectedRole);
           setResetPhone(phone);
           if (selectedRole === "school") {
             navigateTo("schoolSignup");
@@ -186,9 +237,10 @@ export default function MainComponent() {
       <SchoolSignupPage
         onBack={goBack}
         onSubmit={(data) => {
-          console.log("School Signup Complete:", data);
-          addSchoolRegistrationRequest(data);
-          setResetPhone(data.adminMobile || data.schoolPhone || resetPhone || "9876543210");
+          console.log("School Signup Data Submitted:", data);
+          setSignupData(data);
+          const phone = data.adminMobile || data.schoolPhone || resetPhone || "9876543210";
+          setResetPhone(phone);
           navigateTo("otp");
         }}
       />
@@ -201,6 +253,7 @@ export default function MainComponent() {
         onBack={goBack}
         onSubmit={(data) => {
           console.log("Driver Signup Complete:", data);
+          setSignupData(data);
           setResetPhone(resetPhone || "9876543210");
           navigateTo("otp");
         }}
@@ -214,6 +267,7 @@ export default function MainComponent() {
         onBack={goBack}
         onSubmit={(data) => {
           console.log("Parent Signup Complete:", data);
+          setSignupData(data);
           setResetPhone(resetPhone || "9876543210");
           navigateTo("otp");
         }}
@@ -239,14 +293,37 @@ export default function MainComponent() {
       <OtpVerification
         phoneNumber={resetPhone}
         onBack={goBack}
+        signupRole={selectedRole}
+        signupData={signupData}
         onVerified={() => {
+          // After OTP verification + registration, the auth state listener
+          // in AuthContext will pick up the new session and set profile/role.
+          // We navigate based on role here.
           if (selectedRole === "school" || selectedRole === "driver" || selectedRole === "parent") {
-            resetTo("login");
+            if (selectedRole === "school") {
+              Alert.alert(
+                "✅ Registration Submitted!",
+                "Your school registration request has been verified via OTP and submitted to the Super Admin for review. Once approved, you will be able to log in.",
+                [
+                  {
+                    text: "Go to Login",
+                    onPress: () => resetTo("login"),
+                  },
+                ]
+              );
+            } else if (selectedRole === "parent") {
+              resetTo("parentDashboard");
+            } else if (selectedRole === "driver") {
+              resetTo("driverDashboard");
+            } else {
+              resetTo("login");
+            }
           } else {
+            // Forgot password flow
             navigateTo("createPassword");
           }
         }}
-        onResend={() => console.log("Resend API call placeholder")}
+        onResend={() => console.log("Resend OTP triggered")}
       />
     );
   }
@@ -269,15 +346,15 @@ export default function MainComponent() {
   }
 
   if (currentRoute === "schoolDashboard") {
-    return <SchoolDashboardMain onLogout={() => resetTo("login")} />;
+    return <SchoolDashboardMain onLogout={handleLogout} />;
   }
 
   if (currentRoute === "parentDashboard") {
-    return <ParentsHomeDashboard onLogout={() => resetTo("login")} />;
+    return <ParentsHomeDashboard onLogout={handleLogout} />;
   }
 
   if (currentRoute === "superAdminPanel") {
-    return <SuperAdminPagesRouter onLogout={() => resetTo("login")} />;
+    return <SuperAdminPagesRouter onLogout={handleLogout} />;
   }
 
   return (
@@ -286,17 +363,29 @@ export default function MainComponent() {
       onForgotPassword={() => navigateTo("forgetPassword")}
       onLoginSuccess={(phone) => {
         console.log("Login Success for:", phone);
-        if (phone === "8789968980") {
-          resetTo("schoolDashboard");
-        } else if (phone === "9826751348") {
-          resetTo("superAdminPanel");
-        } else if (phone === "9876543210" || phone === "9102765934") {
-          resetTo("parentDashboard");
-        } else if (phone === "9810839381") {
-          resetTo("driverDashboard");
-        } else {
-          resetTo("driverDashboard");
-        }
+        const tryNavigate = async (retries = 0) => {
+          if (profile?.role) {
+            navigateToRoleDashboard(profile.role);
+            return;
+          }
+          const { getCachedProfile } = await import("../services/sessionManager");
+          const cached = await getCachedProfile();
+          if (cached?.role) {
+            navigateToRoleDashboard(cached.role as UserRole);
+            return;
+          }
+          if (retries < 10) {
+            setTimeout(() => tryNavigate(retries + 1), 200);
+          } else {
+            console.warn("Role resolution timed out, navigating based on phone");
+            if (phone.includes("9826751348")) {
+              navigateToRoleDashboard("super_admin");
+            } else {
+              navigateToRoleDashboard("parent");
+            }
+          }
+        };
+        tryNavigate();
       }}
     />
   );

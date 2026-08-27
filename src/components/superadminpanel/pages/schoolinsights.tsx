@@ -7,12 +7,7 @@ import { buses, drivers, parents, students } from "./mockData";
 type RelatedKey = "parents" | "students" | "buses" | "drivers";
 type SchoolSummary = { id: string; name: string; city: string; parents: number; students: number; buses: number; drivers: number };
 
-const SCHOOL_SUMMARIES: SchoolSummary[] = [
-  { id: "SCH-101", name: "Bluebells Public School", city: "New Delhi", parents: 714, students: 842, buses: 12, drivers: 14 },
-  { id: "SCH-102", name: "St. Xavier's Academy", city: "Gurugram", parents: 466, students: 510, buses: 8, drivers: 9 },
-  { id: "SCH-103", name: "Green Valley School", city: "Noida", parents: 288, students: 328, buses: 6, drivers: 7 },
-  { id: "SCH-104", name: "Little Stars International", city: "Jaipur", parents: 190, students: 214, buses: 4, drivers: 5 },
-];
+const SCHOOL_SUMMARIES: SchoolSummary[] = [];
 
 const RELATED: Record<RelatedKey, { label: string; icon: keyof typeof Ionicons.glyphMap; color: string; records: AdminRecord[] }> = {
   parents: { label: "Parents", icon: "people", color: "#7C3AED", records: parents },
@@ -21,10 +16,7 @@ const RELATED: Record<RelatedKey, { label: string; icon: keyof typeof Ionicons.g
   drivers: { label: "Drivers", icon: "person", color: "#EA580C", records: drivers },
 };
 
-const ALL_SCHOOLS = SCHOOL_SUMMARIES.reduce<SchoolSummary>(
-  (total, school) => ({ ...total, parents: total.parents + school.parents, students: total.students + school.students, buses: total.buses + school.buses, drivers: total.drivers + school.drivers }),
-  { id: "all", name: "All schools", city: `${SCHOOL_SUMMARIES.length} schools`, parents: 0, students: 0, buses: 0, drivers: 0 },
-);
+const ALL_SCHOOLS: SchoolSummary = { id: "all", name: "All schools", city: "0 schools", parents: 0, students: 0, buses: 0, drivers: 0 };
 
 export default function SchoolInsights() {
   const [schoolId, setSchoolId] = useState("all");

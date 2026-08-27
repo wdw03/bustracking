@@ -1,4 +1,29 @@
 import React from "react";
 import { EntityPage } from "./pagekit";
-import { payments, SCHOOL_NAMES } from "./mockData";
-export default function PaymentRequestsPage({ onNavigate }: { onNavigate?: (page: string) => void }) { return <EntityPage workflow="payment" title="Payment requests" subtitle="Process, approve, reject and complete subscription payments." seed={payments} schoolNames={SCHOOL_NAMES} onNavigate={onNavigate} metrics={[{ label: "Total revenue", value: "₹3,84,920", icon: "cash", color: "#0F766E" }, { label: "Pending", value: payments.filter((p) => p.status === "pending").length, icon: "time", color: "#EA580C" }, { label: "Processing", value: payments.filter((p) => p.status === "processing").length, icon: "sync", color: "#2563EB" }, { label: "Completed", value: payments.filter((p) => p.status === "completed").length, icon: "checkmark-circle", color: "#16A34A" }]} filters={["All", "Pending", "Processing", "Completed", "Rejected", "Failed"]} searchPlaceholder="Request ID, parent, school or transaction" actionLabel="Refresh payments" />; }
+import { SCHOOL_NAMES } from "./mockData";
+import { useAdminCollection } from "./store";
+
+export default function PaymentRequestsPage({ onNavigate }: { onNavigate?: (page: string) => void }) {
+  const { records } = useAdminCollection("payments");
+  const pendingCount = records.filter((p) => p.status === "pending").length;
+  const completedCount = records.filter((p) => p.status === "completed").length;
+
+  return (
+    <EntityPage
+      workflow="payment"
+      title="Payment requests"
+      subtitle="Process, approve, reject and complete subscription payments & withdrawals."
+      seed={records}
+      schoolNames={SCHOOL_NAMES}
+      onNavigate={onNavigate}
+      metrics={[
+        { label: "Total requests", value: records.length, icon: "cash", color: "#0F766E" },
+        { label: "Pending", value: pendingCount, icon: "time", color: "#EA580C" },
+        { label: "Completed", value: completedCount, icon: "checkmark-circle", color: "#16A34A" },
+      ]}
+      filters={["All", "Pending", "Completed", "Rejected"]}
+      searchPlaceholder="Request ID, school or transaction"
+      actionLabel="Refresh payments"
+    />
+  );
+}

@@ -30,6 +30,7 @@ import * as Haptics from "expo-haptics";
 import { VideoView, useVideoPlayer } from "expo-video";
 import { SignupRole } from "./signupmethod";
 import TermsAndConditionsModal from "./termsandconditions";
+import { useAuth } from "@/contexts/AuthContext";
 
 /* ─────────────────────────── Design Tokens ─────────────────────────── */
 const ACCENT = "#FFD60A";
@@ -58,14 +59,10 @@ const FONT = {
 /* ─────────────────────────── Assets ─────────────────────────── */
 const HERO_VIDEO = require("../../assets/expo.icon/Assets/signnumberregieter.mp4");
 
-/* ─────────────────────────── Demo Assigned Records ───────────────────────────
-   In a production app, your backend database checks these via API.
-   These demo numbers allow easy testing:
-   - Entering an assigned number (e.g. 9876543210) proceeds to registration.
-   - Entering any unassigned number triggers the role-specific exception card! */
-const ASSIGNED_DRIVER_NUMBERS = new Set(["9876543210", "9123456789", "9999999999", "9876543211"]);
-const ASSIGNED_PARENT_NUMBERS = new Set(["9876543210", "9876500000", "9876511111", "9876522222"]);
-const ALREADY_REGISTERED_NUMBERS = new Set(["9800000000", "9900000000"]);
+/* ─────────────────────────── Authorization ───────────────────────────
+   Phone authorization is checked via the Supabase register-user Edge Function.
+   The server verifies phone is in the authorized_contacts table.
+   NEVER trust client-side checks alone — these are just for UX. */
 
 export type ExceptionType =
     | "empty"
@@ -93,6 +90,7 @@ export default function RegisterNumberPage({
 }: RegisterNumberPageProps) {
     const insets = useSafeAreaInsets();
     const { width, height } = useWindowDimensions();
+    const { checkAuthorization } = useAuth();
 
     /* ── Responsive scale ── */
     const ms = useCallback(
@@ -332,48 +330,46 @@ export default function RegisterNumberPage({
         textOpacity.value = withTiming(0, { duration: 180 });
         loadingOpacity.value = withDelay(100, withTiming(1, { duration: 280 }));
 
-        // Simulate backend check / API validation
-        successTimerRef.current = setTimeout(() => {
-            // A. Check Already Registered
-            if (ALREADY_REGISTERED_NUMBERS.has(phoneNumber)) {
+        // Call Supabase Edge Function to check authorization & duplicate phone
+        successTimerRef.current = setTimeout(async () => {
+            try {
+                const contactType = role === "school" ? "school" : role === "driver" ? "driver" : "parent";
+                const authResult = await checkAuthorization(phoneNumber, contactType);
+
+                if (!authResult.success || !authResult.authorized) {
+                    resetButtonToIdle();
+                    shake(phoneShake);
+
+                    if (authResult.code === "ALREADY_REGISTERED" || authResult.error?.toLowerCase().includes("already registered")) {
+                        triggerException("alreadyRegistered");
+                    } else if (role === "driver") {
+                        triggerException("driverNotAssigned");
+                    } else if (role === "parent") {
+                        triggerException("parentNotAssigned");
+                    } else {
+                        triggerException("alreadyRegistered");
+                    }
+                    return;
+                }
+
+                // Phone is authorized & available! Proceed to next step.
+                setBtnState("success");
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                loadingOpacity.value = withTiming(0, { duration: 180 });
+                iconOpacity.value = withDelay(100, withTiming(1, { duration: 280 }));
+
+                setTimeout(() => {
+                    onSubmit?.(phoneNumber);
+                    onOtpSent?.(phoneNumber);
+                    resetButtonToIdle();
+                }, 1000);
+            } catch (err) {
+                console.error("Authorization check error:", err);
                 resetButtonToIdle();
                 shake(phoneShake);
-                triggerException("alreadyRegistered");
-                return;
+                triggerException("server");
             }
-
-            // B. Driver Role Exception Check
-            if (role === "driver") {
-                if (!ASSIGNED_DRIVER_NUMBERS.has(phoneNumber)) {
-                    resetButtonToIdle();
-                    shake(phoneShake);
-                    triggerException("driverNotAssigned");
-                    return;
-                }
-            }
-
-            // C. Parent Role Exception Check
-            if (role === "parent") {
-                if (!ASSIGNED_PARENT_NUMBERS.has(phoneNumber)) {
-                    resetButtonToIdle();
-                    shake(phoneShake);
-                    triggerException("parentNotAssigned");
-                    return;
-                }
-            }
-
-            // Success -> Proceed to Next Step
-            setBtnState("success");
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            loadingOpacity.value = withTiming(0, { duration: 180 });
-            iconOpacity.value = withDelay(100, withTiming(1, { duration: 280 }));
-
-            setTimeout(() => {
-                onSubmit?.(phoneNumber);
-                onOtpSent?.(phoneNumber);
-                resetButtonToIdle();
-            }, 1000);
-        }, 1200);
+        }, 800);
     };
 
     /* ── Static input base styles ── */

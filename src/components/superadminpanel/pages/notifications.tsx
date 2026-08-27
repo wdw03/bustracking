@@ -47,41 +47,7 @@ export default function NotificationsPage() {
       channels: string;
       reachCount: number;
     }>
-  >([
-    {
-      id: "NOTIF-101",
-      title: "Weather Advisory — 15 Min Bus Delay",
-      body: "Due to heavy rainfall in Delhi NCR, morning pickup will be delayed by 15-20 minutes. Please track buses via live GPS.",
-      school: "All Schools",
-      target: "Parents & Drivers",
-      priority: "Bus Delay",
-      time: "Today, 07:15 AM",
-      channels: "Push + In-App",
-      reachCount: 2890,
-    },
-    {
-      id: "NOTIF-102",
-      title: "Monthly Transportation Fee Reminder",
-      body: "Gentle reminder to renew August bus subscription before 20th August to avoid service interruption.",
-      school: "St. Xavier's Academy",
-      target: "Parents",
-      priority: "Fee Reminder",
-      time: "Yesterday, 04:30 PM",
-      channels: "Push + In-App + SMS",
-      reachCount: 466,
-    },
-    {
-      id: "NOTIF-103",
-      title: "Document Verification Required",
-      body: "Please upload your updated commercial driving license and police clearance certificate.",
-      school: "Bluebells Public School",
-      target: "Vikram Yadav (Driver · Bus 101)",
-      priority: "Urgent Alert",
-      time: "13 Aug 2026, 11:20 AM",
-      channels: "Direct 1:1 Push + SMS",
-      reachCount: 1,
-    },
-  ]);
+  >([ ]);
 
   // Combined searchable individuals list
   const allIndividuals: PersonRecord[] = useMemo(() => {

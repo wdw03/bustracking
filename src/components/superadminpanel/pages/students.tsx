@@ -1,4 +1,25 @@
 import React from "react";
 import { EntityPage } from "./pagekit";
-import { students, SCHOOL_NAMES } from "./mockData";
-export default function StudentsPage() { return <EntityPage title="Students" subtitle="Search student, admission, class, parent, bus and route details." seed={students} schoolNames={SCHOOL_NAMES} metrics={[{ label: "Total students", value: students.length, icon: "school", color: "#16A34A", note: "Across all schools" }, { label: "Active", value: students.filter((s) => s.status === "active").length, icon: "checkmark-circle", color: "#16A34A" }, { label: "Blocked", value: students.filter((s) => s.status === "blocked").length, icon: "ban", color: "#DC2626" }]} filters={["All", "Active", "Blocked"]} searchPlaceholder="Student, admission, class, parent or bus" actionLabel="Add student" />; }
+import { SCHOOL_NAMES } from "./mockData";
+import { useAdminCollection } from "./store";
+
+export default function StudentsPage() {
+  const { records } = useAdminCollection("students");
+  const activeCount = records.filter((s) => s.status === "active").length;
+
+  return (
+    <EntityPage
+      title="Students"
+      subtitle="Search student, admission, class, parent, bus and route details."
+      seed={records}
+      schoolNames={SCHOOL_NAMES}
+      metrics={[
+        { label: "Total students", value: records.length, icon: "school", color: "#16A34A", note: "Across all schools" },
+        { label: "Active", value: activeCount, icon: "checkmark-circle", color: "#16A34A" },
+      ]}
+      filters={["All", "Active", "Inactive"]}
+      searchPlaceholder="Student, class, parent or bus"
+      actionLabel="Refresh students"
+    />
+  );
+}

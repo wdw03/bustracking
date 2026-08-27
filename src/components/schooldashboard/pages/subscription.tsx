@@ -22,6 +22,7 @@ import {
     SCHOOL, STUDENTS, SectionTitle, SkeletonItem, ms, useSchoolData, useTheme,
     ORANGE, ORANGE_SOFT, GREEN, GREEN_SOFT, BLUE, BLUE_SOFT
 } from "../common";
+import { supabase } from "../../../services/supabase";
 
 /* ─── TYPES ─── */
 type WithdrawStep = "idle" | "details" | "processing" | "complete";
@@ -44,34 +45,15 @@ type ProcessingRequest = {
     accountName: string; upiId?: string; bankName?: string; accountNumber?: string; ifsc?: string;
 };
 
-/* ─── DUMMY DATA ─── */
-const TRANSACTIONS: Transaction[] = [
-    { id: "t1", text: "Withdrawal · UPI", amt: "-₹5,000", time: "28 Jan 2026", color: ORANGE, soft: ORANGE_SOFT, icon: "arrow-up-circle", status: "Completed", method: "UPI", txnId: "TXN20260128A5K", accountName: "Green Valley School", bankName: "HDFC Bank", upiId: "greenvalley@upi" },
-    { id: "t2", text: "Commission · 42 parent plans", amt: "+₹3,360", time: "15 Jan 2026", color: GREEN, soft: GREEN_SOFT, icon: "arrow-down-circle", status: "Completed", txnId: "COM20260115B3K" },
-    { id: "t3", text: "Commission · 61 parent plans", amt: "+₹4,880", time: "01 Jan 2026", color: GREEN, soft: GREEN_SOFT, icon: "arrow-down-circle", status: "Completed", txnId: "COM20260101C4K" },
-    { id: "t4", text: "Plan renewal · Premium Fleet", amt: "-₹11,999", time: "12 Dec 2025", color: BLUE, soft: BLUE_SOFT, icon: "diamond", status: "Completed", method: "UPI", txnId: "PLN20251212D11K", accountName: "Green Valley School", upiId: "greenvalley@upi" },
-];
-
-const PARENT_EARNINGS: ParentEarning[] = [
-    { id: "pe1", parentName: "Rohit Sharma", phone: "+91 98100 11223", plan: "Monthly · ₹199", amount: 199, paidDate: "02 Jan 2026", commission: 40, status: "Active" },
-    { id: "pe2", parentName: "Kiran Patel", phone: "+91 98200 22334", plan: "Yearly · ₹1,999", amount: 1999, paidDate: "05 Jan 2026", commission: 400, status: "Active" },
-    { id: "pe3", parentName: "Deepak Verma", phone: "+91 98300 33445", plan: "Monthly · ₹199", amount: 199, paidDate: "10 Jan 2026", commission: 40, status: "Active" },
-    { id: "pe4", parentName: "Manish Gupta", phone: "+91 98500 55667", plan: "Quarterly · ₹499", amount: 499, paidDate: "12 Jan 2026", commission: 100, status: "Active" },
-    { id: "pe5", parentName: "Amit Kumar", phone: "+91 99100 99887", plan: "Monthly · ₹199", amount: 199, paidDate: "15 Jan 2026", commission: 40, status: "Active" },
-    { id: "pe6", parentName: "Priya Singh", phone: "+91 99200 88776", plan: "Yearly · ₹1,999", amount: 1999, paidDate: "18 Jan 2026", commission: 400, status: "Active" },
-    { id: "pe7", parentName: "Suresh Iyer", phone: "+91 98400 44556", plan: "Monthly · ₹199", amount: 199, paidDate: "01 Nov 2025", commission: 40, status: "Expired" },
-];
-
-const PROCESSING_REQUESTS: ProcessingRequest[] = [
-    { id: "pr1", amount: 3000, method: "UPI", requestedAt: "04 Aug 2026, 11:30 PM", status: "Processing", accountName: "Green Valley School", upiId: "greenvalley@upi" },
-    { id: "pr2", amount: 8000, method: "IMPS", requestedAt: "02 Aug 2026, 3:45 PM", status: "Under Review", accountName: "Green Valley School", bankName: "HDFC Bank", accountNumber: "****9012", ifsc: "HDFC0001234" },
-    { id: "pr3", amount: 1500, method: "UPI", requestedAt: "30 Jul 2026, 9:10 AM", status: "Queued", accountName: "Green Valley School", upiId: "greenvalley@upi" },
-];
+/* ─── TRANSACTION & EARNINGS ARRAYS ─── */
+const TRANSACTIONS: Transaction[] = [];
+const PARENT_EARNINGS: ParentEarning[] = [];
+const PROCESSING_REQUESTS: ProcessingRequest[] = [];
 
 /* ─── COMPONENT ─── */
 export default function SubscriptionPage({ onBack }: { onBack: () => void }) {
     const insets = useSafeAreaInsets();
-    const { buses, students, parents, isLoading } = useSchoolData();
+    const { buses, students, parents, isLoading, schoolId } = useSchoolData();
     const sub = SCHOOL.subscription;
     const [method, setMethod] = useState<"UPI" | "IMPS">("UPI");
     const [amount, setAmount] = useState("");
@@ -167,6 +149,26 @@ export default function SubscriptionPage({ onBack }: { onBack: () => void }) {
             if (!ifscCode.trim()) return Alert.alert("Missing details", "IFSC code is required.");
         }
         setStep("processing");
+
+        // Insert into live Supabase withdrawal_requests table
+        (async () => {
+            try {
+                const sid = schoolId;
+                if (!sid) return;
+                await supabase.from("withdrawal_requests").insert({
+                    school_id: sid,
+                    amount: Number(amount),
+                    bank_name: method === "IMPS" ? bankName : null,
+                    account_number: method === "IMPS" ? accountNumber : null,
+                    ifsc_code: method === "IMPS" ? ifscCode : null,
+                    account_holder: method === "IMPS" ? accountName : upiName,
+                    upi_id: method === "UPI" ? upiId : null,
+                    status: "pending",
+                });
+            } catch (e) {
+                console.warn("Withdrawal request Supabase error:", e);
+            }
+        })();
     };
 
     const resetAll = () => {

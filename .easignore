@@ -1,0 +1,17 @@
+# Ignore node_modules & build artifacts for fast EAS upload
+node_modules/
+.expo/
+dist/
+build/
+web-build/
+*.apk
+*.aab
+*.tar.gz
+*.zip
+.git/
+
+# Ignore backend & temp files
+backend/
+scratch/
+.DS_Store
+*.log

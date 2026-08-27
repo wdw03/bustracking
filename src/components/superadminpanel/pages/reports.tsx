@@ -13,11 +13,7 @@ export default function ReportsPage() {
   const [exportData, setExportData] = useState({ title: "", content: "", filename: "" });
 
   const revenueData: Record<string, { total: string; numeric: number; bars: number[] }> = {
-    "All Schools": { total: "₹3,84,920", numeric: 384920, bars: [42, 56, 49, 68, 62, 86, 74] },
-    "Bluebells Public School": { total: "₹1,84,200", numeric: 184200, bars: [20, 28, 25, 34, 30, 42, 38] },
-    "St. Xavier's Academy": { total: "₹1,42,800", numeric: 142800, bars: [15, 20, 18, 24, 22, 32, 28] },
-    "Green Valley School": { total: "₹42,120", numeric: 42120, bars: [5, 6, 4, 8, 7, 9, 6] },
-    "Little Stars International": { total: "₹15,800", numeric: 15800, bars: [2, 2, 2, 2, 3, 3, 2] },
+    "All Schools": { total: "₹0", numeric: 0, bars: [0, 0, 0, 0, 0, 0, 0] },
   };
 
   const currentRevenue = revenueData[schoolFilter] ?? revenueData["All Schools"];

@@ -10,20 +10,8 @@ type Coordinate = [number, number];
 type SchoolNode = { id: string; name: string; city: string; coordinate: Coordinate; students: number; parents: number; subscribed: number; buses: number; drivers: number };
 type BusNode = { id: string; name: string; schoolId: string; driver: string; status: "Running" | "Stopped" | "Offline"; coordinate: Coordinate; speed: number };
 
-const SCHOOLS: SchoolNode[] = [
-  { id: "SCH-101", name: "Bluebells Public School", city: "New Delhi", coordinate: [77.372, 28.632], students: 842, parents: 714, subscribed: 284, buses: 12, drivers: 14 },
-  { id: "SCH-102", name: "St. Xavier's Academy", city: "Gurugram", coordinate: [77.354, 28.6205], students: 510, parents: 466, subscribed: 236, buses: 8, drivers: 9 },
-  { id: "SCH-103", name: "Green Valley School", city: "Noida", coordinate: [77.381, 28.6175], students: 328, parents: 288, subscribed: 104, buses: 6, drivers: 7 },
-  { id: "SCH-104", name: "Little Stars International", city: "Jaipur", coordinate: [77.346, 28.635], students: 214, parents: 190, subscribed: 60, buses: 4, drivers: 5 },
-];
-
-const BUSES: BusNode[] = [
-  { id: "BUS-101", name: "Bus 101", schoolId: "SCH-101", driver: "Vikram Yadav", status: "Running", coordinate: [77.378, 28.636], speed: 34 },
-  { id: "BUS-102", name: "Bus 102", schoolId: "SCH-101", driver: "Rakesh Kumar", status: "Stopped", coordinate: [77.365, 28.628], speed: 0 },
-  { id: "BUS-203", name: "Bus 203", schoolId: "SCH-102", driver: "Rahul Khan", status: "Running", coordinate: [77.348, 28.616], speed: 22 },
-  { id: "BUS-305", name: "Bus 305", schoolId: "SCH-103", driver: "Arjun Malik", status: "Stopped", coordinate: [77.386, 28.612], speed: 0 },
-  { id: "BUS-410", name: "Bus 410", schoolId: "SCH-104", driver: "Unassigned", status: "Offline", coordinate: [77.339, 28.639], speed: 0 },
-];
+const SCHOOLS: SchoolNode[] = [];
+const BUSES: BusNode[] = [];
 
 export default function SuperAdminFleetMap() {
   const [loading, setLoading] = useState(true);
