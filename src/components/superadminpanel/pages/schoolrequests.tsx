@@ -85,9 +85,9 @@ export default function SchoolRequestsPage({ onNavigate }: { onNavigate?: (page:
             `📍 ${s.address || "—"} · ${s.city || "—"}, ${s.state || "—"} ${s.pincode || ""}`,
             `👤 Principal: ${s.principal_name || "—"}`,
         ],
-        // Attach approve/reject handlers
-        onApprove: () => handleApprove(s.id),
-        onReject: () => handleReject(s.id),
+        // Attach approve/reject handlers (only for pending requests)
+        onApprove: s.status === "pending" ? () => handleApprove(s.id) : undefined,
+        onReject: s.status === "pending" ? () => handleReject(s.id) : undefined,
     }));
 
     return (

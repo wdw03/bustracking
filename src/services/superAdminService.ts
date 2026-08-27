@@ -141,6 +141,7 @@ export async function getAllSchools(): Promise<SchoolRecord[]> {
     const { data, error } = await supabase
         .from("schools")
         .select("*")
+        .in("status", ["approved", "active", "blocked"])
         .order("created_at", { ascending: false });
 
     if (error || !data) return [];

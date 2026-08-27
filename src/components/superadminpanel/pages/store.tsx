@@ -98,112 +98,98 @@ export function SuperAdminProvider({ children }: { children: ReactNode }) {
                 getWithdrawalRequests(),
             ]);
 
-            // Convert to AdminRecord format
-            if (schoolsData.length > 0) {
-                dispatch({
-                    type: "hydrate",
-                    collection: "schools",
-                    records: schoolsData.map((s) => ({
-                        id: s.id,
-                        title: s.name,
-                        subtitle: `${s.principal_name || "—"} · ${s.city || "—"}`,
-                        status: s.status,
-                        icon: "business",
-                        phone: s.phone,
-                        email: s.email || undefined,
-                        address: s.address || undefined,
-                        fields: [
-                            `📍 ${s.address || "—"} · ${s.city || "—"}, ${s.state || "—"} ${s.pincode || ""}`,
-                            `👤 Principal: ${s.principal_name || "—"} (${s.principal_phone || "—"})`,
-                            `📅 Registered: ${new Date(s.created_at).toLocaleDateString("en-IN")}`,
-                        ],
-                    })),
-                });
-            }
+            // Convert to AdminRecord format — always hydrate to reflect real DB state
+            dispatch({
+                type: "hydrate",
+                collection: "schools",
+                records: (schoolsData || []).map((s) => ({
+                    id: s.id,
+                    title: s.name,
+                    subtitle: `${s.principal_name || "—"} · ${s.city || "—"}`,
+                    status: s.status,
+                    icon: "business",
+                    phone: s.phone,
+                    email: s.email || undefined,
+                    address: s.address || undefined,
+                    fields: [
+                        `📍 ${s.address || "—"} · ${s.city || "—"}, ${s.state || "—"} ${s.pincode || ""}`,
+                        `👤 Principal: ${s.principal_name || "—"} (${s.principal_phone || "—"})`,
+                        `📅 Registered: ${new Date(s.created_at).toLocaleDateString("en-IN")}`,
+                    ],
+                })),
+            });
 
-            if (parentsData.length > 0) {
-                dispatch({
-                    type: "hydrate",
-                    collection: "parents",
-                    records: parentsData.map((p: any) => ({
-                        id: p.id,
-                        title: p.full_name,
-                        subtitle: p.phone || "—",
-                        status: "active",
-                        icon: "people",
-                    })),
-                });
-            }
+            dispatch({
+                type: "hydrate",
+                collection: "parents",
+                records: (parentsData || []).map((p: any) => ({
+                    id: p.id,
+                    title: p.full_name,
+                    subtitle: p.phone || "—",
+                    status: "active",
+                    icon: "people",
+                })),
+            });
 
-            if (driversData.length > 0) {
-                dispatch({
-                    type: "hydrate",
-                    collection: "drivers",
-                    records: driversData.map((d: any) => ({
-                        id: d.id,
-                        title: d.driver_name || d.full_name || "Unknown",
-                        subtitle: `${d.driver_phone || "—"} · License: ${d.license_number || "—"}`,
-                        status: d.is_active ? "active" : "inactive",
-                        icon: "person",
-                    })),
-                });
-            }
+            dispatch({
+                type: "hydrate",
+                collection: "drivers",
+                records: (driversData || []).map((d: any) => ({
+                    id: d.id,
+                    title: d.driver_name || d.full_name || "Unknown",
+                    subtitle: `${d.driver_phone || "—"} · License: ${d.license_number || "—"}`,
+                    status: d.is_active ? "active" : "inactive",
+                    icon: "person",
+                })),
+            });
 
-            if (busesData.length > 0) {
-                dispatch({
-                    type: "hydrate",
-                    collection: "buses",
-                    records: busesData.map((b: any) => ({
-                        id: b.id,
-                        title: b.bus_number || "Unknown",
-                        subtitle: `${b.school_name || "—"} · ${b.vehicle_number || "—"}`,
-                        status: b.is_active ? "active" : "inactive",
-                        icon: "bus",
-                    })),
-                });
-            }
+            dispatch({
+                type: "hydrate",
+                collection: "buses",
+                records: (busesData || []).map((b: any) => ({
+                    id: b.id,
+                    title: b.bus_number || "Unknown",
+                    subtitle: `${b.school_name || "—"} · ${b.vehicle_number || "—"}`,
+                    status: b.is_active ? "active" : "inactive",
+                    icon: "bus",
+                })),
+            });
 
-            if (studentsData.length > 0) {
-                dispatch({
-                    type: "hydrate",
-                    collection: "students",
-                    records: studentsData.map((s: any) => ({
-                        id: s.id,
-                        title: s.full_name || "Unknown",
-                        subtitle: `${s.school_name || "—"} · ${s.class_name || "—"} · Bus: ${s.bus_number || "—"}`,
-                        status: "active",
-                        icon: "school",
-                    })),
-                });
-            }
+            dispatch({
+                type: "hydrate",
+                collection: "students",
+                records: (studentsData || []).map((s: any) => ({
+                    id: s.id,
+                    title: s.full_name || "Unknown",
+                    subtitle: `${s.school_name || "—"} · ${s.class_name || "—"} · Bus: ${s.bus_number || "—"}`,
+                    status: "active",
+                    icon: "school",
+                })),
+            });
 
-            if (subsData.length > 0) {
-                dispatch({
-                    type: "hydrate",
-                    collection: "subscriptions",
-                    records: subsData.map((s: any) => ({
-                        id: s.id,
-                        title: s.user_name || "Unknown",
-                        subtitle: `${s.plan_type || "—"} · ₹${s.amount_paid || 0} · ${s.user_phone || ""}`,
-                        status: s.status,
-                        icon: "card",
-                    })),
-                });
-            }
+            dispatch({
+                type: "hydrate",
+                collection: "subscriptions",
+                records: (subsData || []).map((s: any) => ({
+                    id: s.id,
+                    title: s.user_name || "Unknown",
+                    subtitle: `${s.plan_type || "—"} · ₹${s.amount_paid || 0} · ${s.user_phone || ""}`,
+                    status: s.status,
+                    icon: "card",
+                })),
+            });
 
-            if (withdrawalsData.length > 0) {
-                dispatch({
-                    type: "hydrate",
-                    collection: "payments",
-                    records: withdrawalsData.map((w) => ({
-                        id: w.id,
-                        title: `WD-${w.id.slice(0, 8).toUpperCase()}`,
-                        subtitle: `${w.school_name || "—"} · ₹${w.amount}`,
-                        status: w.status,
-                        icon: "wallet",
-                    })),
-                });
-            }
+            dispatch({
+                type: "hydrate",
+                collection: "payments",
+                records: (withdrawalsData || []).map((w) => ({
+                    id: w.id,
+                    title: `WD-${w.id.slice(0, 8).toUpperCase()}`,
+                    subtitle: `${w.school_name || "—"} · ₹${w.amount}`,
+                    status: w.status,
+                    icon: "wallet",
+                })),
+            });
 
             dispatch({ type: "loaded" });
         } catch (err) {
