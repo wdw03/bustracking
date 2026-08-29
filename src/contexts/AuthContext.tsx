@@ -42,6 +42,7 @@ export type Profile = {
   phone: string;
   role: UserRole;
   avatar_url?: string;
+  is_active?: boolean;
   school_id?: string;
   driver_id?: string;
   assigned_bus_id?: string;
@@ -71,7 +72,7 @@ type AuthContextType = {
   tokenExpiresAt: string | null;
 
   // ── Auth Actions ──
-  login: (phone: string, otp: string) => Promise<{ success: boolean; error?: string }>;
+  login: (phone: string, secret: string) => Promise<{ success: boolean; code?: string; error?: string }>;
   sendOtp: (phone: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
 
@@ -101,7 +102,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 async function fetchProfile(userId: string): Promise<Profile | null> {
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, full_name, phone, role, avatar_url, created_at")
+    .select("id, full_name, phone, role, avatar_url, is_active, created_at")
     .eq("id", userId)
     .single();
 
@@ -114,12 +115,22 @@ async function fetchProfile(userId: string): Promise<Profile | null> {
     .from("school_members")
     .select("school_id")
     .eq("user_id", userId)
-    .eq("is_active", true)
     .limit(1)
-    .single();
+    .maybeSingle();
 
   if (memberData) {
     profile.school_id = memberData.school_id;
+  } else {
+    // Also check schools table directly where admin_user_id = userId
+    const { data: schoolData } = await supabase
+      .from("schools")
+      .select("id")
+      .eq("admin_user_id", userId)
+      .limit(1)
+      .maybeSingle();
+    if (schoolData) {
+      profile.school_id = schoolData.id;
+    }
   }
 
   // For drivers, also resolve driver_id and assigned_bus_id
@@ -129,7 +140,7 @@ async function fetchProfile(userId: string): Promise<Profile | null> {
       .select("id, assigned_bus_id")
       .eq("user_id", userId)
       .eq("is_active", true)
-      .single();
+      .maybeSingle();
 
     if (driverData) {
       profile.driver_id = driverData.id;
@@ -227,17 +238,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Step 2: Check Supabase for active session (validates JWT with server)
         const existingSession = await getSession();
         if (existingSession && mounted) {
-          setSession(existingSession);
-          setUser(existingSession.user);
-
-          // Persist tokens locally
-          await persistSession(existingSession);
-
           // Fetch fresh profile & subscription from server (replaces cached data)
           const [prof, sub] = await Promise.all([
             fetchProfile(existingSession.user.id),
             fetchSubscription(),
           ]);
+
+          // If school admin is not active or school is pending, do not keep active session
+          if (prof?.role === "school_admin" && !prof.is_active) {
+            await supabase.auth.signOut();
+            await clearSession();
+            if (mounted) {
+              setProfile(null);
+              setSession(null);
+              setUser(null);
+            }
+            return;
+          }
+
+          setSession(existingSession);
+          setUser(existingSession.user);
+          await persistSession(existingSession);
 
           if (mounted) {
             setProfile(prof);
@@ -263,14 +284,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!mounted) return;
 
         if (event === "SIGNED_IN" && newSession) {
-          setSession(newSession);
-          setUser(newSession.user);
-          await persistSession(newSession);
-
           const [prof, sub] = await Promise.all([
             fetchProfile(newSession.user.id),
             fetchSubscription(),
           ]);
+
+          // Block unapproved school admin from acquiring active session via auto-sign-in
+          if (prof?.role === "school_admin" && !prof.is_active) {
+            await supabase.auth.signOut();
+            await clearSession();
+            if (mounted) {
+              setSession(null);
+              setUser(null);
+              setProfile(null);
+              setSubscription(DEFAULT_SUBSCRIPTION);
+            }
+            return;
+          }
+
+          setSession(newSession);
+          setUser(newSession.user);
+          await persistSession(newSession);
+
           if (mounted) {
             setProfile(prof);
             setSubscription(sub);
@@ -296,7 +331,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       mounted = false;
-      authSub.unsubscribe();
+      authSub?.unsubscribe();
     };
   }, [persistSession]);
 
@@ -308,7 +343,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // ── Login: Password or OTP → creates session with Supabase ──
-  const login = useCallback(async (phoneOrEmail: string, secret: string) => {
+  const login = useCallback(async (phoneOrEmail: string, secret: string): Promise<{ success: boolean; code?: string; error?: string }> => {
     const cleanPhone = phoneOrEmail.replace(/\D/g, "");
     const emailCandidate = phoneOrEmail.includes("@")
       ? phoneOrEmail
@@ -353,19 +388,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ]);
 
       // If school admin, check if the school has been approved by Super Admin
-      if (prof?.role === "school_admin" && prof.school_id) {
-        const { data: school } = await supabase
-          .from("schools")
-          .select("status, name")
-          .eq("id", prof.school_id)
-          .single();
+      if (prof?.role === "school_admin") {
+        const cleanUserPhone = (authUser.phone || cleanPhone).replace(/\D/g, "");
+        const formattedUserPhone = cleanUserPhone.startsWith("+") ? cleanUserPhone : `+91${cleanUserPhone.slice(-10)}`;
+        const raw10 = cleanUserPhone.slice(-10);
+
+        let schoolQuery = supabase.from("schools").select("id, status, name");
+        if (prof.school_id) {
+          schoolQuery = schoolQuery.eq("id", prof.school_id);
+        } else {
+          schoolQuery = schoolQuery.or(`admin_user_id.eq.${authUser.id},phone.eq.${formattedUserPhone},phone.eq.${cleanUserPhone},phone.eq.${raw10}`);
+        }
+
+        const { data: school } = await schoolQuery.limit(1).maybeSingle();
 
         if (school && school.status === "pending") {
           await supabase.auth.signOut();
           await clearSession();
           return {
             success: false,
-            error: "Your school registration is pending approval by Super Admin. You can log in once approved.",
+            code: "REGISTRATION_PENDING",
+            error: "Your school registration is in process and pending approval by Super Admin. You can log in once approved.",
           };
         }
 
@@ -374,7 +417,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await clearSession();
           return {
             success: false,
-            error: "Your school registration was rejected by Super Admin. Please contact support.",
+            code: "REGISTRATION_REJECTED",
+            error: "Your school registration request was rejected by Super Admin. Please contact support.",
+          };
+        }
+
+        if (!prof.is_active && (!school || school.status !== "approved")) {
+          await supabase.auth.signOut();
+          await clearSession();
+          return {
+            success: false,
+            code: "REGISTRATION_PENDING",
+            error: "Your registration is in process and pending approval by Super Admin. You can log in once approved.",
           };
         }
       }

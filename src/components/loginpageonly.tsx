@@ -371,8 +371,25 @@ export default function Sinuplogin({ onSignUp, onLoginSuccess, onForgotPassword 
                 if (!result.success) {
                     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
                     resetButtonToIdle();
-                    if (result.error && (result.error.includes("pending approval") || result.error.includes("rejected"))) {
-                        Alert.alert("School Registration", result.error);
+                    if (
+                        result.code === "REGISTRATION_PENDING" ||
+                        result.error?.toLowerCase().includes("pending") ||
+                        result.error?.toLowerCase().includes("in process")
+                    ) {
+                        Alert.alert(
+                            "⏳ Registration in Process (Pending)",
+                            "Aapka school registration abhi Super Admin ke review me pending hai.\n\nJaise hi Super Admin aapki request accept / approve kar denge, aap direct login kar sakenge.",
+                            [{ text: "Theek Hai", style: "default" }]
+                        );
+                    } else if (
+                        result.code === "REGISTRATION_REJECTED" ||
+                        result.error?.toLowerCase().includes("rejected")
+                    ) {
+                        Alert.alert(
+                            "❌ Registration Rejected",
+                            "Aapki school registration request Super Admin dwara reject kar di gayi hai. Kripya support se contact karein.",
+                            [{ text: "OK", style: "destructive" }]
+                        );
                     } else {
                         shake(passwordShake);
                         showLoginError("wrongPassword");
