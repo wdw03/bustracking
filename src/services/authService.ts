@@ -160,7 +160,7 @@ export async function checkPhoneAuthorization(
     success: boolean;
     authorized?: boolean;
     data?: { school_name?: string };
-    error?: { code?: string; message?: string };
+    error?: { code?: string; message?: string } | string;
   }>("register-user", {
     action: "check_authorization",
     phone: formatted,
@@ -170,11 +170,16 @@ export async function checkPhoneAuthorization(
 
   if (!result.success || !result.data?.success) {
     const errObj = result.data?.error;
+    const errorCode = typeof errObj === "object" ? errObj?.code : undefined;
+    const errorMessage = typeof errObj === "object"
+      ? (errObj?.message || "Phone not authorized")
+      : (typeof errObj === "string" ? errObj : (typeof result.error === "string" ? result.error : "Phone not authorized"));
+
     return {
       success: false,
       authorized: false,
-      code: errObj?.code || (result.error?.includes("already registered") ? "ALREADY_REGISTERED" : undefined),
-      error: errObj?.message || result.error || "Phone not authorized",
+      code: errorCode || (typeof result.error === "string" && result.error.includes("already registered") ? "ALREADY_REGISTERED" : undefined),
+      error: errorMessage,
     };
   }
 

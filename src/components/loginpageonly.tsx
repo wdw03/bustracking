@@ -371,10 +371,11 @@ export default function Sinuplogin({ onSignUp, onLoginSuccess, onForgotPassword 
                 if (!result.success) {
                     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
                     resetButtonToIdle();
+                    const errStr = typeof result.error === "string" ? result.error.toLowerCase() : "";
                     if (
                         result.code === "REGISTRATION_PENDING" ||
-                        result.error?.toLowerCase().includes("pending") ||
-                        result.error?.toLowerCase().includes("in process")
+                        errStr.includes("pending") ||
+                        errStr.includes("in process")
                     ) {
                         Alert.alert(
                             "⏳ Registration in Process (Pending)",
@@ -383,11 +384,11 @@ export default function Sinuplogin({ onSignUp, onLoginSuccess, onForgotPassword 
                         );
                     } else if (
                         result.code === "REGISTRATION_REJECTED" ||
-                        result.error?.toLowerCase().includes("rejected")
+                        errStr.includes("rejected")
                     ) {
                         Alert.alert(
                             "❌ Registration Rejected",
-                            "Aapki school registration request Super Admin dwara reject kar di gayi hai. Kripya support se contact karein.",
+                            typeof result.error === "string" ? result.error : "Aapki school registration request Super Admin dwara reject kar di gayi hai. Kripya support se contact karein.",
                             [{ text: "OK", style: "destructive" }]
                         );
                     } else {

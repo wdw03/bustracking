@@ -241,8 +241,20 @@ export async function checkPhoneAuthorization(phone: string, contactType: "paren
     },
   });
 
-  if (error) return { success: false, error: "Network error." };
-  return data;
+  if (error) return { success: false, error: error.message || "Network error." };
+  if (!data) return { success: false, error: "No response from server" };
+
+  const errObj = data.error;
+  const errorCode = typeof errObj === "object" ? errObj?.code : data.code;
+  const errorMessage = typeof errObj === "object" ? (errObj?.message || "Phone not authorized") : (typeof errObj === "string" ? errObj : data.message || "Phone not authorized");
+
+  return {
+    success: !!data.success,
+    authorized: !!data.authorized,
+    code: errorCode,
+    error: errorMessage,
+    school_name: data.data?.school_name || data.school_name,
+  };
 }
 
 /**

@@ -340,7 +340,14 @@ export default function RegisterNumberPage({
                     resetButtonToIdle();
                     shake(phoneShake);
 
-                    if (authResult.code === "ALREADY_REGISTERED" || authResult.error?.toLowerCase().includes("already registered")) {
+                    const errStr = typeof authResult.error === "string" 
+                        ? authResult.error.toLowerCase() 
+                        : typeof (authResult.error as any)?.message === "string"
+                        ? (authResult.error as any).message.toLowerCase()
+                        : "";
+                    const errCode = authResult.code || (authResult.error as any)?.code;
+
+                    if (errCode === "ALREADY_REGISTERED" || errStr.includes("already registered")) {
                         triggerException("alreadyRegistered");
                     } else if (role === "driver") {
                         triggerException("driverNotAssigned");

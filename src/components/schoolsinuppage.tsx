@@ -530,12 +530,19 @@ export default function SchoolSignupPage({ initialPhone = "", onBack, onSubmit }
 
             // Check if phone number is already registered
             const checkRes = await checkPhoneAuthorization(phone, "school");
-            if (!checkRes.success && (checkRes.code === "ALREADY_REGISTERED" || checkRes.error?.toLowerCase().includes("already registered"))) {
+            const errStr = typeof checkRes.error === "string" 
+                ? checkRes.error.toLowerCase() 
+                : typeof (checkRes.error as any)?.message === "string"
+                ? (checkRes.error as any).message.toLowerCase()
+                : "";
+            const errCode = checkRes.code || (checkRes.error as any)?.code;
+
+            if (!checkRes.success && (errCode === "ALREADY_REGISTERED" || errStr.includes("already registered"))) {
                 setSubmitting(false);
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
                 Alert.alert(
                     "Account Already Exists",
-                    checkRes.error || "This mobile number is already registered in BusTracker. You cannot register the same number twice. Please log in directly."
+                    typeof checkRes.error === "string" ? checkRes.error : "This mobile number is already registered in BusTracker. You cannot register the same number twice. Please log in directly."
                 );
                 return;
             }

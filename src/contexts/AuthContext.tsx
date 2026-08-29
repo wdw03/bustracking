@@ -449,11 +449,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const result = await checkPhoneAuthorization(formattedPhone, contactType);
 
     if (!result || !result.success) {
+      const errMessage = typeof result?.error === "string" 
+        ? result.error 
+        : typeof (result?.error as any)?.message === "string"
+        ? (result.error as any).message
+        : "Phone not authorized by school";
+      const errCode = result?.code || (result?.error as any)?.code;
+
       return {
         success: false,
         authorized: false,
-        code: result?.code,
-        error: result?.error || "Phone not authorized by school",
+        code: errCode,
+        error: errMessage,
       };
     }
 
