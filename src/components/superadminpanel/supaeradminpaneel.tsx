@@ -24,13 +24,19 @@ type School = {
     city: string;
     admin: string;
     phone: string;
+    email?: string;
+    address?: string;
+    state?: string;
+    pincode?: string;
+    website?: string;
+    gstNumber?: string;
     buses: number;
     drivers: number;
     students: number;
     parents: number;
     joined: string;
     plan: string;
-    status: "active" | "pending" | "blocked";
+    status: "active" | "pending" | "blocked" | "approved" | "rejected";
 };
 
 type AppUser = {
@@ -153,9 +159,16 @@ export default function SuperAdminPanel({ onLogout }: { onLogout?: () => void })
     const [confirmDialog, setConfirmDialog] = useState<{ title: string; body: string; action: () => void } | null>(null);
     const [menuOpen, setMenuOpen] = useState(false);
     const [editingSchoolId, setEditingSchoolId] = useState<string | null>(null);
+    const [editSchoolName, setEditSchoolName] = useState("");
     const [editSchoolAdmin, setEditSchoolAdmin] = useState("");
     const [editSchoolPhone, setEditSchoolPhone] = useState("");
+    const [editSchoolEmail, setEditSchoolEmail] = useState("");
+    const [editSchoolAddress, setEditSchoolAddress] = useState("");
     const [editSchoolCity, setEditSchoolCity] = useState("");
+    const [editSchoolState, setEditSchoolState] = useState("");
+    const [editSchoolPincode, setEditSchoolPincode] = useState("");
+    const [editSchoolWebsite, setEditSchoolWebsite] = useState("");
+    const [editSchoolGst, setEditSchoolGst] = useState("");
     const [toast, setToast] = useState("");
     const [broadcastOpen, setBroadcastOpen] = useState(false);
     const [broadcastText, setBroadcastText] = useState("");
@@ -366,8 +379,133 @@ export default function SuperAdminPanel({ onLogout }: { onLogout?: () => void })
         return <Modal visible transparent animationType="slide" onRequestClose={() => setDetail(null)}><View style={styles.modalBackdrop}><View style={[styles.detailSheet, { padding: ms(18), paddingBottom: Math.max(insets.bottom, ms(18)) }]}><View style={styles.sheetHandle} /><View style={styles.sheetHeader}><View style={{ flex: 1 }}><Text style={[styles.eyebrow, { fontSize: ms(9.5) }]}>{detail.kind.toUpperCase()} DETAILS</Text><Text style={[styles.sheetTitle, { fontSize: ms(20) }]}>{titleText}</Text></View><Pressable onPress={() => setDetail(null)} style={styles.closeButton}><Ionicons name="close" size={ms(19)} color={INK} /></Pressable></View>{detail.kind === "school" ? <SchoolDetail school={item as School} /> : null}{detail.kind === "bus" ? <BusDetail bus={item as Bus} /> : null}{detail.kind === "user" ? <UserDetail user={item as AppUser} /> : null}{detail.kind === "payment" ? <PaymentDetail payment={item as PaymentRequest} /> : null}</View></View></Modal>;
     };
 
-    const DetailRow = ({ label, value }: { label: string; value: string | number }) => <View style={styles.detailRow}><Text style={styles.detailLabel}>{label}</Text><Text style={styles.detailValue}>{value}</Text></View>;
-    const SchoolDetail = ({ school }: { school: School }) => { const editing = editingSchoolId === school.id; return <><View style={styles.detailStatus}><StatusPill status={school.status} /><Text style={styles.cardSub}>Registered {school.joined}</Text></View>{editing ? <><Text style={styles.formLabel}>Administrator</Text><TextInput value={editSchoolAdmin} onChangeText={setEditSchoolAdmin} style={styles.formInput} /><Text style={styles.formLabel}>Contact number</Text><TextInput value={editSchoolPhone} onChangeText={setEditSchoolPhone} keyboardType="phone-pad" style={styles.formInput} /><Text style={styles.formLabel}>City</Text><TextInput value={editSchoolCity} onChangeText={setEditSchoolCity} style={styles.formInput} /></> : <><DetailRow label="Administrator" value={school.admin} /><DetailRow label="Contact" value={school.phone} /><DetailRow label="City" value={school.city} /></>}<DetailRow label="Plan" value={school.plan} /><DetailRow label="Buses / drivers" value={`${school.buses} / ${school.drivers}`} /><DetailRow label="Students / parents" value={`${school.students} / ${school.parents}`} /><View style={styles.detailActions}>{editing ? <Pressable onPress={() => { const updated = { ...school, admin: editSchoolAdmin.trim() || school.admin, phone: editSchoolPhone.trim() || school.phone, city: editSchoolCity.trim() || school.city }; setSchools((items) => items.map((item) => item.id === school.id ? updated : item)); pendingSchoolRegistrations = pendingSchoolRegistrations.map((item) => item.id === school.id ? updated : item); setEditingSchoolId(null); setDetail({ kind: "school", item: updated }); notify("School details updated locally."); }} style={[styles.primaryButton, { flex: 1 }]}><Ionicons name="checkmark" size={ms(16)} color={INK} /><Text style={styles.primaryButtonText}>Save changes</Text></Pressable> : <Pressable onPress={() => { setEditSchoolAdmin(school.admin); setEditSchoolPhone(school.phone); setEditSchoolCity(school.city); setEditingSchoolId(school.id); }} style={[styles.outlineButton, { flex: 1, justifyContent: "center" }]}><Ionicons name="create-outline" size={ms(16)} color={BLUE} /><Text style={[styles.outlineButtonText, { color: BLUE }]}>Edit details</Text></Pressable>}{school.status === "pending" ? <><Pressable onPress={() => updateSchool(school, "active")} style={[styles.primaryButton, { flex: 1 }]}><Text style={styles.primaryButtonText}>Approve</Text></Pressable><Pressable onPress={() => updateSchool(school, "blocked")} style={[styles.dangerButton, { flex: 1 }]}><Text style={styles.dangerButtonText}>Reject</Text></Pressable></> : <Pressable onPress={() => updateSchool(school, school.status === "blocked" ? "active" : "blocked")} style={[school.status === "blocked" ? styles.primaryButton : styles.dangerButton, { flex: 1 }]}><Text style={school.status === "blocked" ? styles.primaryButtonText : styles.dangerButtonText}>{school.status === "blocked" ? "Activate" : "Block"}</Text></Pressable>}</View></>; };
+    const DetailRow = ({ label, value }: { label: string; value: string | number }) => (
+        <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>{label}</Text>
+            <Text style={styles.detailValue}>{value}</Text>
+        </View>
+    );
+
+    const SchoolDetail = ({ school }: { school: School }) => {
+        const editing = editingSchoolId === school.id;
+        return <>
+            <View style={styles.detailStatus}><StatusPill status={school.status} /><Text style={styles.cardSub}>Registered {school.joined}</Text></View>
+            {editing ? <>
+                <Text style={styles.formLabel}>School Name</Text>
+                <TextInput value={editSchoolName} onChangeText={setEditSchoolName} style={styles.formInput} />
+                <Text style={styles.formLabel}>Administrator / Principal</Text>
+                <TextInput value={editSchoolAdmin} onChangeText={setEditSchoolAdmin} style={styles.formInput} />
+                
+                {/* LOCKED PHONE FIELD */}
+                <View style={{ backgroundColor: "#F8FAFC", borderRadius: ms(12), padding: ms(10), marginVertical: ms(6), borderWidth: 1, borderColor: BORDER }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                        <Text style={{ fontFamily: FONT.semibold, fontSize: ms(11), color: INK }}>Contact Number (Locked)</Text>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: "#DCFCE7", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 999 }}>
+                            <Ionicons name="lock-closed" size={9} color={GREEN} />
+                            <Text style={{ fontFamily: FONT.semibold, fontSize: 9, color: GREEN }}>Permanent</Text>
+                        </View>
+                    </View>
+                    <Text style={{ fontFamily: FONT.display, fontSize: ms(13), color: INK, marginTop: 3 }}>{school.phone}</Text>
+                    <Text style={{ fontFamily: FONT.regular, fontSize: ms(9.5), color: MUTED, marginTop: 1 }}>Registered phone number cannot be modified.</Text>
+                </View>
+
+                <Text style={styles.formLabel}>Email</Text>
+                <TextInput value={editSchoolEmail} onChangeText={setEditSchoolEmail} keyboardType="email-address" autoCapitalize="none" style={styles.formInput} />
+                <Text style={styles.formLabel}>Campus Address</Text>
+                <TextInput value={editSchoolAddress} onChangeText={setEditSchoolAddress} style={styles.formInput} />
+                <Text style={styles.formLabel}>City</Text>
+                <TextInput value={editSchoolCity} onChangeText={setEditSchoolCity} style={styles.formInput} />
+                <Text style={styles.formLabel}>State</Text>
+                <TextInput value={editSchoolState} onChangeText={setEditSchoolState} style={styles.formInput} />
+                <Text style={styles.formLabel}>Postal PIN Code</Text>
+                <TextInput value={editSchoolPincode} onChangeText={setEditSchoolPincode} keyboardType="numeric" maxLength={6} style={styles.formInput} />
+                <Text style={styles.formLabel}>GST / Affiliation Number</Text>
+                <TextInput value={editSchoolGst} onChangeText={setEditSchoolGst} style={styles.formInput} />
+                <Text style={styles.formLabel}>Website</Text>
+                <TextInput value={editSchoolWebsite} onChangeText={setEditSchoolWebsite} keyboardType="url" autoCapitalize="none" style={styles.formInput} />
+            </> : <>
+                <DetailRow label="School Name" value={school.name} />
+                <DetailRow label="Administrator" value={school.admin} />
+                <DetailRow label="Contact (Registered)" value={school.phone} />
+                {school.email ? <DetailRow label="Email" value={school.email} /> : null}
+                {school.address ? <DetailRow label="Address" value={school.address} /> : null}
+                <DetailRow label="City" value={school.city} />
+                {school.state ? <DetailRow label="State" value={school.state} /> : null}
+                {school.pincode ? <DetailRow label="PIN Code" value={school.pincode} /> : null}
+                {school.website ? <DetailRow label="Website" value={school.website} /> : null}
+                {school.gstNumber ? <DetailRow label="GST No" value={school.gstNumber} /> : null}
+            </>}
+            <DetailRow label="Plan" value={school.plan} />
+            <DetailRow label="Buses / drivers" value={`${school.buses} / ${school.drivers}`} />
+            <DetailRow label="Students / parents" value={`${school.students} / ${school.parents}`} />
+            <View style={styles.detailActions}>
+                {editing ? <Pressable onPress={async () => {
+                    const updated: School = {
+                        ...school,
+                        name: editSchoolName.trim() || school.name,
+                        admin: editSchoolAdmin.trim() || school.admin,
+                        city: editSchoolCity.trim() || school.city,
+                        email: editSchoolEmail.trim() || school.email,
+                        address: editSchoolAddress.trim() || school.address,
+                        state: editSchoolState.trim() || school.state,
+                        pincode: editSchoolPincode.trim() || school.pincode,
+                        website: editSchoolWebsite.trim() || school.website,
+                        gstNumber: editSchoolGst.trim() || school.gstNumber,
+                    };
+                    setSchools((items) => items.map((item) => item.id === school.id ? updated : item));
+                    pendingSchoolRegistrations = pendingSchoolRegistrations.map((item) => item.id === school.id ? updated : item);
+                    setEditingSchoolId(null);
+                    setDetail({ kind: "school", item: updated });
+                    notify("School details updated successfully.");
+
+                    try {
+                        const { updateSchoolDetails } = await import("../../services/superAdminService");
+                        await updateSchoolDetails(school.id, {
+                            name: updated.name,
+                            principal_name: updated.admin,
+                            city: updated.city,
+                            email: updated.email,
+                            address: updated.address,
+                            state: updated.state,
+                            pincode: updated.pincode,
+                            website: updated.website,
+                            gst_number: updated.gstNumber,
+                        });
+                    } catch (e) {
+                        console.warn("Supabase updateSchool error:", e);
+                    }
+                }} style={[styles.primaryButton, { flex: 1 }]}>
+                    <Ionicons name="checkmark" size={ms(16)} color={INK} />
+                    <Text style={styles.primaryButtonText}>Save changes</Text>
+                </Pressable> : <Pressable onPress={() => {
+                    setEditSchoolName(school.name);
+                    setEditSchoolAdmin(school.admin);
+                    setEditSchoolPhone(school.phone);
+                    setEditSchoolEmail(school.email || "");
+                    setEditSchoolAddress(school.address || "");
+                    setEditSchoolCity(school.city);
+                    setEditSchoolState(school.state || "");
+                    setEditSchoolPincode(school.pincode || "");
+                    setEditSchoolWebsite(school.website || "");
+                    setEditSchoolGst(school.gstNumber || "");
+                    setEditingSchoolId(school.id);
+                }} style={[styles.outlineButton, { flex: 1, justifyContent: "center" }]}>
+                    <Ionicons name="create-outline" size={ms(16)} color={BLUE} />
+                    <Text style={[styles.outlineButtonText, { color: BLUE }]}>Edit details</Text>
+                </Pressable>}
+                {school.status === "pending" ? <>
+                    <Pressable onPress={() => updateSchool(school, "active")} style={[styles.primaryButton, { flex: 1 }]}>
+                        <Text style={styles.primaryButtonText}>Approve</Text>
+                    </Pressable>
+                    <Pressable onPress={() => updateSchool(school, "blocked")} style={[styles.dangerButton, { flex: 1 }]}>
+                        <Text style={styles.dangerButtonText}>Reject</Text>
+                    </Pressable>
+                </> : <Pressable onPress={() => updateSchool(school, school.status === "blocked" ? "active" : "blocked")} style={[school.status === "blocked" ? styles.primaryButton : styles.dangerButton, { flex: 1 }]}>
+                    <Text style={school.status === "blocked" ? styles.primaryButtonText : styles.dangerButtonText}>{school.status === "blocked" ? "Activate" : "Block"}</Text>
+                </Pressable>}
+            </View>
+        </>;
+    };
     const BusDetail = ({ bus }: { bus: Bus }) => <><View style={styles.detailStatus}><StatusPill status={bus.status} /><Text style={styles.cardSub}>GPS updated {bus.lastUpdated}</Text></View><DetailRow label="Registration" value={bus.registration} /><DetailRow label="Assigned school" value={bus.school} /><DetailRow label="Assigned driver" value={bus.driver} /><DetailRow label="Route" value={bus.route} /><DetailRow label="Speed / last update" value={`${bus.speed} km/h · ${bus.lastUpdated}`} /><DetailRow label="Students / parents" value={`${bus.students} / ${bus.parents}`} /><View style={styles.detailActions}><Pressable onPress={() => toggleBus(bus)} style={[bus.status === "blocked" ? styles.primaryButton : styles.dangerButton, { flex: 1 }]}><Text style={bus.status === "blocked" ? styles.primaryButtonText : styles.dangerButtonText}>{bus.status === "blocked" ? "Activate bus" : "Block bus"}</Text></Pressable></View></>;
     const UserDetail = ({ user }: { user: AppUser }) => <><View style={styles.detailStatus}><StatusPill status={user.status} /><Text style={styles.cardSub}>{user.role} · {user.id}</Text></View><DetailRow label="Mobile" value={user.phone} /><DetailRow label="School" value={user.school} /><DetailRow label="Class / section" value={user.className ?? "Not applicable"} /><DetailRow label="Assigned bus" value={user.bus ?? "Not assigned"} />{user.role === "Driver" ? <><DetailRow label="Documents" value="Verified · licence, ID and police check" /><DetailRow label="Duty status" value="Active and assigned" /></> : null}<View style={styles.detailActions}><Pressable onPress={() => toggleUser(user)} style={[user.status === "blocked" ? styles.primaryButton : styles.dangerButton, { flex: 1 }]}><Text style={user.status === "blocked" ? styles.primaryButtonText : styles.dangerButtonText}>{user.status === "blocked" ? "Restore access" : "Block access"}</Text></Pressable></View></>;
     const PaymentDetail = ({ payment }: { payment: PaymentRequest }) => <><View style={styles.detailStatus}><StatusPill status={payment.status} /><Text style={styles.cardSub}>{payment.type} · {payment.date}</Text></View><DetailRow label="Requested by" value={payment.requestedBy} /><DetailRow label="School" value={payment.school} /><DetailRow label="Amount" value={money(payment.amount)} /><DetailRow label="Reference / transaction ID" value={payment.reference} /><DetailRow label="Payment method" value={payment.method} /><View style={styles.detailActions}>{payment.status === "pending" ? <Pressable onPress={() => updatePayment(payment, "processing")} style={[styles.primaryButton, { flex: 1 }]}><Text style={styles.primaryButtonText}>Move to processing</Text></Pressable> : null}{payment.status === "processing" ? <Pressable onPress={() => updatePayment(payment, "completed")} style={[styles.primaryButton, { flex: 1 }]}><Text style={styles.primaryButtonText}>Mark complete</Text></Pressable> : null}{payment.status !== "completed" ? <Pressable onPress={() => updatePayment(payment, "rejected")} style={[styles.dangerButton, { flex: 1 }]}><Text style={styles.dangerButtonText}>Reject</Text></Pressable> : null}<Pressable onPress={() => deletePayment(payment)} style={styles.iconAction}><Ionicons name="trash-outline" size={ms(17)} color={RED} /></Pressable></View></>;

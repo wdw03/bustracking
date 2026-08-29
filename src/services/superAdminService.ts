@@ -219,6 +219,56 @@ export async function approveSchool(schoolId: string): Promise<{ success: boolea
     return { success: true };
 }
 
+export async function updateSchoolDetails(
+    schoolId: string,
+    updates: {
+        name?: string;
+        principal_name?: string;
+        email?: string;
+        address?: string;
+        city?: string;
+        state?: string;
+        pincode?: string;
+        principal_phone?: string;
+        gst_number?: string;
+        website?: string;
+        status?: string;
+    }
+): Promise<{ success: boolean; data?: any; error?: string }> {
+    // Strictly prevent modifying the unique registered contact mobile number (`phone`)
+    const sanitized: any = { ...updates, updated_at: new Date().toISOString() };
+    delete sanitized.phone;
+    delete sanitized.admin_user_id;
+
+    const { data: updatedSchool, error } = await supabase
+        .from("schools")
+        .update(sanitized)
+        .eq("id", schoolId)
+        .select()
+        .single();
+
+    if (error) return { success: false, error: error.message };
+
+    // If principal/admin name was updated, also update admin's profile name
+    if (updates.principal_name && updatedSchool?.admin_user_id) {
+        await supabase
+            .from("profiles")
+            .update({ full_name: updates.principal_name.trim() })
+            .eq("id", updatedSchool.admin_user_id);
+    }
+
+    // Log audit
+    await supabase.from("audit_logs").insert({
+        actor_user_id: (await supabase.auth.getUser()).data?.user?.id,
+        action: "school_updated",
+        entity_type: "school",
+        entity_id: schoolId,
+        metadata: { updated_fields: Object.keys(updates) },
+    });
+
+    return { success: true, data: updatedSchool };
+}
+
 export async function rejectSchool(schoolId: string, reason?: string): Promise<{ success: boolean; error?: string }> {
     const { error } = await supabase
         .from("schools")

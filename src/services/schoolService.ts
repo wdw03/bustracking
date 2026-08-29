@@ -23,6 +23,40 @@ export async function getSchoolProfile(schoolId: string): Promise<School | null>
   return data as School;
 }
 
+/** Update school profile details (Note: phone / registration mobile cannot be changed) */
+export async function updateSchoolProfile(
+  schoolId: string,
+  updates: {
+    name?: string;
+    principal_name?: string;
+    email?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
+    principal_phone?: string;
+    gst_number?: string;
+    website?: string;
+    logo_url?: string;
+  }
+): Promise<ApiResult<School>> {
+  const sanitized: any = { ...updates, updated_at: new Date().toISOString() };
+  // Strictly prevent modifying the unique registered contact number & ownership
+  delete sanitized.phone;
+  delete sanitized.admin_user_id;
+  delete sanitized.status;
+
+  const { data, error } = await supabase
+    .from("schools")
+    .update(sanitized)
+    .eq("id", schoolId)
+    .select()
+    .single();
+
+  if (error) return { success: false, error: error.message };
+  return { success: true, data: data as School };
+}
+
 // ── School Dashboard (aggregated stats via RPC) ──
 
 export async function getSchoolDashboard(schoolId: string): Promise<SchoolDashboardData | null> {

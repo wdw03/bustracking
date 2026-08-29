@@ -291,10 +291,29 @@ export type DParent = {
 
 export const PARENTS: DParent[] = [];
 
+export type SchoolProfile = {
+    id: string;
+    name: string;
+    phone: string;
+    email: string;
+    address: string;
+    city: string;
+    state: string;
+    pincode: string;
+    principal: string;
+    principalPhone: string;
+    gstNumber: string;
+    website: string;
+    logoUrl: string;
+    status: string;
+    code: string;
+};
+
 /* Dashboard data provider — hydates from Supabase database */
 type SchoolData = {
     schoolId: string | null;
     schoolName: string;
+    schoolProfile: SchoolProfile;
     buses: DBus[];
     drivers: DDriver[];
     students: DStudent[];
@@ -308,7 +327,26 @@ type SchoolData = {
     removeBus: (id: string) => void;
     addDriver: (driver: DDriver) => void;
     removeDriver: (id: string) => void;
+    updateSchoolProfile: (updates: Partial<Omit<SchoolProfile, "id" | "phone">>) => Promise<{ success: boolean; error?: string }>;
     isLoading: boolean;
+};
+
+const DEFAULT_SCHOOL_PROFILE: SchoolProfile = {
+    id: "",
+    name: "School Portal",
+    phone: "—",
+    email: "—",
+    address: "—",
+    city: "—",
+    state: "—",
+    pincode: "—",
+    principal: "—",
+    principalPhone: "—",
+    gstNumber: "—",
+    website: "—",
+    logoUrl: "",
+    status: "approved",
+    code: "SCH-000",
 };
 
 const SchoolDataContext = createContext<SchoolData | null>(null);
@@ -317,6 +355,7 @@ export function SchoolDataProvider({ children }: { children: React.ReactNode }) 
     const [isLoading, setIsLoading] = useState(true);
     const [schoolId, setSchoolId] = useState<string | null>(null);
     const [schoolName, setSchoolName] = useState<string>("School Dashboard");
+    const [schoolProfile, setSchoolProfile] = useState<SchoolProfile>(DEFAULT_SCHOOL_PROFILE);
     const [buses, setBuses] = useState<DBus[]>([]);
     const [drivers, setDrivers] = useState<DDriver[]>([]);
     const [students, setStudents] = useState<DStudent[]>([]);
@@ -333,30 +372,65 @@ export function SchoolDataProvider({ children }: { children: React.ReactNode }) 
                 if (user) {
                     const { data: memberData } = await supabase
                         .from("school_members")
-                        .select("school_id, schools:school_id(name)")
+                        .select("school_id, schools:school_id(*)")
                         .eq("user_id", user.id)
                         .eq("is_active", true)
                         .limit(1)
-                        .single();
+                        .maybeSingle();
 
                     if (memberData) {
                         resolvedSchoolId = memberData.school_id;
                         setSchoolId(resolvedSchoolId);
-                        if ((memberData.schools as any)?.name) {
-                            setSchoolName((memberData.schools as any).name);
+                        const s = memberData.schools as any;
+                        if (s) {
+                            if (s.name) setSchoolName(s.name);
+                            setSchoolProfile({
+                                id: s.id,
+                                name: s.name || "School Portal",
+                                phone: s.phone || "—",
+                                email: s.email || "—",
+                                address: s.address || "—",
+                                city: s.city || "—",
+                                state: s.state || "—",
+                                pincode: s.pincode || "—",
+                                principal: s.principal_name || "—",
+                                principalPhone: s.principal_phone || "—",
+                                gstNumber: s.gst_number || "—",
+                                website: s.website || "—",
+                                logoUrl: s.logo_url || "",
+                                status: s.status || "approved",
+                                code: `SCH-${s.id.slice(0, 4).toUpperCase()}`,
+                            });
                         }
                     } else {
                         const { data: ownedSchool } = await supabase
                             .from("schools")
-                            .select("id, name")
+                            .select("*")
                             .eq("admin_user_id", user.id)
                             .limit(1)
-                            .single();
+                            .maybeSingle();
 
                         if (ownedSchool) {
                             resolvedSchoolId = ownedSchool.id;
                             setSchoolId(resolvedSchoolId);
                             setSchoolName(ownedSchool.name);
+                            setSchoolProfile({
+                                id: ownedSchool.id,
+                                name: ownedSchool.name || "School Portal",
+                                phone: ownedSchool.phone || "—",
+                                email: ownedSchool.email || "—",
+                                address: ownedSchool.address || "—",
+                                city: ownedSchool.city || "—",
+                                state: ownedSchool.state || "—",
+                                pincode: ownedSchool.pincode || "—",
+                                principal: ownedSchool.principal_name || "—",
+                                principalPhone: ownedSchool.principal_phone || "—",
+                                gstNumber: ownedSchool.gst_number || "—",
+                                website: ownedSchool.website || "—",
+                                logoUrl: ownedSchool.logo_url || "",
+                                status: ownedSchool.status || "approved",
+                                code: `SCH-${ownedSchool.id.slice(0, 4).toUpperCase()}`,
+                            });
                         }
                     }
                 }
@@ -484,6 +558,7 @@ export function SchoolDataProvider({ children }: { children: React.ReactNode }) 
     const value = useMemo<SchoolData>(() => ({
         schoolId,
         schoolName,
+        schoolProfile,
         buses,
         drivers,
         students,
@@ -634,7 +709,39 @@ export function SchoolDataProvider({ children }: { children: React.ReactNode }) 
                 } catch (e) { console.warn("removeDriver error:", e); }
             })();
         },
-    }), [buses, drivers, students, parents, isLoading, schoolId]);
+        updateSchoolProfile: async (updates) => {
+            try {
+                if (!schoolId) return { success: false, error: "No school resolved" };
+                const { updateSchoolProfile: updateApi } = await import("../../services/schoolService");
+                const res = await updateApi(schoolId, {
+                    name: updates.name,
+                    principal_name: updates.principal,
+                    email: updates.email,
+                    address: updates.address,
+                    city: updates.city,
+                    state: updates.state,
+                    pincode: updates.pincode,
+                    principal_phone: updates.principalPhone,
+                    gst_number: updates.gstNumber,
+                    website: updates.website,
+                    logo_url: updates.logoUrl,
+                });
+
+                if (!res.success) return { success: false, error: res.error };
+
+                setSchoolProfile((prev) => ({
+                    ...prev,
+                    ...updates,
+                    name: updates.name ?? prev.name,
+                    principal: updates.principal ?? prev.principal,
+                }));
+                if (updates.name) setSchoolName(updates.name);
+                return { success: true };
+            } catch (e: any) {
+                return { success: false, error: e?.message || "Failed to update school details" };
+            }
+        },
+    }), [buses, drivers, students, parents, isLoading, schoolId, schoolProfile, schoolName]);
 
     return <SchoolDataContext.Provider value={value}>{children}</SchoolDataContext.Provider>;
 }

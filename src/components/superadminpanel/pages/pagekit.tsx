@@ -693,10 +693,22 @@ export function EntityPage({
         setSelected(next);
     };
 
-    const saveEdit = () => {
+    const saveEdit = async () => {
         if (!editing) return;
         setRecords((items) => items.map((item) => (item.id === editing.id ? editing : item)));
+        const rec = editing;
         setEditing(null);
+
+        // If this is a school record, sync changes to Supabase
+        if (rec.id && !rec.id.startsWith("NEW-")) {
+            try {
+                const { updateSchoolDetails } = await import("../../../services/superAdminService");
+                await updateSchoolDetails(rec.id, {
+                    name: rec.title,
+                    status: rec.status,
+                });
+            } catch (_) {}
+        }
     };
 
     return (
@@ -953,6 +965,22 @@ export function EntityPage({
                     <View style={styles.editSheet}>
                         <Text style={styles.eyebrow}>EDIT RECORD</Text>
                         <Text style={styles.sheetTitle}>{editing?.id}</Text>
+
+                        {/* LOCKED PHONE BADGE IF PHONE EXISTS */}
+                        {editing?.phone ? (
+                            <View style={{ backgroundColor: "#F8FAFC", borderRadius: 12, padding: 10, marginVertical: 6, borderWidth: 1, borderColor: COLORS.border }}>
+                                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                                    <Text style={{ fontFamily: FONT.semibold, fontSize: 11, color: COLORS.ink }}>Contact Number (Locked)</Text>
+                                    <View style={{ flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: "#DCFCE7", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 999 }}>
+                                        <Ionicons name="lock-closed" size={9} color={COLORS.green} />
+                                        <Text style={{ fontFamily: FONT.semibold, fontSize: 9, color: COLORS.green }}>Permanent</Text>
+                                    </View>
+                                </View>
+                                <Text style={{ fontFamily: FONT.display, fontSize: 13, color: COLORS.ink, marginTop: 3 }}>{editing.phone}</Text>
+                                <Text style={{ fontFamily: FONT.regular, fontSize: 9.5, color: COLORS.muted, marginTop: 1 }}>Registered phone number cannot be modified.</Text>
+                            </View>
+                        ) : null}
+
                         <Text style={styles.formLabel}>Name / title</Text>
                         <TextInput
                             value={editing?.title ?? ""}
