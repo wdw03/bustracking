@@ -352,8 +352,23 @@ export default function SchoolSignupPage({ initialPhone = "", onBack, onSubmit }
         p.play();
     });
 
-    /* â”€â”€ Form state â”€â”€ */
-    const [data, setData] = useState<SchoolSignupData>(EMPTY);
+    /* ── Form state ── */
+    const [data, setData] = useState<SchoolSignupData>(() => ({
+        ...EMPTY,
+        adminMobile: initialPhone || "",
+        schoolPhone: initialPhone || "",
+    }));
+
+    useEffect(() => {
+        if (initialPhone) {
+            setData((d) => ({
+                ...d,
+                adminMobile: initialPhone,
+                schoolPhone: d.schoolPhone || initialPhone,
+            }));
+        }
+    }, [initialPhone]);
+
     const [errors, setErrors] = useState<Partial<Record<FieldKey, string | null>>>({});
     const [shakeTriggers, setShakeTriggers] = useState<Partial<Record<FieldKey, number>>>({});
     const [showPassword, setShowPassword] = useState(false);
@@ -373,7 +388,7 @@ export default function SchoolSignupPage({ initialPhone = "", onBack, onSubmit }
 
     useEffect(() => () => { if (submitTimerRef.current) clearTimeout(submitTimerRef.current); }, []);
 
-    /* â”€â”€ Keyboard-aware hero collapse (focus-driven â€” zero jitter) â”€â”€ */
+    /* ── Keyboard-aware hero collapse (focus-driven — zero jitter) ── */
     const headerAnim = useSharedValue(0);
     const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -409,7 +424,7 @@ export default function SchoolSignupPage({ initialPhone = "", onBack, onSubmit }
         overflow: "hidden" as const,
     }));
 
-    /* â”€â”€ Step transition (slide + fade) â”€â”€ */
+    /* ── Step transition (slide + fade) ── */
     const stepAnim = useSharedValue(1);
     const stepDir = useSharedValue(1);
 
@@ -425,7 +440,7 @@ export default function SchoolSignupPage({ initialPhone = "", onBack, onSubmit }
         transform: [{ translateX: interpolate(stepAnim.value, [0, 1], [stepDir.value * 46, 0]) }],
     }));
 
-    /* â”€â”€ Button press â”€â”€ */
+    /* ── Button press ── */
     const btnPress = useSharedValue(1);
     const btnStyle = useAnimatedStyle(() => ({
         transform: [{ scale: btnPress.value }],
@@ -440,7 +455,7 @@ export default function SchoolSignupPage({ initialPhone = "", onBack, onSubmit }
         );
     };
 
-    /* â”€â”€ Handlers â”€â”€ */
+    /* ── Handlers ── */
     const setField = (key: FieldKey, raw: string) => {
         const isNumeric = key === "schoolPhone" || key === "adminMobile" || key === "postalCode";
         const v = isNumeric ? raw.replace(/[^0-9]/g, "") : raw;
@@ -455,8 +470,14 @@ export default function SchoolSignupPage({ initialPhone = "", onBack, onSubmit }
         const nextTriggers: Partial<Record<FieldKey, number>> = {};
         let firstBad: FieldKey | null = null;
 
+        const effectiveData: SchoolSignupData = {
+            ...data,
+            adminMobile: data.adminMobile || initialPhone || "",
+            schoolPhone: data.schoolPhone || initialPhone || "",
+        };
+
         for (const f of stepFields) {
-            const err = validateField(f.key, data[f.key], data);
+            const err = validateField(f.key, effectiveData[f.key], effectiveData);
             nextErrors[f.key] = err;
             if (err) {
                 nextTriggers[f.key] = (shakeTriggers[f.key] || 0) + 1;
@@ -737,18 +758,19 @@ export default function SchoolSignupPage({ initialPhone = "", onBack, onSubmit }
                         </View>
                     </View>
 
-                    {/* â”€â”€ Step fields (slide + fade between steps) â”€â”€ */}
+                    {/* ── Step fields (slide + fade between steps) ── */}
                     <Animated.View style={[stepStyle, { marginTop: ms(12), gap: ms(10), flexGrow: 1 }]}>
                         {rows.map((row, rIdx) =>
                             row.length === 2 ? (
                                 <View key={row[0].key} style={{ flexDirection: "row", gap: ms(10) }}>
                                     {row.map((cfg) => {
                                         const flatIdx = stepFields.indexOf(cfg);
+                                        const val = cfg.key === "adminMobile" ? (data.adminMobile || initialPhone || "") : data[cfg.key];
                                         return (
                                             <Field
                                                 key={cfg.key}
                                                 cfg={cfg}
-                                                value={data[cfg.key]}
+                                                value={val}
                                                 error={errors[cfg.key] ?? null}
                                                 shakeTrigger={shakeTriggers[cfg.key]}
                                                 onChange={(t) => setField(cfg.key, t)}
@@ -767,11 +789,12 @@ export default function SchoolSignupPage({ initialPhone = "", onBack, onSubmit }
                                     const flatIdx = stepFields.indexOf(cfg);
                                     const isConfirm = cfg.key === "confirmPassword";
                                     const isPass = cfg.key === "password";
+                                    const val = cfg.key === "adminMobile" ? (data.adminMobile || initialPhone || "") : data[cfg.key];
                                     return (
                                         <Field
                                             key={cfg.key}
                                             cfg={cfg}
-                                            value={data[cfg.key]}
+                                            value={val}
                                             error={errors[cfg.key] ?? null}
                                             shakeTrigger={shakeTriggers[cfg.key]}
                                             onChange={(t) => setField(cfg.key, t)}
