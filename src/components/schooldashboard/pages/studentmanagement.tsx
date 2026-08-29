@@ -48,13 +48,17 @@ export default function StudentManagementPage({ onBack }: { onBack: () => void }
         return () => sub.remove();
     }, [formStudent, selected]);
 
+    const [isSaving, setIsSaving] = useState(false);
+
     const update = (key: keyof FormState, value: string | null) => setForm((current) => ({ ...current, [key]: value }));
 
-    const saveStudent = () => {
+    const saveStudent = async () => {
         if (!form.name.trim() || !form.admissionNo.trim() || !form.klass.trim() || !form.section.trim() || !form.parentName.trim() || !form.parentPhone.trim()) {
             Alert.alert("Missing details", "Student name, admission number, class, section, father/guardian and phone are required.");
             return;
         }
+
+        setIsSaving(true);
         const student: DStudent = {
             id: formStudent ? formStudent.id : `st-${Date.now()}`,
             studentId: formStudent?.studentId ?? `STU-${String(students.length + 101).padStart(3, "0")}`,
@@ -63,16 +67,49 @@ export default function StudentManagementPage({ onBack }: { onBack: () => void }
             klass: form.klass.trim(), section: form.section.trim().toUpperCase(), dob: form.dob.trim() || "Not added",
             parentName: form.parentName.trim(), parentPhone: form.parentPhone.trim(),
         };
-        if (formStudent) updateStudent(student); else addStudent(student);
-        setSelected(student);
-        setFormStudent(undefined);
-        Alert.alert(formStudent ? "Student updated" : "Student added", `${student.name} is now shown in your school list.`);
+
+        try {
+            if (formStudent) {
+                const res = await updateStudent(student);
+                if (res && !res.success) {
+                    Alert.alert("Update Error", res.error || "Failed to update student in database.");
+                    setIsSaving(false);
+                    return;
+                }
+                setSelected(student);
+            } else {
+                const res = await addStudent(student);
+                if (res && !res.success) {
+                    Alert.alert("Add Error", res.error || "Failed to add student to database.");
+                    setIsSaving(false);
+                    return;
+                }
+                if (res?.data) setSelected(res.data);
+                else setSelected(student);
+            }
+            setFormStudent(undefined);
+            Alert.alert(formStudent ? "Student updated" : "Student added", `${student.name} is now saved in database.`);
+        } catch (e: any) {
+            Alert.alert("Error", e?.message || "Failed to save student.");
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const requestDelete = (student: DStudent) => Alert.alert(
         "Delete student?",
-        `${student.name} will be removed from the school list.`,
-        [{ text: "Cancel", style: "cancel" }, { text: "Delete", style: "destructive", onPress: () => { removeStudent(student.id); setSelected(null); } }],
+        `${student.name} will be removed from the school database.`,
+        [
+            { text: "Cancel", style: "cancel" },
+            {
+                text: "Delete",
+                style: "destructive",
+                onPress: async () => {
+                    await removeStudent(student.id);
+                    setSelected(null);
+                },
+            },
+        ],
     );
 
     if (formStudent !== undefined) {
@@ -110,7 +147,12 @@ export default function StudentManagementPage({ onBack }: { onBack: () => void }
                         <Press onPress={() => update("busId", null)} style={{ flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: form.busId === null ? RED_SOFT : CARD_BG, borderWidth: 1.5, borderColor: form.busId === null ? RED : BORDER, borderRadius: ms(15), padding: ms(12) }}><Ionicons name="close-circle" size={ms(18)} color={RED} /><Text style={{ flex: 1, fontFamily: FONT.semibold, fontSize: ms(13), color: INK }}>No bus assigned yet</Text>{form.busId === null && <Ionicons name="checkmark-circle" size={ms(20)} color={RED} />}</Press>
                         {buses.map((bus) => <Press key={bus.id} onPress={() => update("busId", bus.id)} style={{ flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: form.busId === bus.id ? BLUE_SOFT : CARD_BG, borderWidth: 1.5, borderColor: form.busId === bus.id ? BLUE : BORDER, borderRadius: ms(15), padding: ms(12) }}><View style={{ width: ms(35), height: ms(35), borderRadius: ms(12), backgroundColor: bus.color + "1A", alignItems: "center", justifyContent: "center" }}><Ionicons name="bus" size={ms(17)} color={bus.color} /></View><View style={{ flex: 1 }}><Text style={{ fontFamily: FONT.semibold, fontSize: ms(13), color: INK }}>{bus.number} · {bus.vehicleNumber}</Text><Text style={{ fontFamily: FONT.regular, fontSize: ms(11), color: MUTED }}>{bus.route} · {bus.status}</Text></View>{form.busId === bus.id && <Ionicons name="checkmark-circle" size={ms(20)} color={BLUE} />}</Press>)}
                     </View>
-                    <Press onPress={saveStudent} style={{ marginTop: ms(22), height: ms(56), borderRadius: ms(18), backgroundColor: ACCENT, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8 }}><Ionicons name="checkmark-circle" size={ms(19)} color={INK} /><Text style={{ fontFamily: FONT.display, fontSize: ms(15), color: INK }}>{editing ? "Save student changes" : "Add student"}</Text></Press>
+                    <Press onPress={isSaving ? undefined : saveStudent} style={{ marginTop: ms(22), height: ms(56), borderRadius: ms(18), backgroundColor: ACCENT, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8, opacity: isSaving ? 0.7 : 1 }}>
+                        <Ionicons name={isSaving ? "hourglass" : "checkmark-circle"} size={ms(19)} color={INK} />
+                        <Text style={{ fontFamily: FONT.display, fontSize: ms(15), color: INK }}>
+                            {isSaving ? "Saving to database..." : (editing ? "Save student changes" : "Add student")}
+                        </Text>
+                    </Press>
                 </ScrollView>
             </KeyboardAvoidingView>
         );

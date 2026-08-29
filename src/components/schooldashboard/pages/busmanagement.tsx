@@ -45,28 +45,79 @@ export default function BusManagementPage({ onBack }: { onBack: () => void }) {
     const act = (label: string) =>
         Alert.alert(label, "The requested bus action has been completed.", [{ text: "OK" }]);
 
+    const [isSaving, setIsSaving] = useState(false);
+
     /* ── ADD / EDIT FORM ── */
     const openAdd = () => { setSelected(null); setForm({ number: "", vehicleNumber: "", name: "", helper: "" }); setAdding(true); };
     const openEdit = () => { if (!selected) return; setForm({ number: selected.number, vehicleNumber: selected.vehicleNumber, name: selected.name, helper: selected.helper }); setAdding(true); };
-    const saveBus = () => {
+    
+    const saveBus = async () => {
         if (!form.number.trim() || !form.vehicleNumber.trim() || !form.name.trim()) {
-            Alert.alert("Missing details", "Bus number, vehicle number and bus name are required.");
+            Alert.alert("Missing details", "Bus number, vehicle registration number and bus name are required.");
             return;
         }
-        const bus: DBus = selected ? { ...selected, ...form, number: form.number.trim().toUpperCase(), vehicleNumber: form.vehicleNumber.trim().toUpperCase(), name: form.name.trim(), helper: form.helper.trim() || "Not assigned" } : {
-            id: `b-${Date.now()}`, number: form.number.trim().toUpperCase(), vehicleNumber: form.vehicleNumber.trim().toUpperCase(), name: form.name.trim(), helper: form.helper.trim() || "Not assigned", driverId: "", helperPhone: "", status: "Offline", location: "School parking", speed: 0, color: "#0891B2", students: 0, route: "Route to be assigned", lastUpdated: "Just added", battery: 100, gps: "Offline",
+        setIsSaving(true);
+        const bus: DBus = selected ? {
+            ...selected,
+            ...form,
+            number: form.number.trim().toUpperCase(),
+            vehicleNumber: form.vehicleNumber.trim().toUpperCase(),
+            name: form.name.trim(),
+            helper: form.helper.trim() || "Not assigned",
+        } : {
+            id: `b-${Date.now()}`,
+            number: form.number.trim().toUpperCase(),
+            vehicleNumber: form.vehicleNumber.trim().toUpperCase(),
+            name: form.name.trim(),
+            helper: form.helper.trim() || "Not assigned",
+            driverId: "",
+            helperPhone: "",
+            status: "Offline",
+            location: "School parking",
+            speed: 0,
+            color: "#0891B2",
+            students: 32,
+            route: "Route to be assigned",
+            lastUpdated: "Just added",
+            battery: 100,
+            gps: "Offline",
         };
-        if (selected) updateBus(bus); else addBus(bus);
-        setSelected(bus); setAdding(false);
-        Alert.alert(selected ? "Bus updated" : "Bus added", `${bus.number} is now available in the dashboard and live map.`);
+
+        try {
+            if (selected) {
+                const res = await updateBus(bus);
+                if (res && !res.success) {
+                    Alert.alert("Update Error", res.error || "Failed to update bus in database.");
+                    setIsSaving(false);
+                    return;
+                }
+                setSelected(bus);
+            } else {
+                const res = await addBus(bus);
+                if (res && !res.success) {
+                    Alert.alert("Add Error", res.error || "Failed to save bus to database.");
+                    setIsSaving(false);
+                    return;
+                }
+                if (res?.data) setSelected(res.data);
+                else setSelected(bus);
+            }
+            setAdding(false);
+            Alert.alert(selected ? "Bus updated" : "Bus added", `${bus.number} is now saved in database and ready for operations.`);
+        } catch (e: any) {
+            Alert.alert("Error", e?.message || "Failed to save bus.");
+        } finally {
+            setIsSaving(false);
+        }
     };
-    const toggleBusAvailability = () => {
+
+    const toggleBusAvailability = async () => {
         if (!selected) return;
         const nextStatus: DBus["status"] = selected.status === "Disabled" ? "Offline" : "Disabled";
         const nextBus = { ...selected, status: nextStatus };
-        updateBus(nextBus);
+        await updateBus(nextBus);
         setSelected(nextBus);
-        Alert.alert(nextStatus === "Disabled" ? "Bus disabled" : "Bus enabled", `${nextBus.number} is now ${nextStatus === "Disabled" ? "hidden from active operations" : "available for operations"}.`);
+        Alert.alert(nextStatus === "Disabled" ? "Bus disabled" : "Bus enabled", `${nextBus.number} status updated to ${nextStatus}.`);
     };
 
     if (adding || (selected && adding)) {
@@ -108,9 +159,9 @@ export default function BusManagementPage({ onBack }: { onBack: () => void }) {
                         <TextInput value={form.helper} onChangeText={(helper) => setForm((current) => ({ ...current, helper }))} placeholder="Helper name" placeholderTextColor={FAINT} style={{ flex: 1, fontFamily: FONT.regular, fontSize: ms(14), color: INK }} />
                     </View>
 
-                    <Press onPress={saveBus} style={{ height: ms(54), borderRadius: ms(18), backgroundColor: ACCENT, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8 }}>
-                        <Ionicons name="checkmark-circle" size={ms(18)} color={INK} />
-                        <Text style={{ fontFamily: FONT.display, fontSize: ms(15), color: INK }}>{selected ? "Save Changes" : "Add Bus"}</Text>
+                    <Press onPress={isSaving ? undefined : saveBus} style={{ height: ms(54), borderRadius: ms(18), backgroundColor: ACCENT, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8, opacity: isSaving ? 0.7 : 1 }}>
+                        <Ionicons name={isSaving ? "hourglass" : "checkmark-circle"} size={ms(18)} color={INK} />
+                        <Text style={{ fontFamily: FONT.display, fontSize: ms(15), color: INK }}>{isSaving ? "Saving to database..." : (selected ? "Save Changes" : "Add Bus")}</Text>
                     </Press>
                 </ScrollView>
             </View>
@@ -123,10 +174,13 @@ export default function BusManagementPage({ onBack }: { onBack: () => void }) {
         const drv = driverForBus(selected.id, drivers);
         return (
             <View style={{ flex: 1, backgroundColor: PAGE_BG }}>
-                <PageHeader title={selected.number} subtitle={selected.vehicleNumber} onBack={() => setSelected(null)} topInset={insets.top}
+                <PageHeader title={selected.number} subtitle={selected.name} onBack={() => setSelected(null)} topInset={insets.top}
                     right={<Chip text={selected.status} color={st.color} soft={st.soft} />} />
                 <ScrollView contentContainerStyle={{ padding: ms(16), paddingBottom: ms(40) }} showsVerticalScrollIndicator={false}>
                     <Card>
+                        <InfoRow icon="card" label="Vehicle Number" value={selected.vehicleNumber} />
+                        <InfoRow icon="git-branch" label="Assigned Route" value={selected.route} color={BLUE} soft={BLUE_SOFT} />
+                        <InfoRow icon="people" label="Capacity / Students" value={`${selected.students} seats`} color={ORANGE} soft={ORANGE_SOFT} />
                         <InfoRow icon="pricetag" label="Bus Name" value={selected.name} />
                         <InfoRow icon="person" label="Driver Name" value={drv?.name ?? "Unassigned"} color={GREEN} soft={GREEN_SOFT} />
                         <InfoRow icon="person-add" label="Helper Name" value={selected.helper} color={BLUE} soft={BLUE_SOFT} />
@@ -142,7 +196,7 @@ export default function BusManagementPage({ onBack }: { onBack: () => void }) {
                             { icon: "swap-horizontal" as const, label: "Replace bus", hint: "Change the assigned vehicle", color: PURPLE, soft: PURPLE_SOFT, fn: () => act("Replacement request saved") },
                             { icon: selected.status === "Disabled" ? "play-circle" as const : "pause-circle" as const, label: selected.status === "Disabled" ? "Enable bus" : "Disable bus", hint: selected.status === "Disabled" ? "Return this bus to the fleet" : "Pause operations temporarily", color: ORANGE, soft: ORANGE_SOFT, fn: toggleBusAvailability },
                             { icon: "time" as const, label: "Bus history", hint: "Trips, status and updates", color: GREEN, soft: GREEN_SOFT, fn: () => act("Bus history opened") },
-                            { icon: "trash" as const, label: "Delete bus", hint: "Remove this bus permanently", color: RED, soft: RED_SOFT, fn: () => Alert.alert("Delete Bus?", "Students assigned to it will become unassigned.", [{ text: "Cancel", style: "cancel" }, { text: "Delete", style: "destructive", onPress: () => { removeBus(selected.id); setSelected(null); } }]) },
+                            { icon: "trash" as const, label: "Delete bus", hint: "Remove this bus permanently", color: RED, soft: RED_SOFT, fn: () => Alert.alert("Delete Bus?", "Students assigned to it will become unassigned.", [{ text: "Cancel", style: "cancel" }, { text: "Delete", style: "destructive", onPress: async () => { await removeBus(selected.id); setSelected(null); } }]) },
                         ].map((a, index) => (
                             <Press key={a.label} onPress={a.fn} style={{ minHeight: ms(58), paddingHorizontal: ms(12), paddingVertical: ms(9), flexDirection: "row", alignItems: "center", gap: ms(10), borderBottomWidth: index === 4 ? 0 : 1, borderBottomColor: BORDER }}>
                                 <View style={{ width: ms(34), height: ms(34), borderRadius: ms(11), backgroundColor: a.soft, alignItems: "center", justifyContent: "center" }}><Ionicons name={a.icon} size={ms(16)} color={a.color} /></View>

@@ -318,15 +318,15 @@ type SchoolData = {
     drivers: DDriver[];
     students: DStudent[];
     parents: DParent[];
-    addStudent: (student: DStudent) => void;
-    updateStudent: (student: DStudent) => void;
-    removeStudent: (id: string) => void;
-    assignStudentToBus: (studentId: string, busId: string | null) => void;
-    addBus: (bus: DBus) => void;
-    updateBus: (bus: DBus) => void;
-    removeBus: (id: string) => void;
-    addDriver: (driver: DDriver) => void;
-    removeDriver: (id: string) => void;
+    addStudent: (student: DStudent) => Promise<{ success: boolean; data?: DStudent; error?: string }>;
+    updateStudent: (student: DStudent) => Promise<{ success: boolean; error?: string }>;
+    removeStudent: (id: string) => Promise<{ success: boolean; error?: string }>;
+    assignStudentToBus: (studentId: string, busId: string | null) => Promise<{ success: boolean; error?: string }>;
+    addBus: (bus: DBus) => Promise<{ success: boolean; data?: DBus; error?: string }>;
+    updateBus: (bus: DBus) => Promise<{ success: boolean; error?: string }>;
+    removeBus: (id: string) => Promise<{ success: boolean; error?: string }>;
+    addDriver: (driver: DDriver) => Promise<{ success: boolean; data?: DDriver; error?: string }>;
+    removeDriver: (id: string) => Promise<{ success: boolean; error?: string }>;
     updateSchoolProfile: (updates: Partial<Omit<SchoolProfile, "id" | "phone">>) => Promise<{ success: boolean; error?: string }>;
     isLoading: boolean;
 };
@@ -406,7 +406,7 @@ export function SchoolDataProvider({ children }: { children: React.ReactNode }) 
                         const { data: ownedSchool } = await supabase
                             .from("schools")
                             .select("*")
-                            .eq("admin_user_id", user.id)
+                            .or(`admin_user_id.eq.${user.id},phone.eq.${user.phone || ""}`)
                             .limit(1)
                             .maybeSingle();
 
@@ -435,14 +435,15 @@ export function SchoolDataProvider({ children }: { children: React.ReactNode }) 
                     }
                 }
 
-                // Step 2: Fetch buses, drivers, children (RLS will scope to school)
-                const [busesRes, driversRes, childrenRes, parentsRes] = await Promise.all([
+                // Step 2: Fetch buses, drivers, children, child_parents, authorized_contacts
+                const [busesRes, driversRes, childrenRes, parentsRes, contactsRes] = await Promise.all([
                     supabase.from("buses").select("*, bus_live_locations(latitude, longitude, speed, heading, is_live, updated_at)").eq("is_active", true).order("bus_number"),
                     supabase.from("drivers").select("*, profiles:user_id(full_name, phone, avatar_url)").eq("is_active", true),
                     supabase.from("children").select("*, child_parents(parent_user_id, profiles:parent_user_id(full_name, phone))").eq("is_active", true).order("full_name"),
                     resolvedSchoolId
                         ? supabase.from("child_parents").select("parent_user_id, relationship, children:child_id(id, school_id), profiles:parent_user_id(id, full_name, phone)")
                         : Promise.resolve({ data: null }),
+                    supabase.from("authorized_contacts").select("*"),
                 ]);
 
                 if (busesRes.data) {
@@ -458,8 +459,8 @@ export function SchoolDataProvider({ children }: { children: React.ReactNode }) 
                         return {
                             id: b.id,
                             number: b.bus_number || `BUS-${idx + 1}`,
-                            vehicleNumber: b.bus_number || `BUS-${idx + 1}`,
-                            name: b.route_name || b.bus_number || "School Bus",
+                            vehicleNumber: b.model?.split("·")?.[0]?.trim() || b.bus_number || `BUS-${idx + 1}`,
+                            name: b.model?.split("·")?.[1]?.trim() || b.route_name || b.bus_number || "School Bus",
                             driverId: "",
                             helper: "Staff Helper",
                             helperPhone: "",
@@ -477,30 +478,69 @@ export function SchoolDataProvider({ children }: { children: React.ReactNode }) 
                     setBuses(mappedBuses);
                 }
 
+                // Drivers: merge registered drivers + authorized contacts
+                const driverList: DDriver[] = [];
+                const seenPhones = new Set<string>();
+
                 if (driversRes.data) {
-                    const mappedDrivers: DDriver[] = driversRes.data.map((d: any, idx: number) => {
+                    driversRes.data.forEach((d: any, idx: number) => {
                         const profile = d.profiles;
-                        return {
+                        const pPhone = profile?.phone || "";
+                        if (pPhone) seenPhones.add(pPhone.replace(/[^0-9]/g, "").slice(-10));
+                        driverList.push({
                             id: d.id,
                             name: profile?.full_name || `Driver ${idx + 1}`,
                             driverId: `DRV-${String(idx + 1).padStart(3, "0")}`,
-                            phone: profile?.phone || "",
-                            license: d.license_number || "",
+                            phone: pPhone,
+                            license: d.license_number || "Verified",
                             busId: d.assigned_bus_id || null,
                             status: d.is_active ? "Active" as const : "Suspended" as const,
                             experience: `${d.experience_years || 0} yrs`,
                             trips: 0,
                             rating: d.rating ? Number(d.rating) : 5.0,
-                        };
+                        });
                     });
-                    setDrivers(mappedDrivers);
                 }
 
+                if (contactsRes.data) {
+                    const authorizedDrivers = (contactsRes.data as any[]).filter(c => c.contact_type === "driver");
+                    authorizedDrivers.forEach((c: any, idx: number) => {
+                        const raw10 = c.phone ? c.phone.replace(/[^0-9]/g, "").slice(-10) : "";
+                        if (raw10 && !seenPhones.has(raw10)) {
+                            seenPhones.add(raw10);
+                            driverList.push({
+                                id: c.id,
+                                name: `Driver (${c.phone})`,
+                                driverId: `DRV-AUTH-${String(idx + 1).padStart(2, "0")}`,
+                                phone: c.phone,
+                                license: "DL-Pending",
+                                busId: null,
+                                status: "Active" as const,
+                                experience: "New",
+                                trips: 0,
+                                rating: 5.0,
+                            });
+                        }
+                    });
+                }
+                setDrivers(driverList);
+
+                // Students: map children and resolve parent contact info
                 if (childrenRes.data) {
+                    const parentContacts = new Map<string, string>();
+                    if (contactsRes.data) {
+                        for (const c of contactsRes.data as any[]) {
+                            if (c.contact_type === "parent" && c.child_id) {
+                                parentContacts.set(c.child_id, c.phone);
+                            }
+                        }
+                    }
+
                     const mappedStudents: DStudent[] = childrenRes.data.map((c: any) => {
                         const parentInfo = Array.isArray(c.child_parents) && c.child_parents.length > 0
                             ? c.child_parents[0]?.profiles
                             : null;
+                        const parentPhone = parentInfo?.phone || parentContacts.get(c.id) || "—";
 
                         return {
                             id: c.id,
@@ -512,16 +552,17 @@ export function SchoolDataProvider({ children }: { children: React.ReactNode }) 
                             section: c.section || "—",
                             gender: "—",
                             dob: "—",
-                            parentName: parentInfo?.full_name || "—",
-                            parentPhone: parentInfo?.phone || "—",
+                            parentName: parentInfo?.full_name || "Guardian",
+                            parentPhone: parentPhone,
                             busId: c.assigned_bus_id || null,
                         };
                     });
                     setStudents(mappedStudents);
                 }
 
+                // Parents aggregation
+                const parentMap = new Map<string, DParent>();
                 if (parentsRes.data) {
-                    const parentMap = new Map<string, DParent>();
                     for (const row of parentsRes.data as any[]) {
                         const profile = row.profiles;
                         const child = row.children;
@@ -543,8 +584,8 @@ export function SchoolDataProvider({ children }: { children: React.ReactNode }) 
                         }
                         parentMap.get(profile.id)!.studentIds.push(child.id);
                     }
-                    setParents(Array.from(parentMap.values()));
                 }
+                setParents(Array.from(parentMap.values()));
             } catch (err) {
                 console.warn("Supabase fetchSchoolData error:", err);
             } finally {
@@ -564,150 +605,243 @@ export function SchoolDataProvider({ children }: { children: React.ReactNode }) 
         students,
         parents,
         isLoading,
-        addStudent: (student) => {
-            setStudents((current) => [student, ...current]);
-            // Insert child in Supabase — school_id comes from RLS (auto-scoped)
-            const insertChild = async () => {
-                try {
-                    const sid = schoolId;
-                    if (!sid) { console.warn("addStudent: no school_id resolved"); return; }
-
-                    const { data: childData } = await supabase.from("children").insert({
-                        school_id: sid,
-                        full_name: student.name,
-                        roll_number: student.rollNo || null,
-                        class: student.klass || null,
-                        section: student.section || null,
-                        assigned_bus_id: student.busId || null,
-                    }).select("id").single();
-
-                    // Authorize parent phone for registration
-                    if (student.parentPhone && student.parentPhone !== "—") {
-                        const phone = student.parentPhone.replace(/[^0-9+]/g, "");
-                        const formatted = phone.startsWith("+") ? phone : `+91${phone}`;
-                        await supabase.from("authorized_contacts").upsert({
-                            school_id: sid,
-                            phone: formatted,
-                            contact_type: "parent" as const,
-                            child_id: childData?.id || null,
-                            is_registered: false,
-                        }, { onConflict: "school_id,phone,contact_type" });
+        addStudent: async (student) => {
+            try {
+                let sid = schoolId;
+                if (!sid) {
+                    const { data: { user } } = await supabase.auth.getUser();
+                    if (user) {
+                        const { data: s } = await supabase.from("schools").select("id").or(`admin_user_id.eq.${user.id},phone.eq.${user.phone || ""}`).limit(1).maybeSingle();
+                        sid = s?.id || null;
                     }
-                } catch (e) { console.warn("addStudent Supabase error:", e); }
-            };
-            insertChild();
-        },
-        updateStudent: (student) => {
-            setStudents((current) => current.map((item) => item.id === student.id ? student : item));
-            (async () => {
-                try {
-                    await supabase.from("children").update({
-                        full_name: student.name,
-                        class: student.klass || null,
-                        section: student.section || null,
-                        roll_number: student.rollNo || null,
-                        assigned_bus_id: student.busId || null,
-                        updated_at: new Date().toISOString(),
-                    }).eq("id", student.id);
-                } catch (e) { console.warn("updateStudent error:", e); }
-            })();
-        },
-        removeStudent: (id) => {
-            setStudents((current) => current.filter((student) => student.id !== id));
-            // Soft-delete: set is_active = false instead of hard delete
-            (async () => {
-                try {
-                    await supabase.from("children").update({
-                        is_active: false,
-                        updated_at: new Date().toISOString(),
-                    }).eq("id", id);
-                } catch (e) { console.warn("removeStudent error:", e); }
-            })();
-        },
-        assignStudentToBus: (studentId, busId) => {
-            setStudents((current) => current.map((student) => student.id === studentId ? { ...student, busId } : student));
-            (async () => {
-                try {
-                    await supabase.from("children").update({
-                        assigned_bus_id: busId,
-                        updated_at: new Date().toISOString(),
-                    }).eq("id", studentId);
-                } catch (e) { console.warn("assignStudentToBus error:", e); }
-            })();
-        },
-        addBus: (bus) => {
-            setBuses((current) => [bus, ...current]);
-            const insertBus = async () => {
-                try {
-                    const sid = schoolId;
-                    if (!sid) { console.warn("addBus: no school_id resolved"); return; }
-                    await supabase.from("buses").insert({
-                        school_id: sid,
-                        bus_number: bus.number,
-                        route_name: bus.route || null,
-                        capacity: bus.students || 32,
-                        is_active: true,
-                    });
-                } catch (e) { console.warn("addBus Supabase error:", e); }
-            };
-            insertBus();
-        },
-        updateBus: (bus) => {
-            setBuses((current) => current.map((item) => item.id === bus.id ? bus : item));
-            (async () => {
-                try {
-                    await supabase.from("buses").update({
-                        bus_number: bus.number,
-                        route_name: bus.route || null,
-                        capacity: bus.students || null,
-                        updated_at: new Date().toISOString(),
-                    }).eq("id", bus.id);
-                } catch (e) { console.warn("updateBus error:", e); }
-            })();
-        },
-        removeBus: (id) => {
-            setBuses((current) => current.filter((bus) => bus.id !== id));
-            setStudents((current) => current.map((student) => student.busId === id ? { ...student, busId: null } : student));
-            // Soft-delete: set is_active = false
-            (async () => {
-                try {
-                    await supabase.from("buses").update({
-                        is_active: false,
-                        updated_at: new Date().toISOString(),
-                    }).eq("id", id);
-                } catch (e) { console.warn("removeBus error:", e); }
-            })();
-        },
-        addDriver: (driver) => {
-            setDrivers((current) => [driver, ...current]);
-            // Authorize driver phone for registration
-            const authorizeDriver = async () => {
-                try {
-                    const sid = schoolId;
-                    if (!sid || !driver.phone) return;
-                    const phone = driver.phone.replace(/[^0-9+]/g, "");
+                }
+                if (!sid) return { success: false, error: "School account not identified." };
+
+                const { data: childData, error: childErr } = await supabase.from("children").insert({
+                    school_id: sid,
+                    full_name: student.name,
+                    roll_number: student.admissionNo || student.rollNo || null,
+                    class: student.klass || null,
+                    section: student.section || null,
+                    assigned_bus_id: student.busId || null,
+                    is_active: true,
+                }).select("id").single();
+
+                if (childErr || !childData) {
+                    console.warn("children insert error:", childErr);
+                    return { success: false, error: childErr?.message || "Failed to add student to database" };
+                }
+
+                const realId = childData.id;
+                const finalStudent = { ...student, id: realId };
+
+                // Authorize parent phone for registration
+                if (student.parentPhone && student.parentPhone !== "—") {
+                    const phone = student.parentPhone.replace(/[^0-9+]/g, "");
                     const formatted = phone.startsWith("+") ? phone : `+91${phone}`;
                     await supabase.from("authorized_contacts").upsert({
                         school_id: sid,
                         phone: formatted,
-                        contact_type: "driver" as const,
+                        contact_type: "parent" as const,
+                        child_id: realId,
                         is_registered: false,
                     }, { onConflict: "school_id,phone,contact_type" });
-                } catch (e) { console.warn("addDriver authorize error:", e); }
-            };
-            authorizeDriver();
+                }
+
+                setStudents((current) => [finalStudent, ...current.filter((s) => s.id !== student.id && s.id !== realId)]);
+                return { success: true, data: finalStudent };
+            } catch (e: any) {
+                console.warn("addStudent Supabase error:", e);
+                return { success: false, error: e?.message || "Network error while saving student" };
+            }
         },
-        removeDriver: (id) => {
-            setDrivers((current) => current.filter((driver) => driver.id !== id));
-            // Soft-delete driver
-            (async () => {
-                try {
-                    await supabase.from("drivers").update({
-                        is_active: false,
-                        updated_at: new Date().toISOString(),
-                    }).eq("id", id);
-                } catch (e) { console.warn("removeDriver error:", e); }
-            })();
+        updateStudent: async (student) => {
+            try {
+                setStudents((current) => current.map((item) => item.id === student.id ? student : item));
+                const { error } = await supabase.from("children").update({
+                    full_name: student.name,
+                    class: student.klass || null,
+                    section: student.section || null,
+                    roll_number: student.admissionNo || student.rollNo || null,
+                    assigned_bus_id: student.busId || null,
+                    updated_at: new Date().toISOString(),
+                }).eq("id", student.id);
+
+                if (error) {
+                    console.warn("updateStudent error:", error);
+                    return { success: false, error: error.message };
+                }
+
+                if (student.parentPhone && student.parentPhone !== "—" && schoolId) {
+                    const phone = student.parentPhone.replace(/[^0-9+]/g, "");
+                    const formatted = phone.startsWith("+") ? phone : `+91${phone}`;
+                    await supabase.from("authorized_contacts").upsert({
+                        school_id: schoolId,
+                        phone: formatted,
+                        contact_type: "parent" as const,
+                        child_id: student.id,
+                        is_registered: false,
+                    }, { onConflict: "school_id,phone,contact_type" });
+                }
+                return { success: true };
+            } catch (e: any) {
+                console.warn("updateStudent error:", e);
+                return { success: false, error: e?.message || "Network error while updating student" };
+            }
+        },
+        removeStudent: async (id) => {
+            try {
+                setStudents((current) => current.filter((student) => student.id !== id));
+                const { error } = await supabase.from("children").update({
+                    is_active: false,
+                    updated_at: new Date().toISOString(),
+                }).eq("id", id);
+                if (error) return { success: false, error: error.message };
+                return { success: true };
+            } catch (e: any) {
+                console.warn("removeStudent error:", e);
+                return { success: false, error: e?.message || "Network error while deleting student" };
+            }
+        },
+        assignStudentToBus: async (studentId, busId) => {
+            try {
+                setStudents((current) => current.map((student) => student.id === studentId ? { ...student, busId } : student));
+                const { error } = await supabase.from("children").update({
+                    assigned_bus_id: busId,
+                    updated_at: new Date().toISOString(),
+                }).eq("id", studentId);
+                if (error) return { success: false, error: error.message };
+                return { success: true };
+            } catch (e: any) {
+                console.warn("assignStudentToBus error:", e);
+                return { success: false, error: e?.message || "Network error while assigning bus" };
+            }
+        },
+        addBus: async (bus) => {
+            try {
+                let sid = schoolId;
+                if (!sid) {
+                    const { data: { user } } = await supabase.auth.getUser();
+                    if (user) {
+                        const { data: s } = await supabase.from("schools").select("id").or(`admin_user_id.eq.${user.id},phone.eq.${user.phone || ""}`).limit(1).maybeSingle();
+                        sid = s?.id || null;
+                    }
+                }
+                if (!sid) return { success: false, error: "School account not identified." };
+
+                const { data: busData, error: busErr } = await supabase.from("buses").insert({
+                    school_id: sid,
+                    bus_number: bus.number,
+                    route_name: bus.route || bus.name || null,
+                    model: bus.vehicleNumber ? `${bus.vehicleNumber} · ${bus.name}` : bus.name,
+                    capacity: bus.students || 32,
+                    is_active: true,
+                }).select("id").single();
+
+                if (busErr || !busData) {
+                    console.warn("addBus error:", busErr);
+                    return { success: false, error: busErr?.message || "Failed to add bus to database" };
+                }
+
+                const realId = busData.id;
+                const finalBus = { ...bus, id: realId };
+                setBuses((current) => [finalBus, ...current.filter((b) => b.id !== bus.id && b.id !== realId)]);
+                return { success: true, data: finalBus };
+            } catch (e: any) {
+                console.warn("addBus Supabase error:", e);
+                return { success: false, error: e?.message || "Network error while saving bus" };
+            }
+        },
+        updateBus: async (bus) => {
+            try {
+                setBuses((current) => current.map((item) => item.id === bus.id ? bus : item));
+                const { error } = await supabase.from("buses").update({
+                    bus_number: bus.number,
+                    route_name: bus.route || bus.name || null,
+                    model: bus.vehicleNumber ? `${bus.vehicleNumber} · ${bus.name}` : bus.name,
+                    capacity: bus.students || null,
+                    is_active: bus.status !== "Disabled",
+                    updated_at: new Date().toISOString(),
+                }).eq("id", bus.id);
+
+                if (error) return { success: false, error: error.message };
+                return { success: true };
+            } catch (e: any) {
+                console.warn("updateBus error:", e);
+                return { success: false, error: e?.message || "Network error while updating bus" };
+            }
+        },
+        removeBus: async (id) => {
+            try {
+                setBuses((current) => current.filter((bus) => bus.id !== id));
+                setStudents((current) => current.map((student) => student.busId === id ? { ...student, busId: null } : student));
+                const { error } = await supabase.from("buses").update({
+                    is_active: false,
+                    updated_at: new Date().toISOString(),
+                }).eq("id", id);
+                if (error) return { success: false, error: error.message };
+                return { success: true };
+            } catch (e: any) {
+                console.warn("removeBus error:", e);
+                return { success: false, error: e?.message || "Network error while deleting bus" };
+            }
+        },
+        addDriver: async (driver) => {
+            try {
+                let sid = schoolId;
+                if (!sid) {
+                    const { data: { user } } = await supabase.auth.getUser();
+                    if (user) {
+                        const { data: s } = await supabase.from("schools").select("id").or(`admin_user_id.eq.${user.id},phone.eq.${user.phone || ""}`).limit(1).maybeSingle();
+                        sid = s?.id || null;
+                    }
+                }
+                if (!sid) return { success: false, error: "School account not identified." };
+
+                const phone = driver.phone.replace(/[^0-9+]/g, "");
+                const formatted = phone.startsWith("+") ? phone : `+91${phone}`;
+
+                const { data: contactData, error: contactErr } = await supabase.from("authorized_contacts").upsert({
+                    school_id: sid,
+                    phone: formatted,
+                    contact_type: "driver" as const,
+                    is_registered: false,
+                }, { onConflict: "school_id,phone,contact_type" }).select("id").single();
+
+                if (contactErr) {
+                    console.warn("addDriver authorize error:", contactErr);
+                    return { success: false, error: contactErr.message };
+                }
+
+                const realId = contactData?.id || driver.id;
+                const finalDriver = { ...driver, id: realId, phone: formatted };
+                setDrivers((current) => [finalDriver, ...current.filter((d) => d.id !== driver.id && d.id !== realId)]);
+                return { success: true, data: finalDriver };
+            } catch (e: any) {
+                console.warn("addDriver Supabase error:", e);
+                return { success: false, error: e?.message || "Network error while saving driver" };
+            }
+        },
+        removeDriver: async (id) => {
+            try {
+                const target = drivers.find((d) => d.id === id);
+                setDrivers((current) => current.filter((driver) => driver.id !== id));
+
+                await supabase.from("drivers").update({
+                    is_active: false,
+                    updated_at: new Date().toISOString(),
+                }).eq("id", id);
+
+                if (target?.phone) {
+                    const phone = target.phone.replace(/[^0-9+]/g, "");
+                    const formatted = phone.startsWith("+") ? phone : `+91${phone}`;
+                    await supabase.from("authorized_contacts").delete().eq("phone", formatted);
+                }
+                return { success: true };
+            } catch (e: any) {
+                console.warn("removeDriver error:", e);
+                return { success: false, error: e?.message || "Network error while removing driver" };
+            }
         },
         updateSchoolProfile: async (updates) => {
             try {
