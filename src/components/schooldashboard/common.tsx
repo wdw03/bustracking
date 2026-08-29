@@ -326,6 +326,7 @@ type SchoolData = {
     updateBus: (bus: DBus) => Promise<{ success: boolean; error?: string }>;
     removeBus: (id: string) => Promise<{ success: boolean; error?: string }>;
     addDriver: (driver: DDriver) => Promise<{ success: boolean; data?: DDriver; error?: string }>;
+    updateDriver: (driver: DDriver) => Promise<{ success: boolean; error?: string }>;
     removeDriver: (id: string) => Promise<{ success: boolean; error?: string }>;
     updateSchoolProfile: (updates: Partial<Omit<SchoolProfile, "id" | "phone">>) => Promise<{ success: boolean; error?: string }>;
     isLoading: boolean;
@@ -820,6 +821,31 @@ export function SchoolDataProvider({ children }: { children: React.ReactNode }) 
             } catch (e: any) {
                 console.warn("addDriver Supabase error:", e);
                 return { success: false, error: e?.message || "Network error while saving driver" };
+            }
+        },
+        updateDriver: async (driver) => {
+            try {
+                setDrivers((current) => current.map((d) => d.id === driver.id ? driver : d));
+
+                await supabase.from("drivers").update({
+                    assigned_bus_id: driver.busId || null,
+                    license_number: driver.license || null,
+                    experience_years: parseInt(driver.experience) || 0,
+                    updated_at: new Date().toISOString(),
+                }).eq("id", driver.id);
+
+                if (driver.phone) {
+                    const phone = driver.phone.replace(/[^0-9+]/g, "");
+                    const formatted = phone.startsWith("+") ? phone : `+91${phone}`;
+                    await supabase.from("authorized_contacts").update({
+                        phone: formatted,
+                        updated_at: new Date().toISOString(),
+                    }).eq("id", driver.id);
+                }
+                return { success: true };
+            } catch (e: any) {
+                console.warn("updateDriver error:", e);
+                return { success: false, error: e?.message || "Network error while updating driver" };
             }
         },
         removeDriver: async (id) => {
