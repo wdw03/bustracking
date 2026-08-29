@@ -235,11 +235,12 @@ export default function MainComponent() {
   if (currentRoute === "schoolSignup") {
     return (
       <SchoolSignupPage
+        initialPhone={resetPhone}
         onBack={goBack}
         onSubmit={(data) => {
           console.log("School Signup Data Submitted:", data);
           setSignupData(data);
-          const phone = data.adminMobile || data.schoolPhone || resetPhone || "9876543210";
+          const phone = resetPhone || data.adminMobile || data.schoolPhone || "9876543210";
           setResetPhone(phone);
           navigateTo("otp");
         }}
@@ -251,10 +252,17 @@ export default function MainComponent() {
     return (
       <DriverSignupPage
         onBack={goBack}
-        onSubmit={(data) => {
+        onSubmit={async (data) => {
           console.log("Driver Signup Complete:", data);
           setSignupData(data);
-          setResetPhone(resetPhone || "9876543210");
+          const phone = resetPhone || "9876543210";
+          setResetPhone(phone);
+          try {
+            const { sendOtp } = await import("../services/authService");
+            await sendOtp(phone);
+          } catch (e) {
+            console.warn("Error sending OTP to driver:", e);
+          }
           navigateTo("otp");
         }}
       />
@@ -265,10 +273,17 @@ export default function MainComponent() {
     return (
       <ParentSignupPage
         onBack={goBack}
-        onSubmit={(data) => {
+        onSubmit={async (data) => {
           console.log("Parent Signup Complete:", data);
           setSignupData(data);
-          setResetPhone(resetPhone || "9876543210");
+          const phone = resetPhone || "9876543210";
+          setResetPhone(phone);
+          try {
+            const { sendOtp } = await import("../services/authService");
+            await sendOtp(phone);
+          } catch (e) {
+            console.warn("Error sending OTP to parent:", e);
+          }
           navigateTo("otp");
         }}
       />
@@ -323,7 +338,15 @@ export default function MainComponent() {
             navigateTo("createPassword");
           }
         }}
-        onResend={() => console.log("Resend OTP triggered")}
+        onResend={async () => {
+          console.log("Resend OTP triggered for:", resetPhone);
+          try {
+            const { sendOtp } = await import("../services/authService");
+            await sendOtp(resetPhone);
+          } catch (e) {
+            console.warn("Failed to resend OTP:", e);
+          }
+        }}
       />
     );
   }

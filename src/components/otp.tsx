@@ -276,7 +276,7 @@ export default function OtpVerification({
         };
     }, []);
 
-    const handleResend = () => {
+    const handleResend = async () => {
         if (cooldown > 0 || resendLimitReached) {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
             return;
@@ -289,7 +289,12 @@ export default function OtpVerification({
         startCooldown();
         startExpiryTimer();
         boxRefs.current[0]?.focus();
-        onResend?.(); // TODO: call your real "send OTP" API again here
+        try {
+            await sendOtp(phoneNumber);
+        } catch (e) {
+            console.warn("Failed to resend OTP:", e);
+        }
+        onResend?.();
     };
 
     /* ─────────────── Entrance Animation ─────────────── */
@@ -418,7 +423,11 @@ export default function OtpVerification({
                 // OTP verified! If this is a signup flow, also register the user
                 if (signupRole === "school") {
                     const { registerSchool } = await import("../services/authService");
-                    const regResult = await registerSchool(signupData || {});
+                    const regResult = await registerSchool({
+                        ...(signupData || {}),
+                        schoolPhone: signupData?.schoolPhone || phoneNumber,
+                        adminMobile: phoneNumber,
+                    });
                     if (!regResult.success) {
                         console.warn("School registration error:", regResult.error);
                         if (regResult.error?.toLowerCase().includes("already registered") || regResult.error?.includes("twice")) {

@@ -88,6 +88,7 @@ type FieldConfig = {
     autoCapitalize?: "none" | "words" | "sentences";
     /** row = share one line with the next field (city/state) */
     half?: boolean;
+    editable?: boolean;
 };
 
 type StepConfig = {
@@ -105,7 +106,7 @@ const STEPS: StepConfig[] = [
         fields: [
             { key: "schoolName", label: "School Name", placeholder: "Enter school name", icon: "business-outline", autoCapitalize: "words" },
             { key: "schoolEmail", label: "School Email", placeholder: "school@example.com", icon: "mail-outline", keyboard: "email-address", autoCapitalize: "none" },
-            { key: "schoolPhone", label: "School Phone Number", placeholder: "Enter phone number", icon: "call-outline", keyboard: "phone-pad", maxLength: 10 },
+            { key: "schoolPhone", label: "School Contact Number", placeholder: "Enter phone number", icon: "call-outline", keyboard: "phone-pad", maxLength: 10 },
             { key: "principalName", label: "Principal Name", placeholder: "Enter principal name", icon: "person-outline", autoCapitalize: "words" },
         ],
     },
@@ -115,7 +116,7 @@ const STEPS: StepConfig[] = [
         icon: "shield-checkmark-outline",
         fields: [
             { key: "adminName", label: "Administrator Name", placeholder: "Enter administrator name", icon: "person-circle-outline", autoCapitalize: "words" },
-            { key: "adminMobile", label: "Administrator Mobile Number", placeholder: "Enter mobile number", icon: "phone-portrait-outline", keyboard: "phone-pad", maxLength: 10 },
+            { key: "adminMobile", label: "Administrator Mobile (Registered)", placeholder: "Registered mobile number", icon: "phone-portrait-outline", keyboard: "phone-pad", maxLength: 10, editable: false },
             { key: "adminEmail", label: "Administrator Email", placeholder: "admin@example.com", icon: "at-outline", keyboard: "email-address", autoCapitalize: "none" },
         ],
     },
@@ -141,7 +142,7 @@ const STEPS: StepConfig[] = [
     },
 ];
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Validation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ────────────────────────── Validation ────────────────────────── */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^[6-9]\d{9}$/;
 
@@ -167,7 +168,9 @@ function validateField(key: FieldKey, value: string, all: Record<FieldKey, strin
 export type SchoolSignupData = Record<FieldKey, string>;
 
 type SchoolSignupPageProps = {
-    /** Back arrow in the header â€” e.g. () => navigation.goBack() */
+    /** Verified mobile number from the previous screen */
+    initialPhone?: string;
+    /** Back arrow in the header — e.g. () => navigation.goBack() */
     onBack?: () => void;
     /** Fires with ALL form data after the final submit succeeds */
     onSubmit?: (data: SchoolSignupData) => void;
@@ -180,7 +183,7 @@ const EMPTY: SchoolSignupData = {
     password: "", confirmPassword: "",
 };
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Ultra Premium Big Field â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+/* ══════════════════════════ Ultra Premium Big Field ══════════════════════════ */
 function Field({
     cfg, value, error, shakeTrigger, onChange, onFocusField, secureShown, onToggleSecure,
     inputRef, onSubmitEditing, isLast, ms,
@@ -201,6 +204,7 @@ function Field({
     const focus = useSharedValue(0);
     const fieldShake = useSharedValue(0);
     const valid = value.length > 0 && !error;
+    const isLocked = cfg.editable === false;
 
     useEffect(() => {
         if (shakeTrigger && shakeTrigger > 0) {
@@ -219,14 +223,20 @@ function Field({
     const boxStyle = useAnimatedStyle(() => ({
         borderColor: error
             ? DANGER
+            : isLocked
+            ? "#CBD5E1"
             : interpolateColor(focus.value, [0, 1], [BORDER_IDLE, ACCENT]),
-        backgroundColor: interpolateColor(focus.value, [0, 1], [BG_IDLE, "#FFFFFF"]),
+        backgroundColor: isLocked
+            ? "#F1F5F9"
+            : interpolateColor(focus.value, [0, 1], [BG_IDLE, "#FFFFFF"]),
         shadowOpacity: interpolate(focus.value, [0, 1], [0, 0.1]),
         transform: [{ translateX: fieldShake.value }],
     }));
 
     const chipStyle = useAnimatedStyle(() => ({
-        backgroundColor: interpolateColor(focus.value, [0, 1], ["#FFFFFF", ACCENT_SOFT]),
+        backgroundColor: isLocked
+            ? "#E2E8F0"
+            : interpolateColor(focus.value, [0, 1], ["#FFFFFF", ACCENT_SOFT]),
     }));
 
     return (
@@ -237,7 +247,7 @@ function Field({
                 </Text>
                 {error ? (
                     <Text numberOfLines={1} style={{ fontSize: ms(11), color: DANGER, fontFamily: FONT.regular, flexShrink: 1 }}>
-                        {"Â· " + error}
+                        {"· " + error}
                     </Text>
                 ) : null}
             </View>
@@ -263,11 +273,11 @@ function Field({
                             width: ms(36), height: ms(36),
                             borderRadius: 13, borderTopLeftRadius: ms(17),
                             alignItems: "center", justifyContent: "center",
-                            borderWidth: 1, borderColor: "#F5E6A3",
+                            borderWidth: 1, borderColor: isLocked ? "#CBD5E1" : "#F5E6A3",
                         },
                     ]}
                 >
-                    <Ionicons name={cfg.icon} size={ms(17)} color={ACCENT_DEEP} />
+                    <Ionicons name={cfg.icon} size={ms(17)} color={isLocked ? "#64748B" : ACCENT_DEEP} />
                 </Animated.View>
 
                 <TextInput
@@ -281,6 +291,7 @@ function Field({
                     maxLength={cfg.maxLength}
                     autoCapitalize={cfg.autoCapitalize ?? "sentences"}
                     autoCorrect={false}
+                    editable={!isLocked}
                     returnKeyType={isLast ? "done" : "next"}
                     onSubmitEditing={onSubmitEditing}
                     blurOnSubmit={isLast}
@@ -293,11 +304,16 @@ function Field({
                     }}
                     accessibilityLabel={cfg.label}
                     style={{
-                        flex: 1, fontSize: ms(15.5), color: INK,
-                        fontFamily: FONT.regular, paddingVertical: 0,
+                        flex: 1, fontSize: ms(15.5), color: isLocked ? "#334155" : INK,
+                        fontFamily: isLocked ? FONT.semibold : FONT.regular, paddingVertical: 0,
                     }}
                 />
-                {cfg.secure ? (
+                {isLocked ? (
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: "#F0FDF4", paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8, borderWidth: 1, borderColor: "#BBF7D0" }}>
+                        <Ionicons name="checkmark-circle" size={ms(13)} color={SUCCESS} />
+                        <Text style={{ fontSize: ms(10.5), color: SUCCESS, fontFamily: FONT.semibold }}>Verified</Text>
+                    </View>
+                ) : cfg.secure ? (
                     <Pressable
                         hitSlop={10}
                         onPress={() => {
@@ -316,8 +332,8 @@ function Field({
     );
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Page â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-export default function SchoolSignupPage({ onBack, onSubmit }: SchoolSignupPageProps) {
+/* ══════════════════════════ Page ══════════════════════════ */
+export default function SchoolSignupPage({ initialPhone = "", onBack, onSubmit }: SchoolSignupPageProps) {
     const insets = useSafeAreaInsets();
     const { width, height } = useWindowDimensions();
 
@@ -486,8 +502,9 @@ export default function SchoolSignupPage({ onBack, onSubmit }: SchoolSignupPageP
         setSubmitting(true);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
+        const phone = initialPhone || data.adminMobile || data.schoolPhone;
+
         try {
-            const phone = data.adminMobile || data.schoolPhone;
             const { checkPhoneAuthorization, sendOtp } = await import("../services/authService");
 
             // Check if phone number is already registered
@@ -502,7 +519,7 @@ export default function SchoolSignupPage({ onBack, onSubmit }: SchoolSignupPageP
                 return;
             }
 
-            // Send OTP to admin mobile before proceeding to OTP screen
+            // Send OTP to the unique registered mobile number before proceeding to OTP screen
             const otpResult = await sendOtp(phone);
             if (!otpResult.success) {
                 console.warn("OTP send failed:", otpResult.error);
@@ -514,7 +531,11 @@ export default function SchoolSignupPage({ onBack, onSubmit }: SchoolSignupPageP
         setSubmitting(false);
         setSubmitted(true);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        onSubmit?.(data);
+        onSubmit?.({
+            ...data,
+            adminMobile: phone,
+            schoolPhone: data.schoolPhone || phone,
+        });
     };
 
     /* Focus chain: pressing "next" on the keyboard jumps to the next field */
