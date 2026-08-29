@@ -251,5 +251,37 @@ export async function registerSchool(schoolData: {
   return { success: true, data: result.data };
 }
 
+/** Reset user password after OTP verification */
+export async function resetPassword(phone: string, newPassword: string): Promise<ApiResult<any>> {
+  const formatted = phone.startsWith("+") ? phone : `+91${phone.replace(/\D/g, "").slice(-10)}`;
+  const result = await invokeEdgeFunction("register-user", {
+    action: "reset_password",
+    phone: formatted,
+    password: newPassword,
+  });
+
+  if (!result.success) {
+    // If edge function returned error or wasn't available, try updating via client session
+    const { error: clientErr } = await supabase.auth.updateUser({ password: newPassword });
+    if (!clientErr) return { success: true };
+    return { success: false, error: result.error || clientErr.message || "Failed to reset password." };
+  }
+  return { success: true, data: result.data };
+}
+
+/** Check if phone exists for forgot password */
+export async function checkPhoneExists(phone: string): Promise<{ success: boolean; exists?: boolean; name?: string; role?: string; error?: string }> {
+  const formatted = phone.startsWith("+") ? phone : `+91${phone.replace(/\D/g, "").slice(-10)}`;
+  const result = await invokeEdgeFunction<{ success: boolean; exists?: boolean; name?: string; role?: string; error?: any }>("register-user", {
+    action: "check_phone_exists",
+    phone: formatted,
+  });
+
+  if (!result.success || !result.data?.success) {
+    return { success: false, exists: false, error: result.error || "Phone not found." };
+  }
+  return { success: true, exists: result.data.exists, name: result.data.name, role: result.data.role };
+}
+
 // ── Helper: Get current JWT access token (for external API calls) ──
 export { getAccessToken, getAuthHeaders, apiCall };

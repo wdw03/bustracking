@@ -285,36 +285,39 @@ export default function ForgetPassword({ onBack, onOtpSent, onResetSuccess }: Fo
             Animated.timing(loadingOpacity, { toValue: 1, duration: 280, delay: 100, useNativeDriver: true }),
         ]).start();
 
-        // TODO: replace this timeout with your real "send OTP" API call.
-        // On a real backend, 404/user-not-found → show the not-found error.
-        successTimerRef.current = setTimeout(() => {
-            if (!DEMO_REGISTERED_NUMBERS.includes(phoneNumber)) {
-                // Number isn't registered → no OTP, show error instead
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        successTimerRef.current = setTimeout(async () => {
+            try {
+                const { sendOtp } = await import("../services/authService");
+                const otpRes = await sendOtp(phoneNumber);
+
+                if (!otpRes.success) {
+                    console.warn("OTP send notice:", otpRes.error);
+                }
+
+                setBtnState("success");
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                Animated.parallel([
+                    Animated.timing(loadingOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
+                    Animated.timing(iconOpacity, { toValue: 1, duration: 280, delay: 100, useNativeDriver: true }),
+                ]).start();
+
+                setOtpSent(true);
+                setRequestCount((c) => c + 1);
+                startCooldown();
+                Animated.spring(sentBannerAnim, { toValue: 1, friction: 8, tension: 60, useNativeDriver: true }).start();
+
+                // Morph back to idle so the user sees the Resend state
+                successTimerRef.current = setTimeout(() => {
+                    resetButtonToIdle();
+                    onOtpSent?.(phoneNumber);
+                }, 400);
+            } catch (err) {
+                console.error("Forget password error:", err);
                 resetButtonToIdle();
                 shake(phoneShake);
-                showError("notFound");
-                return;
+                showError("serverError");
             }
-
-            setBtnState("success");
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            Animated.parallel([
-                Animated.timing(loadingOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
-                Animated.timing(iconOpacity, { toValue: 1, duration: 280, delay: 100, useNativeDriver: true }),
-            ]).start();
-
-            setOtpSent(true);
-            setRequestCount((c) => c + 1);
-            startCooldown();
-            Animated.spring(sentBannerAnim, { toValue: 1, friction: 8, tension: 60, useNativeDriver: true }).start();
-
-            // Morph back to idle so the user sees the Resend state
-            successTimerRef.current = setTimeout(() => {
-                resetButtonToIdle();
-                onOtpSent?.(phoneNumber);
-            }, 400);
-        }, 1800);
+        }, 800);
     };
 
     const btnWidth = btnWidthAnim.interpolate({

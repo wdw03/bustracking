@@ -354,6 +354,7 @@ export default function MainComponent() {
   if (currentRoute === "createPassword") {
     return (
       <CreatePasswordPage
+        phone={resetPhone}
         onBack={goBack}
         onSuccess={() => resetTo("passwordSuccess")}
       />

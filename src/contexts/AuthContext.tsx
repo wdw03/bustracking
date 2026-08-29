@@ -345,31 +345,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // ── Login: Password or OTP → creates session with Supabase ──
   const login = useCallback(async (phoneOrEmail: string, secret: string): Promise<{ success: boolean; code?: string; error?: string }> => {
     const cleanPhone = phoneOrEmail.replace(/\D/g, "");
-    const emailCandidate = phoneOrEmail.includes("@")
-      ? phoneOrEmail
-      : `${cleanPhone}@bustracker.com`;
+    const raw10 = cleanPhone.slice(-10);
+    const formattedPhone = cleanPhone ? (phoneOrEmail.startsWith("+") ? phoneOrEmail : `+91${raw10}`) : "";
+
+    const candidates: string[] = [];
+
+    if (phoneOrEmail.includes("@")) {
+      candidates.push(phoneOrEmail.trim().toLowerCase());
+    } else {
+      if (raw10) candidates.push(`${raw10}@bustracker.com`);
+      if (cleanPhone && cleanPhone !== raw10) candidates.push(`${cleanPhone}@bustracker.com`);
+      if (raw10) candidates.push(`91${raw10}@bustracker.com`);
+    }
+
+    let res: any = { error: { message: "Invalid phone or password." } };
 
     // Step 1: Attempt password login via email mapping (Supabase Auth)
-    let res = await supabase.auth.signInWithPassword({
-      email: emailCandidate,
-      password: secret,
-    });
-
-    // Step 2: If email login failed and it's a phone, try direct phone login
-    if (res.error && !phoneOrEmail.includes("@")) {
-      const formattedPhone = phoneOrEmail.startsWith("+") ? phoneOrEmail : `+91${cleanPhone}`;
-      const phoneRes = await supabase.auth.signInWithPassword({
-        phone: formattedPhone,
+    for (const email of candidates) {
+      const emailRes = await supabase.auth.signInWithPassword({
+        email,
         password: secret,
       });
-      if (!phoneRes.error) {
-        res = phoneRes;
+      if (!emailRes.error) {
+        res = emailRes;
+        break;
+      }
+    }
+
+    // Step 2: If email login failed and it's a phone, try direct phone login
+    if (res.error && !phoneOrEmail.includes("@") && formattedPhone) {
+      const phonesToTry = [formattedPhone, `91${raw10}`, cleanPhone, raw10].filter(Boolean);
+      for (const p of phonesToTry) {
+        const phoneRes = await supabase.auth.signInWithPassword({
+          phone: p,
+          password: secret,
+        });
+        if (!phoneRes.error) {
+          res = phoneRes;
+          break;
+        }
       }
     }
 
     // Step 3: If password failed, try OTP verification (if numeric token)
-    if (res.error && /^\d{4,6}$/.test(secret.trim())) {
-      const formattedPhone = phoneOrEmail.startsWith("+") ? phoneOrEmail : `+91${cleanPhone}`;
+    if (res.error && /^\d{4,6}$/.test(secret.trim()) && formattedPhone) {
       const otpRes = await verifyPhoneOtp(formattedPhone, secret.trim());
       if (otpRes.success) {
         return { success: true };

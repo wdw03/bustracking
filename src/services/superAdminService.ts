@@ -159,6 +159,20 @@ export async function getSchoolRequests(): Promise<SchoolRecord[]> {
 }
 
 export async function approveSchool(schoolId: string): Promise<{ success: boolean; error?: string }> {
+    // 1. First try calling approve_school RPC (security definer with full permissions)
+    try {
+        const { data: rpcData, error: rpcErr } = await supabase.rpc("approve_school", { p_school_id: schoolId });
+        if (!rpcErr && rpcData?.success) {
+            // Also ensure profiles is_active is set
+            const { data: s } = await supabase.from("schools").select("admin_user_id, phone").eq("id", schoolId).maybeSingle();
+            if (s?.admin_user_id) {
+                await supabase.from("profiles").update({ is_active: true }).eq("id", s.admin_user_id);
+            }
+            return { success: true };
+        }
+    } catch (_) {}
+
+    // 2. Direct updates
     const { data: schoolData, error } = await supabase
         .from("schools")
         .update({
@@ -166,7 +180,7 @@ export async function approveSchool(schoolId: string): Promise<{ success: boolea
             approved_at: new Date().toISOString(),
         })
         .eq("id", schoolId)
-        .select("id, admin_user_id")
+        .select("id, admin_user_id, phone")
         .single();
 
     if (error) return { success: false, error: error.message };
@@ -183,6 +197,14 @@ export async function approveSchool(schoolId: string): Promise<{ success: boolea
             .from("profiles")
             .update({ is_active: true })
             .eq("id", schoolData.admin_user_id);
+    } else if (schoolData?.phone) {
+        const cleanDigits = schoolData.phone.replace(/\D/g, "");
+        const raw10 = cleanDigits.slice(-10);
+        const formatted = schoolData.phone.startsWith("+") ? schoolData.phone : `+91${raw10}`;
+        await supabase
+            .from("profiles")
+            .update({ is_active: true })
+            .or(`phone.eq.${formatted},phone.eq.${cleanDigits},phone.eq.${raw10}`);
     }
 
     // Log audit

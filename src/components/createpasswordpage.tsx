@@ -90,6 +90,7 @@ const ERRORS = {
 type ErrorKey = keyof typeof ERRORS;
 
 type CreatePasswordProps = {
+    phone?: string;
     onBack?: () => void;
     /** Called after the password is updated successfully.
         Navigate to your success page here — nothing is shown on this screen.
@@ -97,7 +98,7 @@ type CreatePasswordProps = {
     onSuccess?: () => void;
 };
 
-export default function CreatePasswordPage({ onBack, onSuccess }: CreatePasswordProps) {
+export default function CreatePasswordPage({ phone, onBack, onSuccess }: CreatePasswordProps) {
     const insets = useSafeAreaInsets();
     const { width, height } = useWindowDimensions();
 
@@ -264,12 +265,26 @@ export default function CreatePasswordPage({ onBack, onSuccess }: CreatePassword
             Animated.timing(loadingOpacity, { toValue: 1, duration: 280, delay: 100, useNativeDriver: true }),
         ]).start();
 
-        // Update password in Supabase Auth
+        // Update password in Supabase Auth & DB
         (async () => {
             try {
-                const { error: updateErr } = await supabase.auth.updateUser({ password });
-                if (updateErr) {
-                    console.warn("Password update error:", updateErr);
+                let updated = false;
+
+                // If phone is provided, reset password via authService
+                if (phone) {
+                    const { resetPassword } = await import("../services/authService");
+                    const res = await resetPassword(phone, password);
+                    if (res.success) {
+                        updated = true;
+                    }
+                }
+
+                // If not updated yet or active session exists, update user password directly
+                if (!updated) {
+                    const { error: updateErr } = await supabase.auth.updateUser({ password });
+                    if (!updateErr) {
+                        updated = true;
+                    }
                 }
 
                 setBtnState("success");
