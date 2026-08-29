@@ -328,6 +328,9 @@ type SchoolData = {
     addDriver: (driver: DDriver) => Promise<{ success: boolean; data?: DDriver; error?: string }>;
     updateDriver: (driver: DDriver) => Promise<{ success: boolean; error?: string }>;
     removeDriver: (id: string) => Promise<{ success: boolean; error?: string }>;
+    addParent: (parent: { name: string; phone: string; studentId?: string | null }) => Promise<{ success: boolean; data?: DParent; error?: string }>;
+    removeParent: (idOrPhone: string) => Promise<{ success: boolean; error?: string }>;
+    sendSchoolNotification: (title: string, body: string, audience: string, busId?: string | null) => Promise<{ success: boolean; error?: string }>;
     updateSchoolProfile: (updates: Partial<Omit<SchoolProfile, "id" | "phone">>) => Promise<{ success: boolean; error?: string }>;
     isLoading: boolean;
 };
@@ -585,6 +588,31 @@ export function SchoolDataProvider({ children }: { children: React.ReactNode }) 
                         }
                         parentMap.get(profile.id)!.studentIds.push(child.id);
                     }
+                }
+
+                if (contactsRes.data) {
+                    const authParents = (contactsRes.data as any[]).filter(c => c.contact_type === "parent");
+                    authParents.forEach((c: any) => {
+                        const raw10 = c.phone ? c.phone.replace(/[^0-9]/g, "").slice(-10) : "";
+                        if (raw10) {
+                            const existing = Array.from(parentMap.values()).find(p => p.phone.replace(/[^0-9]/g, "").slice(-10) === raw10);
+                            if (!existing) {
+                                parentMap.set(c.id, {
+                                    id: c.id,
+                                    name: `Parent (${c.phone})`,
+                                    father: "Guardian",
+                                    mother: "—",
+                                    phone: c.phone,
+                                    email: "—",
+                                    address: "—",
+                                    studentIds: c.child_id ? [c.child_id] : [],
+                                    subscription: "Active",
+                                });
+                            } else if (c.child_id && !existing.studentIds.includes(c.child_id)) {
+                                existing.studentIds.push(c.child_id);
+                            }
+                        }
+                    });
                 }
                 setParents(Array.from(parentMap.values()));
             } catch (err) {
@@ -867,6 +895,93 @@ export function SchoolDataProvider({ children }: { children: React.ReactNode }) 
             } catch (e: any) {
                 console.warn("removeDriver error:", e);
                 return { success: false, error: e?.message || "Network error while removing driver" };
+            }
+        },
+        addParent: async (parent) => {
+            try {
+                let sid = schoolId;
+                if (!sid) {
+                    const { data: { user } } = await supabase.auth.getUser();
+                    if (user) {
+                        const { data: s } = await supabase.from("schools").select("id").or(`admin_user_id.eq.${user.id},phone.eq.${user.phone || ""}`).limit(1).maybeSingle();
+                        sid = s?.id || null;
+                    }
+                }
+                if (!sid) return { success: false, error: "School account not identified." };
+
+                const phone = parent.phone.replace(/[^0-9+]/g, "");
+                const formattedPhone = phone.startsWith("+") ? phone : `+91${phone}`;
+
+                const { data: contact, error: cErr } = await supabase.from("authorized_contacts").upsert({
+                    school_id: sid,
+                    phone: formattedPhone,
+                    contact_type: "parent",
+                    child_id: parent.studentId || null,
+                    is_registered: false,
+                }, { onConflict: "school_id,phone,contact_type" }).select().single();
+
+                if (cErr) {
+                    console.warn("Supabase addParent error:", cErr);
+                }
+
+                const newParent: DParent = {
+                    id: contact?.id || `p-${Date.now()}`,
+                    name: parent.name,
+                    father: parent.name,
+                    mother: "—",
+                    phone: parent.phone,
+                    email: "—",
+                    address: "—",
+                    studentIds: parent.studentId ? [parent.studentId] : [],
+                    subscription: "Active",
+                };
+
+                setParents((current) => {
+                    const existing = current.find(p => p.phone.replace(/[^0-9]/g, "").slice(-10) === phone.slice(-10));
+                    if (existing) {
+                        return current.map(p => p.id === existing.id ? {
+                            ...p,
+                            name: parent.name || p.name,
+                            studentIds: parent.studentId && !p.studentIds.includes(parent.studentId) ? [...p.studentIds, parent.studentId] : p.studentIds,
+                        } : p);
+                    }
+                    return [newParent, ...current];
+                });
+
+                return { success: true, data: newParent };
+            } catch (e: any) {
+                console.warn("addParent error:", e);
+                return { success: false, error: e?.message || "Network error while adding parent" };
+            }
+        },
+        removeParent: async (idOrPhone) => {
+            try {
+                setParents((current) => current.filter((p) => p.id !== idOrPhone && p.phone !== idOrPhone));
+                const phone = idOrPhone.replace(/[^0-9+]/g, "");
+                const formatted = phone.startsWith("+") ? phone : `+91${phone}`;
+                await supabase.from("authorized_contacts").delete().or(`id.eq.${idOrPhone},phone.eq.${formatted}`);
+                return { success: true };
+            } catch (e: any) {
+                console.warn("removeParent error:", e);
+                return { success: false, error: e?.message || "Network error while removing parent" };
+            }
+        },
+        sendSchoolNotification: async (title, body, audience, busId) => {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (user) {
+                    await supabase.from("notifications").insert({
+                        user_id: user.id,
+                        title,
+                        body,
+                        type: "school_update",
+                        is_read: false,
+                    });
+                }
+                return { success: true };
+            } catch (e: any) {
+                console.warn("sendSchoolNotification error:", e);
+                return { success: false, error: e?.message || "Network error while sending notification" };
             }
         },
         updateSchoolProfile: async (updates) => {

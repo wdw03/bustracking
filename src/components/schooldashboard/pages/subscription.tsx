@@ -81,8 +81,47 @@ export default function SubscriptionPage({ onBack }: { onBack: () => void }) {
 
     // Completed txn
     const [completedTxn, setCompletedTxn] = useState<{ txnId: string; amt: string; method: string; date: string } | null>(null);
+    const [processingRequests, setProcessingRequests] = useState<ProcessingRequest[]>([]);
 
     const { INK, PAGE_BG, CARD_BG, BORDER, ACCENT, ACCENT_DEEP, ACCENT_SOFT, MUTED, FAINT, BLUE, BLUE_SOFT, GREEN, GREEN_SOFT, RED, RED_SOFT, PURPLE, PURPLE_SOFT, ORANGE, ORANGE_SOFT, isDark } = useTheme();
+
+    // Fetch real withdrawal requests from Supabase
+    useEffect(() => {
+        const fetchWithdrawals = async () => {
+            try {
+                let sid = schoolId;
+                if (!sid) {
+                    const { data: { user } } = await supabase.auth.getUser();
+                    if (user) {
+                        const { data: s } = await supabase.from("schools").select("id").or(`admin_user_id.eq.${user.id},phone.eq.${user.phone || ""}`).limit(1).maybeSingle();
+                        sid = s?.id || null;
+                    }
+                }
+                if (!sid) return;
+
+                const { data, error } = await supabase.from("withdrawal_requests").select("*").eq("school_id", sid).order("created_at", { ascending: false });
+                if (data && !error) {
+                    const mapped: ProcessingRequest[] = data.map((d: any) => ({
+                        id: d.id,
+                        amount: Number(d.amount),
+                        method: d.upi_id ? "UPI" : "IMPS",
+                        requestedAt: new Date(d.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }),
+                        status: d.status === "approved" ? "Under Review" : d.status === "completed" ? "Processing" : "Queued",
+                        accountName: d.account_holder || "School Admin",
+                        upiId: d.upi_id || undefined,
+                        bankName: d.bank_name || undefined,
+                        accountNumber: d.account_number || undefined,
+                        ifsc: d.ifsc_code || undefined,
+                    }));
+                    setProcessingRequests(mapped);
+                }
+            } catch (e) {
+                console.warn("fetchWithdrawals error:", e);
+            }
+        };
+
+        fetchWithdrawals();
+    }, [schoolId]);
 
     // Animations
     const spinAnim = useRef(new Animated.Value(0)).current;
@@ -153,9 +192,17 @@ export default function SubscriptionPage({ onBack }: { onBack: () => void }) {
         // Insert into live Supabase withdrawal_requests table
         (async () => {
             try {
-                const sid = schoolId;
+                let sid = schoolId;
+                if (!sid) {
+                    const { data: { user } } = await supabase.auth.getUser();
+                    if (user) {
+                        const { data: s } = await supabase.from("schools").select("id").or(`admin_user_id.eq.${user.id},phone.eq.${user.phone || ""}`).limit(1).maybeSingle();
+                        sid = s?.id || null;
+                    }
+                }
                 if (!sid) return;
-                await supabase.from("withdrawal_requests").insert({
+
+                const { data } = await supabase.from("withdrawal_requests").insert({
                     school_id: sid,
                     amount: Number(amount),
                     bank_name: method === "IMPS" ? bankName : null,
@@ -164,7 +211,22 @@ export default function SubscriptionPage({ onBack }: { onBack: () => void }) {
                     account_holder: method === "IMPS" ? accountName : upiName,
                     upi_id: method === "UPI" ? upiId : null,
                     status: "pending",
-                });
+                }).select().single();
+
+                if (data) {
+                    setProcessingRequests(prev => [{
+                        id: data.id,
+                        amount: Number(data.amount),
+                        method: method,
+                        requestedAt: "Just now",
+                        status: "Queued",
+                        accountName: method === "IMPS" ? accountName : upiName,
+                        upiId: upiId || undefined,
+                        bankName: bankName || undefined,
+                        accountNumber: accountNumber || undefined,
+                        ifsc: ifscCode || undefined,
+                    }, ...prev]);
+                }
             } catch (e) {
                 console.warn("Withdrawal request Supabase error:", e);
             }
@@ -460,10 +522,10 @@ export default function SubscriptionPage({ onBack }: { onBack: () => void }) {
        SUB-PAGE: PROCESSING REQUESTS
        ═══════════════════════════════════════════════════════════════ */
     if (subPage === "processing") {
-        const filtered = PROCESSING_REQUESTS.filter(r => r.method.toLowerCase().includes(processingQuery.toLowerCase()) || r.accountName.toLowerCase().includes(processingQuery.toLowerCase()));
+        const filtered = processingRequests.filter(r => r.method.toLowerCase().includes(processingQuery.toLowerCase()) || r.accountName.toLowerCase().includes(processingQuery.toLowerCase()));
         return (
             <View style={{ flex: 1, backgroundColor: PAGE_BG }}>
-                <PageHeader title="Processing Requests" subtitle={`${PROCESSING_REQUESTS.length} pending withdrawals`} onBack={() => setSubPage("main")} topInset={insets.top} />
+                <PageHeader title="Processing Requests" subtitle={`${processingRequests.length} pending withdrawal${processingRequests.length !== 1 ? "s" : ""}`} onBack={() => setSubPage("main")} topInset={insets.top} />
                 <ScrollView contentContainerStyle={{ padding: ms(16), paddingBottom: ms(40) }} keyboardShouldPersistTaps="handled">
                     <View style={{ flexDirection: "row", gap: ms(8), marginBottom: ms(14) }}>
                         <View style={{ flex: 1, flexDirection: "row", alignItems: "center", backgroundColor: CARD_BG, borderRadius: ms(16), borderWidth: 1, borderColor: BORDER, paddingHorizontal: ms(12), height: ms(50), gap: 8 }}>

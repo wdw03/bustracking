@@ -19,16 +19,30 @@ export default function BusAssignmentPage({ onBack }: { onBack: () => void }) {
     const insets = useSafeAreaInsets();
     const [busId, setBusId] = useState<string | null>(null);
     const [studentId, setStudentId] = useState<string | null>(null);
+    const [isSaving, setIsSaving] = useState(false);
     const { buses, students, assignStudentToBus, isLoading } = useSchoolData();
 
-    const assign = () => {
+    const assign = async () => {
         const bus = buses.find((item) => item.id === busId);
         const stu = students.find((item) => item.id === studentId);
         if (!bus || !stu) return;
-        assignStudentToBus(stu.id, bus.id);
-        Alert.alert("Bus assigned", `${stu.name} is now assigned to ${bus.number} (${bus.vehicleNumber}).`, [
-            { text: "OK", onPress: () => { setBusId(null); setStudentId(null); } },
-        ]);
+
+        setIsSaving(true);
+        try {
+            const res = await assignStudentToBus(stu.id, bus.id);
+            if (res && !res.success) {
+                Alert.alert("Assignment Error", res.error || "Failed to assign bus in database.");
+                setIsSaving(false);
+                return;
+            }
+            Alert.alert("Bus assigned", `${stu.name} is now assigned to ${bus.number} (${bus.vehicleNumber}).`, [
+                { text: "OK", onPress: () => { setBusId(null); setStudentId(null); } },
+            ]);
+        } catch (e: any) {
+            Alert.alert("Error", e?.message || "Failed to assign bus.");
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     return (
@@ -106,10 +120,10 @@ export default function BusAssignmentPage({ onBack }: { onBack: () => void }) {
 
             {/* Sticky assign bar */}
             <View style={{ position: "absolute", left: ms(16), right: ms(16), bottom: Math.max(insets.bottom, ms(14)) }}>
-                <Press disabled={!busId || !studentId} onPress={assign} style={{ height: ms(56), borderRadius: ms(19), backgroundColor: busId && studentId ? ACCENT : "#E5E7EB", alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8, shadowColor: "#000", shadowOpacity: 0.15, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 8 }}>
-                    <Ionicons name="git-compare" size={ms(18)} color={busId && studentId ? INK : "#9CA3AF"} />
+                <Press disabled={!busId || !studentId || isSaving} onPress={assign} style={{ height: ms(56), borderRadius: ms(19), backgroundColor: busId && studentId ? ACCENT : "#E5E7EB", alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8, shadowColor: "#000", shadowOpacity: 0.15, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 8, opacity: isSaving ? 0.7 : 1 }}>
+                    <Ionicons name={isSaving ? "hourglass" : "git-compare"} size={ms(18)} color={busId && studentId ? INK : "#9CA3AF"} />
                     <Text style={{ fontFamily: FONT.display, fontSize: ms(15), color: busId && studentId ? INK : "#9CA3AF" }}>
-                        {busId && studentId ? "Assign Student to Bus" : "Select a bus & student"}
+                        {isSaving ? "Saving assignment..." : (busId && studentId ? "Assign Student to Bus" : "Select a bus & student")}
                     </Text>
                 </Press>
             </View>

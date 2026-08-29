@@ -1,18 +1,12 @@
-/* ============================================================================
-   NOTIFICATION CENTER — School Admin
-   Copy to: src/components/schooldashboard/pages/notificationcenter.tsx
-   Send bus-delay / driver-change / custom alerts to targeted audiences.
-   ========================================================================== */
-
 import React, { useState } from "react";
 import { Alert, ScrollView, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
-    ACCENT, ACCENT_DEEP, ACCENT_SOFT, BLUE, BLUE_SOFT, BORDER, BUSES, CARD_BG, Card, FAINT, FONT, GREEN,
+    ACCENT, ACCENT_DEEP, ACCENT_SOFT, BLUE, BLUE_SOFT, BORDER, CARD_BG, Card, FAINT, FONT, GREEN,
     GREEN_SOFT, INK, MUTED, ORANGE, ORANGE_SOFT, PAGE_BG, PageHeader, Press, PURPLE, PURPLE_SOFT, RED, RED_SOFT,
-    SectionTitle, ms,
+    SectionTitle, ms, useSchoolData,
 } from "../common";
 import { notifyBusNearby } from "../../../services/locationService";
 
@@ -24,25 +18,55 @@ const TEMPLATES = [
 ];
 
 const AUDIENCES = [
-    { id: "all", icon: "people" as const, label: "All Parents" },
-    { id: "parents", icon: "person" as const, label: "Selected Parents" },
-    { id: "bus", icon: "bus" as const, label: "Selected Bus" },
-    { id: "class", icon: "school" as const, label: "Selected Class" },
-    { id: "driver", icon: "id-card" as const, label: "Selected Driver" },
+    { id: "all", icon: "people" as const, label: "All Parents & Staff" },
+    { id: "parents", icon: "person" as const, label: "Parents Only" },
+    { id: "bus", icon: "bus" as const, label: "Specific Bus Route" },
+    { id: "driver", icon: "id-card" as const, label: "Drivers Only" },
 ];
+
+type RecentSend = { id: string; icon: keyof typeof Ionicons.glyphMap; text: string; time: string; color: string; soft: string };
 
 export default function NotificationCenterPage({ onBack }: { onBack: () => void }) {
     const insets = useSafeAreaInsets();
+    const { buses, sendSchoolNotification } = useSchoolData();
     const [template, setTemplate] = useState(TEMPLATES[0]);
     const [audience, setAudience] = useState("all");
     const [busId, setBusId] = useState<string | null>(null);
     const [message, setMessage] = useState(TEMPLATES[0].body);
+    const [isSending, setIsSending] = useState(false);
+    const [recentSends, setRecentSends] = useState<RecentSend[]>([
+        { id: "n1", icon: "time", text: "Bus Delay → All Parents", time: "Today, 7:42 AM", color: ORANGE, soft: ORANGE_SOFT },
+        { id: "n2", icon: "swap-horizontal", text: "Driver Change → Route parents", time: "Yesterday", color: BLUE, soft: BLUE_SOFT },
+        { id: "n3", icon: "sunny", text: "Holiday Notice → All Parents", time: "24 Jan", color: GREEN, soft: GREEN_SOFT },
+    ]);
 
     const send = async () => {
         if (!message.trim()) return Alert.alert("Empty message", "Please write a message first.");
+        const selectedBus = buses.find((b) => b.id === busId);
         const aud = AUDIENCES.find((a) => a.id === audience)?.label;
-        const delivered = await notifyBusNearby(template.title, message.trim());
-        Alert.alert(delivered ? "Notification queued" : "Permission needed", delivered ? `Alert prepared for ${aud}${audience === "bus" && busId ? ` (${BUSES.find((b) => b.id === busId)?.number})` : ""}.` : "Allow notifications to send alerts from this device.", [{ text: "OK" }]);
+
+        setIsSending(true);
+        try {
+            await sendSchoolNotification(template.title, message.trim(), audience, busId);
+            await notifyBusNearby(template.title, message.trim());
+
+            const newRecent: RecentSend = {
+                id: `rec-${Date.now()}`,
+                icon: template.icon,
+                text: `${template.title} → ${aud}${audience === "bus" && selectedBus ? ` (${selectedBus.number})` : ""}`,
+                time: "Just now",
+                color: template.color,
+                soft: template.soft,
+            };
+            setRecentSends((prev) => [newRecent, ...prev]);
+
+            Alert.alert("Notification Sent", `Broadcast sent to ${aud}${audience === "bus" && selectedBus ? ` (${selectedBus.number})` : ""} and saved to database.`);
+            if (template.id === "custom") setMessage("");
+        } catch (e: any) {
+            Alert.alert("Error", e?.message || "Failed to send notification.");
+        } finally {
+            setIsSending(false);
+        }
     };
 
     return (
@@ -102,7 +126,9 @@ export default function NotificationCenterPage({ onBack }: { onBack: () => void 
                 {/* Bus picker (when audience = bus) */}
                 {audience === "bus" ? (
                     <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: ms(10) }}>
-                        {BUSES.map((b) => (
+                        {buses.length === 0 ? (
+                            <Text style={{ fontFamily: FONT.regular, color: MUTED, fontSize: ms(12) }}>No buses registered</Text>
+                        ) : buses.map((b) => (
                             <Press key={b.id} onPress={() => setBusId(b.id)} style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: busId === b.id ? INK : CARD_BG, borderRadius: 999, paddingHorizontal: ms(12), paddingVertical: ms(8), borderWidth: 1, borderColor: busId === b.id ? INK : BORDER }}>
                                 <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: b.color }} />
                                 <Text style={{ fontFamily: FONT.semibold, fontSize: ms(11.5), color: busId === b.id ? "#FFFFFF" : INK }}>{b.number}</Text>
@@ -111,19 +137,15 @@ export default function NotificationCenterPage({ onBack }: { onBack: () => void 
                     </View>
                 ) : null}
 
-                <Press onPress={send} style={{ marginTop: ms(20), height: ms(54), borderRadius: ms(18), backgroundColor: ACCENT, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8 }}>
-                    <Ionicons name="send" size={ms(16)} color={INK} />
-                    <Text style={{ fontFamily: FONT.display, fontSize: ms(15), color: INK }}>Send Notification</Text>
+                <Press onPress={isSending ? undefined : send} style={{ marginTop: ms(20), height: ms(54), borderRadius: ms(18), backgroundColor: ACCENT, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8, opacity: isSending ? 0.7 : 1 }}>
+                    <Ionicons name={isSending ? "hourglass" : "send"} size={ms(16)} color={INK} />
+                    <Text style={{ fontFamily: FONT.display, fontSize: ms(15), color: INK }}>{isSending ? "Sending Broadcast..." : "Send Notification"}</Text>
                 </Press>
 
                 {/* Recent sends */}
                 <SectionTitle icon="time" title="Recently Sent" />
                 <Card style={{ padding: 0, overflow: "hidden" }}>
-                    {[
-                        { id: "n1", icon: "time" as const, text: "Bus Delay → All Parents", time: "Today, 7:42 AM", color: ORANGE, soft: ORANGE_SOFT },
-                        { id: "n2", icon: "swap-horizontal" as const, text: "Driver Change → BUS-05 parents", time: "Yesterday", color: BLUE, soft: BLUE_SOFT },
-                        { id: "n3", icon: "sunny" as const, text: "Holiday Notice → All Parents", time: "24 Jan", color: GREEN, soft: GREEN_SOFT },
-                    ].map((n, i) => (
+                    {recentSends.map((n, i) => (
                         <View key={n.id} style={{ flexDirection: "row", alignItems: "center", gap: ms(10), padding: ms(12), borderTopWidth: i === 0 ? 0 : 1, borderTopColor: BORDER }}>
                             <View style={{ width: ms(32), height: ms(32), borderRadius: ms(11), backgroundColor: n.soft, alignItems: "center", justifyContent: "center" }}>
                                 <Ionicons name={n.icon} size={ms(15)} color={n.color} />
