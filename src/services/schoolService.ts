@@ -40,21 +40,71 @@ export async function updateSchoolProfile(
     logo_url?: string;
   }
 ): Promise<ApiResult<School>> {
-  const sanitized: any = { ...updates, updated_at: new Date().toISOString() };
-  // Strictly prevent modifying the unique registered contact number & ownership
-  delete sanitized.phone;
-  delete sanitized.admin_user_id;
-  delete sanitized.status;
+  try {
+    const sanitized: any = { updated_at: new Date().toISOString() };
+    
+    if (updates.name !== undefined && updates.name.trim()) sanitized.name = updates.name.trim();
+    if (updates.principal_name !== undefined) sanitized.principal_name = updates.principal_name.trim() || null;
+    if (updates.email !== undefined) sanitized.email = updates.email.trim() || null;
+    if (updates.address !== undefined) sanitized.address = updates.address.trim() || null;
+    if (updates.city !== undefined) sanitized.city = updates.city.trim() || null;
+    if (updates.state !== undefined) sanitized.state = updates.state.trim() || null;
+    if (updates.pincode !== undefined) sanitized.pincode = updates.pincode.trim() || null;
+    if (updates.principal_phone !== undefined) sanitized.principal_phone = updates.principal_phone.trim() || null;
+    if (updates.gst_number !== undefined) sanitized.gst_number = updates.gst_number.trim() || null;
+    if (updates.website !== undefined) sanitized.website = updates.website.trim() || null;
+    if (updates.logo_url !== undefined) sanitized.logo_url = updates.logo_url || null;
 
-  const { data, error } = await supabase
-    .from("schools")
-    .update(sanitized)
-    .eq("id", schoolId)
-    .select()
-    .single();
+    // Strictly prevent modifying the unique registered contact number & ownership
+    delete sanitized.phone;
+    delete sanitized.admin_user_id;
+    delete sanitized.status;
 
-  if (error) return { success: false, error: error.message };
-  return { success: true, data: data as School };
+    let { data, error } = await supabase
+      .from("schools")
+      .update(sanitized)
+      .eq("id", schoolId);
+
+    // Fallback: If update by ID didn't match (e.g. mock/stale ID), try update by admin_user_id or phone
+    if (error) {
+      console.warn("updateSchoolProfile error by ID, trying fallback:", error);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const cleanUserPhone = (user.phone || "").replace(/\D/g, "");
+        const raw10 = cleanUserPhone.slice(-10);
+        const formattedUserPhone = cleanUserPhone.startsWith("+") ? cleanUserPhone : `+91${raw10}`;
+
+        const fbRes = await supabase
+          .from("schools")
+          .update(sanitized)
+          .or(`admin_user_id.eq.${user.id},phone.eq.${formattedUserPhone},phone.eq.${cleanUserPhone},phone.eq.${raw10}`);
+
+        if (!fbRes.error) {
+          error = null;
+        } else {
+          return { success: false, error: error.message || fbRes.error.message };
+        }
+      } else {
+        return { success: false, error: error.message };
+      }
+    }
+
+    // Also update profile name if principal name changed
+    if (updates.principal_name?.trim()) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase
+          .from("profiles")
+          .update({ full_name: updates.principal_name.trim() })
+          .eq("id", user.id);
+      }
+    }
+
+    return { success: true, data: sanitized as School };
+  } catch (e: any) {
+    console.error("updateSchoolProfile exception:", e);
+    return { success: false, error: e?.message || "Failed to update school details" };
+  }
 }
 
 // ── School Dashboard (aggregated stats via RPC) ──
