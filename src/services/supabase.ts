@@ -297,7 +297,8 @@ export async function registerDriver(
   password?: string,
   licenseNumber?: string,
   licenseExpiry?: string,
-  experienceYears?: number
+  experienceYears?: number,
+  busNumber?: string
 ) {
   const cleanDigits = phone.replace(/\D/g, "");
   const raw10 = cleanDigits.slice(-10);
@@ -312,6 +313,7 @@ export async function registerDriver(
       license_number: licenseNumber,
       license_expiry: licenseExpiry,
       experience_years: experienceYears,
+      bus_number: busNumber,
     },
   });
 

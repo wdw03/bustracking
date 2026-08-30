@@ -482,6 +482,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
+      // If driver, ensure driver record is active and linked to school
+      if (prof?.role === "driver") {
+        try {
+          const cleanUserPhone = (authUser.phone || cleanPhone).replace(/\D/g, "");
+          const formattedUserPhone = cleanUserPhone.startsWith("+") ? cleanUserPhone : `+91${cleanUserPhone.slice(-10)}`;
+          const raw10 = cleanUserPhone.slice(-10);
+
+          const { data: contacts } = await supabase
+            .from("authorized_contacts")
+            .select("id, school_id, is_registered")
+            .or(`phone.eq.${formattedUserPhone},phone.eq.${cleanUserPhone},phone.eq.${raw10}`)
+            .eq("contact_type", "driver");
+
+          if (contacts && contacts.length > 0) {
+            const schoolId = contacts[0].school_id;
+            await supabase.from("drivers").upsert({
+              school_id: schoolId,
+              user_id: authUser.id,
+              is_active: true,
+            }, { onConflict: "user_id" });
+
+            for (const c of contacts) {
+              await supabase.from("authorized_contacts").update({ is_registered: true }).eq("id", c.id);
+            }
+          }
+        } catch (e) {
+          console.warn("Driver auto-link on login:", e);
+        }
+      }
+
       setSession(res.data.session);
       setUser(authUser);
       await persistSession(res.data.session);
@@ -563,7 +593,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         password,
         extras?.license_number,
         extras?.license_expiry,
-        extras?.experience_years,
+        extras?.experience_years ? Number(extras.experience_years) : undefined,
+        extras?.bus_number
       );
     }
 

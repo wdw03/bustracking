@@ -349,6 +349,9 @@ export default function DriverDashboard({
         getDriverDashboard().then((res) => {
             if (isMounted && res) {
                 setDriverData(res);
+                if (res.profile?.full_name) DRIVER.name = res.profile.full_name;
+                if (res.profile?.phone) DRIVER.phone = res.profile.phone;
+                if (res.driver?.license_number) DRIVER.license = res.driver.license_number;
             }
         }).catch((err) => console.warn("DriverDashboard live fetch fallback:", err));
         return () => { isMounted = false; };

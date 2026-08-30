@@ -7,15 +7,73 @@
 import { supabase } from "./supabase";
 import type { DriverDashboardData, Driver, Bus, School, ApiResult } from "./types";
 
-// ── Dashboard (single RPC call — returns all driver data securely) ──
+// ── Dashboard (returns all driver data securely with resilient fallback) ──
 
 export async function getDriverDashboard(): Promise<DriverDashboardData | null> {
-  const { data, error } = await supabase.rpc("get_driver_dashboard");
-  if (error || !data) {
-    console.warn("getDriverDashboard error:", error);
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+
+    // Step 1: Try RPC
+    const { data: rpcData, error: rpcError } = await supabase.rpc("get_driver_dashboard");
+    if (!rpcError && rpcData && (rpcData as any).driver) {
+      return rpcData as DriverDashboardData;
+    }
+
+    // Step 2: Fallback query if RPC had issues
+    if (user) {
+      const cleanPhone = (user.phone || "").replace(/\D/g, "");
+      const raw10 = cleanPhone.slice(-10);
+      const formattedPhone = user.phone ? (user.phone.startsWith("+") ? user.phone : `+91${raw10}`) : "";
+
+      // Ensure driver record is present and linked to school
+      let { data: driverRec } = await supabase
+        .from("drivers")
+        .select("*, buses:assigned_bus_id(*), schools:school_id(*)")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (!driverRec && raw10) {
+        const { data: contacts } = await supabase
+          .from("authorized_contacts")
+          .select("id, school_id")
+          .or(`phone.eq.${formattedPhone},phone.eq.${cleanPhone},phone.eq.${raw10}`)
+          .eq("contact_type", "driver")
+          .limit(1)
+          .maybeSingle();
+
+        if (contacts) {
+          const { data: newDriver } = await supabase.from("drivers").upsert({
+            school_id: contacts.school_id,
+            user_id: user.id,
+            is_active: true,
+          }, { onConflict: "user_id" }).select("*, buses:assigned_bus_id(*), schools:school_id(*)").single();
+
+          driverRec = newDriver;
+        }
+      }
+
+      const { data: prof } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
+
+      return {
+        profile: prof || {
+          id: user.id,
+          phone: formattedPhone || user.phone || "",
+          full_name: (user.user_metadata as any)?.full_name || "Driver",
+          avatar_url: null,
+          role: "driver",
+        },
+        driver: driverRec || null,
+        bus: driverRec?.buses || null,
+        school: driverRec?.schools || null,
+        active_trip: null,
+      } as any;
+    }
+
+    return (rpcData as DriverDashboardData) || null;
+  } catch (e) {
+    console.warn("getDriverDashboard fallback error:", e);
     return null;
   }
-  return data as DriverDashboardData;
 }
 
 // ── Driver Profile ──

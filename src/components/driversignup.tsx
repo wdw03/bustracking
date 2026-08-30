@@ -52,6 +52,8 @@ const HERO_VIDEO = require("../../assets/expo.icon/Assets/driver-navigation-anim
 
 type FieldKey =
     | "fullName"
+    | "licenseNumber"
+    | "experienceYears"
     | "busNumber"
     | "password"
     | "confirmPassword";
@@ -78,11 +80,13 @@ type StepConfig = {
 const STEPS: StepConfig[] = [
     {
         title: "Driver Profile",
-        subtitle: "Enter your name & assigned vehicle",
+        subtitle: "Enter your name, license & assigned vehicle",
         icon: "person-outline",
         fields: [
-            { key: "fullName", label: "Full Name", placeholder: "Enter your full name", icon: "person-outline", autoCapitalize: "words" },
-            { key: "busNumber", label: "Bus / Vehicle Number", placeholder: "e.g. MH12AB1234", icon: "bus-outline", autoCapitalize: "characters", maxLength: 14 },
+            { key: "fullName", label: "Full Name *", placeholder: "Enter your full name", icon: "person-outline", autoCapitalize: "words" },
+            { key: "licenseNumber", label: "Driving License Number (Optional)", placeholder: "e.g. DL-1420110012345", icon: "card-outline", autoCapitalize: "characters" },
+            { key: "experienceYears", label: "Experience in Years (Optional)", placeholder: "e.g. 5", icon: "time-outline", keyboard: "number-pad" },
+            { key: "busNumber", label: "Bus / Vehicle Number (Optional)", placeholder: "e.g. MH12AB1234", icon: "bus-outline", autoCapitalize: "characters", maxLength: 14 },
         ],
     },
     {
@@ -90,8 +94,8 @@ const STEPS: StepConfig[] = [
         subtitle: "Create a strong password",
         icon: "lock-closed-outline",
         fields: [
-            { key: "password", label: "Password", placeholder: "Create password (min 6)", icon: "lock-closed-outline", secure: true },
-            { key: "confirmPassword", label: "Confirm Password", placeholder: "Re-enter password", icon: "checkmark-done-outline", secure: true },
+            { key: "password", label: "Password *", placeholder: "Create password (min 6)", icon: "lock-closed-outline", secure: true },
+            { key: "confirmPassword", label: "Confirm Password *", placeholder: "Re-enter password", icon: "checkmark-done-outline", secure: true },
         ],
     },
 ];
@@ -101,7 +105,9 @@ function validateField(key: FieldKey, value: string, all: Record<FieldKey, strin
     const v = value.trim();
     switch (key) {
         case "fullName": return v.length >= 3 ? null : "Enter your full name";
-        case "busNumber": return v.length >= 4 ? null : "Enter vehicle / bus number";
+        case "licenseNumber": return null;
+        case "experienceYears": return null;
+        case "busNumber": return null;
         case "password": return value.length >= 6 ? null : "Min 6 characters";
         case "confirmPassword": return value === all.password && value.length > 0 ? null : "Passwords do not match";
     }
@@ -116,6 +122,8 @@ type DriverSignupPageProps = {
 
 const EMPTY: DriverSignupData = {
     fullName: "",
+    licenseNumber: "",
+    experienceYears: "",
     busNumber: "",
     password: "",
     confirmPassword: "",

@@ -445,6 +445,7 @@ export default function OtpVerification({
                         license_number: signupData?.licenseNumber,
                         license_expiry: signupData?.licenseExpiry,
                         experience_years: signupData?.experienceYears,
+                        bus_number: signupData?.busNumber,
                     };
 
                     const regResult = await completeRegistration(action, phoneNumber, fullName, extras);

@@ -792,13 +792,22 @@ serve(async (req: Request) => {
         (u) => u.phone === formattedPhone || u.phone === cleanDigits || u.phone === `91${raw10}` || u.email === emailAlias
       );
 
+      const driverMeta = {
+        full_name,
+        role: "driver",
+        license_number: license_number || null,
+        license_expiry: license_expiry || null,
+        experience_years: experience_years || 0,
+        bus_number: body.bus_number || null,
+      };
+
       if (existing) {
         driverUserId = existing.id;
         await supabaseAdmin.auth.admin.updateUserById(driverUserId, {
           password,
           email: emailAlias,
           email_confirm: true,
-          user_metadata: { full_name, role: "driver" },
+          user_metadata: driverMeta,
         });
       } else {
         const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
@@ -807,7 +816,7 @@ serve(async (req: Request) => {
           password,
           email_confirm: true,
           phone_confirm: true,
-          user_metadata: { full_name, role: "driver" },
+          user_metadata: driverMeta,
         });
 
         if (createError || !newUser?.user) {
@@ -832,17 +841,37 @@ serve(async (req: Request) => {
         is_active: true,
       }, { onConflict: "id" });
 
-      // 5. Upsert driver record in drivers table
-      await supabaseAdmin.from("drivers").upsert({
+      // 5. Look up assigned bus if bus_number provided
+      let assignedBusId: string | null = null;
+      if (body.bus_number) {
+        const { data: bus } = await supabaseAdmin
+          .from("buses")
+          .select("id")
+          .eq("school_id", schoolId)
+          .ilike("bus_number", body.bus_number.trim())
+          .limit(1)
+          .maybeSingle();
+        if (bus) {
+          assignedBusId = bus.id;
+        }
+      }
+
+      // 6. Upsert driver record in drivers table
+      const driverRecord: Record<string, any> = {
         school_id: schoolId,
         user_id: driverUserId,
         license_number: license_number || null,
         license_expiry: license_expiry || null,
         experience_years: experience_years || 0,
         is_active: true,
-      }, { onConflict: "user_id" });
+      };
+      if (assignedBusId) {
+        driverRecord.assigned_bus_id = assignedBusId;
+      }
 
-      // 6. Mark authorized_contacts as registered
+      await supabaseAdmin.from("drivers").upsert(driverRecord, { onConflict: "user_id" });
+
+      // 7. Mark authorized_contacts as registered
       for (const contact of contacts) {
         await supabaseAdmin.from("authorized_contacts").update({
           is_registered: true,
@@ -850,14 +879,21 @@ serve(async (req: Request) => {
         }).eq("id", contact.id);
       }
 
-      // 7. Audit log
+      // 8. Audit log with complete metadata
       await supabaseAdmin.from("audit_logs").insert({
         actor_user_id: driverUserId,
         school_id: schoolId,
         action: "register_driver",
         entity_type: "profile",
         entity_id: driverUserId,
-        metadata: { phone: formattedPhone, full_name },
+        metadata: {
+          phone: formattedPhone,
+          full_name,
+          license_number,
+          experience_years,
+          bus_number: body.bus_number,
+          assigned_bus_id: assignedBusId,
+        },
       });
 
       return new Response(
@@ -867,6 +903,7 @@ serve(async (req: Request) => {
             user_id: driverUserId,
             school_id: school.id,
             school_name: school.name,
+            assigned_bus_id: assignedBusId,
           },
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
