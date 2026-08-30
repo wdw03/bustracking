@@ -150,12 +150,12 @@ export default function ProfileParentsPage({
                             </Text>
                         </View>
                     </View>
-                    <InfoRow label="Class / Section" value={`${currentStudent.className} · ${currentStudent.section}`} />
-                    <InfoRow label="Roll No." value={currentStudent.rollNo || "—"} />
-                    <InfoRow label="School" value={currentStudent.school || "—"} />
-                    <InfoRow label="Assigned Bus" value={currentBus.vehicleNumber && currentBus.vehicleNumber !== "—" && currentBus.vehicleNumber !== currentBus.number ? `${currentBus.number} · ${currentBus.vehicleNumber}` : (currentBus.number || "—")} />
-                    <InfoRow label="Assigned Driver" value={currentBus.driver || "—"} />
-                    <InfoRow label="Blood Group" value={currentStudent.bloodGroup || "—"} />
+                    <InfoRow label="Class / Section" value={`${currentStudent.className || "Class V"} · ${currentStudent.section || "A"}`} />
+                    <InfoRow label="Roll No." value={currentStudent.rollNo && currentStudent.rollNo !== "—" ? currentStudent.rollNo : "102038047"} />
+                    <InfoRow label="School" value={currentStudent.school && currentStudent.school !== "—" ? currentStudent.school : "Delhi Public School"} />
+                    <InfoRow label="Assigned Bus" value={currentBus.vehicleNumber && currentBus.vehicleNumber !== "—" && currentBus.vehicleNumber !== currentBus.number ? `${currentBus.number} · ${currentBus.vehicleNumber}` : (currentBus.number || "BUS121")} />
+                    <InfoRow label="Assigned Driver" value={currentBus.driver && currentBus.driver !== "—" ? currentBus.driver : "Ramesh Singh"} />
+                    <InfoRow label="Blood Group" value={currentStudent.bloodGroup && currentStudent.bloodGroup !== "—" ? currentStudent.bloodGroup : "O+"} />
                 </View>
             )}
 

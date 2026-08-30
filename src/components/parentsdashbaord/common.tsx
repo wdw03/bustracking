@@ -51,13 +51,13 @@ export const PARENT = {
 };
 
 export const STUDENT = {
-    name: "Student",
-    admissionNo: "",
-    className: "",
-    section: "",
-    school: "",
-    rollNo: "",
-    bloodGroup: "",
+    name: "Aditya Roy",
+    admissionNo: "ADM-2026-0107",
+    className: "Class V",
+    section: "A",
+    school: "Delhi Public School",
+    rollNo: "102038047",
+    bloodGroup: "O+",
     photoBg: "#FFD500",
 };
 

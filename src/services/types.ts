@@ -245,23 +245,48 @@ export type ApiResult<T> = {
 // ── Dashboard RPC Response Types ──
 
 export type ParentDashboardData = {
-  profile: Pick<Profile, "id" | "phone" | "full_name" | "avatar_url" | "role">;
+  profile: Pick<Profile, "id" | "phone" | "full_name" | "avatar_url" | "role"> & {
+    relation?: string;
+    address?: string;
+  };
   subscription: {
-    has_subscription: boolean;
-    is_active: boolean;
+    has_subscription?: boolean;
+    is_active?: boolean;
     plan_type?: PlanType;
     status?: SubscriptionStatusEnum;
     trial_end?: string;
     paid_end?: string;
+    trial_days_left?: number;
+    plan_name?: string;
+    can_track?: boolean;
+    expires_at?: string | null;
+  };
+  school?: {
+    id?: string;
+    name?: string;
+    phone?: string;
+    address?: string;
   };
   children: Array<{
     id: string;
     full_name: string;
     class: string | null;
     section: string | null;
+    roll_number?: string | null;
+    admission_number?: string | null;
+    blood_group?: string | null;
+    gender?: string | null;
+    date_of_birth?: string | null;
     assigned_bus_id: string | null;
     bus_number: string | null;
     route_name: string | null;
+    vehicle_number?: string | null;
+    driver_name?: string | null;
+    driver_phone?: string | null;
+    driver_exp?: string | null;
+    school_name?: string | null;
+    school_phone?: string | null;
+    school_address?: string | null;
     photo_url: string | null;
   }>;
   unread_notifications: number;
