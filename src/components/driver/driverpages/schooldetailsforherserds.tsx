@@ -30,17 +30,19 @@ const ms = (s: number) => Math.round((width / 390) * s);
 
 const SCHOOL_VIDEO = require("../../../../assets/expo.icon/Assets/diverse-kids-getting-on-school-bus-animation-gif-download-10282491.mp4");
 
-const SCHOOL = {
-    name: "Green Valley School",
-    code: "GVS-2024-113",
-    address: "Plot 7, Knowledge Park, Sector 62, Noida, Uttar Pradesh 201301",
-    principal: "Dr. Meena Sharma",
-    contact: "+91 120 456 7890",
-    email: "office@greenvalley.edu.in",
-    assignedBus: "DL01AB1234",
+const DEFAULT_SCHOOL = {
+    name: "Delhi Public School",
+    code: "SCH-001",
+    address: "Haraya faridabad pali sukhi nahar near by",
+    principal: "Dr. Saransh Kumar",
+    contact: "+918789968980",
+    email: "hqsavan@gmail.com",
+    assignedBus: "BUS121",
     shift: "Morning Shift (7:00 AM - 2:30 PM)",
-    students: "34 Students (Route A)",
-    totalBuses: "12 Fleet Buses",
+    students: "32 Students",
+    totalBuses: "Fleet Active",
+    capacity: 32,
+    route: "Standard Route",
 };
 
 function InfoRow({ icon, label, value, last }: { icon: any; label: string; value: string; last?: boolean }) {
@@ -81,6 +83,38 @@ function InfoRow({ icon, label, value, last }: { icon: any; label: string; value
 
 export default function SchoolDetailsForHerserds({ onBack }: { onBack?: () => void }) {
     const insets = useSafeAreaInsets();
+    const [schoolInfo, setSchoolInfo] = React.useState(DEFAULT_SCHOOL);
+
+    React.useEffect(() => {
+        let isMounted = true;
+        (async () => {
+            try {
+                const { getDriverDashboard } = await import("../../../services/driverService");
+                const dash = await getDriverDashboard();
+                if (isMounted && dash) {
+                    const rawS = dash.school as any;
+                    const rawB = dash.bus as any;
+                    setSchoolInfo({
+                        name: rawS?.name || DEFAULT_SCHOOL.name,
+                        code: rawS?.code || (rawS?.id ? `SCH-${rawS.id.slice(0, 4).toUpperCase()}` : DEFAULT_SCHOOL.code),
+                        address: rawS?.address || DEFAULT_SCHOOL.address,
+                        principal: rawS?.principal_name || DEFAULT_SCHOOL.principal,
+                        contact: rawS?.phone || DEFAULT_SCHOOL.contact,
+                        email: rawS?.email || DEFAULT_SCHOOL.email,
+                        assignedBus: rawB?.bus_number || DEFAULT_SCHOOL.assignedBus,
+                        shift: "Morning Shift (7:00 AM - 2:30 PM)",
+                        students: `${rawB?.capacity || 32} Students`,
+                        totalBuses: "Fleet Active",
+                        capacity: rawB?.capacity || 32,
+                        route: rawB?.route_name || DEFAULT_SCHOOL.route,
+                    });
+                }
+            } catch (err) {
+                console.warn("School details fetch fallback:", err);
+            }
+        })();
+        return () => { isMounted = false; };
+    }, []);
 
     const player = useVideoPlayer(SCHOOL_VIDEO, (p) => {
         p.loop = true;
@@ -90,11 +124,11 @@ export default function SchoolDetailsForHerserds({ onBack }: { onBack?: () => vo
 
     const call = () => {
         Haptics.selectionAsync();
-        Linking.openURL(`tel:${SCHOOL.contact.replace(/\s/g, "")}`);
+        Linking.openURL(`tel:${schoolInfo.contact.replace(/\s/g, "")}`);
     };
     const email = () => {
         Haptics.selectionAsync();
-        Linking.openURL(`mailto:${SCHOOL.email}`);
+        Linking.openURL(`mailto:${schoolInfo.email}`);
     };
 
     return (
@@ -191,7 +225,7 @@ export default function SchoolDetailsForHerserds({ onBack }: { onBack?: () => vo
                         >
                             <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: GREEN }} />
                             <Text style={{ flex: 1, fontFamily: FONT.semibold, fontSize: ms(12), color: "#FFFFFF" }} numberOfLines={1}>
-                                {SCHOOL.shift}
+                                {schoolInfo.shift}
                             </Text>
                             <View style={{ backgroundColor: ACCENT, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 }}>
                                 <Text style={{ fontFamily: FONT.semibold, fontSize: ms(10), color: INK }}>ACTIVE</Text>
@@ -201,7 +235,7 @@ export default function SchoolDetailsForHerserds({ onBack }: { onBack?: () => vo
 
                     <View style={{ padding: ms(16), alignItems: "center" }}>
                         <Text style={{ fontFamily: FONT.displayHeavy, fontSize: ms(20), color: INK }}>
-                            {SCHOOL.name}
+                            {schoolInfo.name}
                         </Text>
                         <View
                             style={{
@@ -215,7 +249,7 @@ export default function SchoolDetailsForHerserds({ onBack }: { onBack?: () => vo
                             }}
                         >
                             <Text style={{ fontFamily: FONT.semibold, fontSize: ms(11.5), color: MUTED }}>
-                                School Code: {SCHOOL.code}
+                                School Code: {schoolInfo.code}
                             </Text>
                         </View>
 
@@ -274,7 +308,7 @@ export default function SchoolDetailsForHerserds({ onBack }: { onBack?: () => vo
                         <View style={{ width: ms(36), height: ms(36), borderRadius: 12, backgroundColor: ACCENT_SOFT, alignItems: "center", justifyContent: "center" }}>
                             <Ionicons name="bus" size={ms(18)} color={ACCENT_DEEP} />
                         </View>
-                        <Text style={{ fontFamily: FONT.display, fontSize: ms(15), color: INK, marginTop: 6 }}>{SCHOOL.assignedBus}</Text>
+                        <Text style={{ fontFamily: FONT.display, fontSize: ms(15), color: INK, marginTop: 6 }}>{schoolInfo.assignedBus}</Text>
                         <Text style={{ fontFamily: FONT.regular, fontSize: ms(11), color: MUTED }}>Assigned Bus</Text>
                     </View>
                     <View
@@ -291,8 +325,8 @@ export default function SchoolDetailsForHerserds({ onBack }: { onBack?: () => vo
                         <View style={{ width: ms(36), height: ms(36), borderRadius: 12, backgroundColor: GREEN_SOFT, alignItems: "center", justifyContent: "center" }}>
                             <Ionicons name="people" size={ms(18)} color={GREEN} />
                         </View>
-                        <Text style={{ fontFamily: FONT.display, fontSize: ms(15), color: INK, marginTop: 6 }}>34 Students</Text>
-                        <Text style={{ fontFamily: FONT.regular, fontSize: ms(11), color: MUTED }}>Route A Capacity</Text>
+                        <Text style={{ fontFamily: FONT.display, fontSize: ms(15), color: INK, marginTop: 6 }}>{schoolInfo.students}</Text>
+                        <Text style={{ fontFamily: FONT.regular, fontSize: ms(11), color: MUTED }}>{schoolInfo.route} Capacity</Text>
                     </View>
                 </View>
 
@@ -310,12 +344,12 @@ export default function SchoolDetailsForHerserds({ onBack }: { onBack?: () => vo
                         paddingVertical: ms(4),
                     }}
                 >
-                    <InfoRow icon="school-outline" label="SCHOOL NAME" value={SCHOOL.name} />
-                    <InfoRow icon="pricetag-outline" label="SCHOOL CODE" value={SCHOOL.code} />
-                    <InfoRow icon="location-outline" label="SCHOOL ADDRESS" value={SCHOOL.address} />
-                    <InfoRow icon="person-outline" label="PRINCIPAL NAME" value={SCHOOL.principal} />
-                    <InfoRow icon="call-outline" label="CONTACT NUMBER" value={SCHOOL.contact} />
-                    <InfoRow icon="time-outline" label="OPERATING SHIFT" value={SCHOOL.shift} last />
+                    <InfoRow icon="school-outline" label="SCHOOL NAME" value={schoolInfo.name} />
+                    <InfoRow icon="pricetag-outline" label="SCHOOL CODE" value={schoolInfo.code} />
+                    <InfoRow icon="location-outline" label="SCHOOL ADDRESS" value={schoolInfo.address} />
+                    <InfoRow icon="person-outline" label="PRINCIPAL NAME" value={schoolInfo.principal} />
+                    <InfoRow icon="call-outline" label="CONTACT NUMBER" value={schoolInfo.contact} />
+                    <InfoRow icon="time-outline" label="OPERATING SHIFT" value={schoolInfo.shift} last />
                 </View>
             </ScrollView>
         </View>

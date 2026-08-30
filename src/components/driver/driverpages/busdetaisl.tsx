@@ -203,11 +203,11 @@ export default function BusDetails({ onBack }: { onBack?: () => void }) {
                         )}
                     </View>
                     <Text style={{ fontFamily: FONT.displayHeavy, fontSize: ms(20), color: INK, marginTop: ms(12), letterSpacing: 1 }}>
-                        {BUS.number}
+                        {busInfo.number}
                     </Text>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 6 }}>
                         <View style={{ backgroundColor: ACCENT_SOFT, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 }}>
-                            <Text style={{ fontFamily: FONT.semibold, fontSize: ms(11), color: ACCENT_DEEP }}>{BUS.route}</Text>
+                            <Text style={{ fontFamily: FONT.semibold, fontSize: ms(11), color: ACCENT_DEEP }}>{busInfo.route}</Text>
                         </View>
                         <View
                             style={{

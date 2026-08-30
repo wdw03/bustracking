@@ -31,13 +31,13 @@ const ms = (s: number) => Math.round((width / 390) * s);
 const PROFILE_VIDEO = require("../../../../assets/expo.icon/Assets/male-profile-animation-gif-download-10059464.mp4");
 
 const INITIAL = {
-    name: "Rajesh Kumar",
-    driverId: "DRV001",
-    phone: "9876543210",
-    email: "rajesh.kumar@gmail.com",
-    license: "DL-0420110149646",
-    experience: "8 years",
-    address: "H-42, Sector 12, New Delhi",
+    name: "Ramesh Singh",
+    driverId: "DRV-001",
+    phone: "+919102765934",
+    email: "ramesh.driver@bustracker.com",
+    license: "DL-0420200089123",
+    experience: "7 years",
+    address: "Haraya Faridabad, Haryana",
     profileImage: null as any,
 };
 
@@ -124,8 +124,11 @@ export default function PersonalDetail({ onBack }: { onBack?: () => void }) {
                         ...d,
                         name: dash.profile?.full_name || profile?.full_name || d.name,
                         phone: dash.profile?.phone || profile?.phone || d.phone,
+                        email: (dash.profile as any)?.email || (dash.school as any)?.email || d.email,
                         license: dash.driver?.license_number || d.license,
-                        experience: `${(dash.driver as any)?.experience_years || 5} years`,
+                        experience: `${(dash.driver as any)?.experience_years || 7} years`,
+                        address: (dash.school as any)?.address || d.address,
+                        driverId: dash.driver?.id ? `DRV-${dash.driver.id.slice(0, 4).toUpperCase()}` : d.driverId,
                     }));
                 }
             } catch (err) {

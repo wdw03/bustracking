@@ -104,10 +104,10 @@ const PROFILE_VIDEO = require("../../../assets/expo.icon/Assets/male-user-profil
 
 /* ─────────────────────────── Demo Data ─────────────────────────── */
 const DRIVER = {
-    name: "Rajesh Kumar",
-    driverId: "DRV001",
-    phone: "+91 98765 43210",
-    license: "DL-0420110149646",
+    name: "Ramesh Singh",
+    driverId: "DRV-001",
+    phone: "+919102765934",
+    license: "DL-0420200089123",
 };
 
 type Bus = {
@@ -381,6 +381,7 @@ export default function DriverDashboard({
     const activeDriverName = profile?.full_name || driverData?.profile?.full_name || DRIVER.name;
     const activeDriverPhone = profile?.phone || driverData?.profile?.phone || DRIVER.phone;
     const activeDriverLicense = driverData?.driver?.license_number || DRIVER.license;
+    const activeDriverId = driverData?.driver?.id ? `DRV-${driverData.driver.id.slice(0, 4).toUpperCase()}` : DRIVER.driverId;
     const activeBusId = profile?.assigned_bus_id || driverData?.bus?.id || "c2cb29c3-83e5-4805-b863-563c22de354e";
 
     const liveSchool: School = useMemo(() => {
@@ -1214,7 +1215,7 @@ export default function DriverDashboard({
                 </Text>
                 <View style={{ flexDirection: "row", gap: 8, marginTop: 6 }}>
                     <View style={{ backgroundColor: ACCENT_SOFT, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3, borderWidth: 1, borderColor: ACCENT_LINE }}>
-                        <Text style={{ fontFamily: FONT.semibold, fontSize: ms(11), color: ACCENT_DEEP }}>Driver · {DRIVER.driverId}</Text>
+                        <Text style={{ fontFamily: FONT.semibold, fontSize: ms(11), color: ACCENT_DEEP }}>Driver · {activeDriverId}</Text>
                     </View>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: online ? GREEN_SOFT : PAGE_BG, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 }}>
                         <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: online ? GREEN : FAINT }} />
@@ -1325,7 +1326,7 @@ export default function DriverDashboard({
                     ) : (
                         <>
                             <Text style={{ fontFamily: FONT.displayHeavy, fontSize: ms(14.5), color: INK }} numberOfLines={1}>{activeDriverName}</Text>
-                            <Text style={{ fontFamily: FONT.semibold, fontSize: ms(10.5), color: "#00000088" }}>ID: {DRIVER.driverId}</Text>
+                            <Text style={{ fontFamily: FONT.semibold, fontSize: ms(10.5), color: "#00000088" }}>ID: {activeDriverId}</Text>
                         </>
                     )}
                 </View>
