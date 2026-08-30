@@ -101,8 +101,32 @@ export default function SuperAdminFleetMap() {
       )
       .subscribe();
 
+    // 5-Second Periodic Database Polling Sync
+    const poll5s = setInterval(async () => {
+      try {
+        const { data } = await supabase.from("bus_live_locations").select("bus_id, latitude, longitude, speed, is_live");
+        if (data) {
+          const locMap: Record<string, any> = {};
+          data.forEach((l: any) => { locMap[l.bus_id] = l; });
+          setLiveBuses((current) =>
+            current.map((b) => {
+              const loc = locMap[b.id];
+              if (!loc) return b;
+              return {
+                ...b,
+                status: loc.is_live ? "Running" : "Offline",
+                coordinate: loc.latitude && loc.longitude ? [loc.longitude, loc.latitude] : b.coordinate,
+                speed: loc.speed || 0,
+              };
+            })
+          );
+        }
+      } catch (_) {}
+    }, 5000);
+
     return () => {
       isMounted = false;
+      clearInterval(poll5s);
       supabase.removeChannel(channel);
     };
   }, []);

@@ -58,7 +58,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { VideoView, useVideoPlayer } from "expo-video";
-import { requestDeviceLocationPermission, requestNotificationPermission, publishDriverLocation, subscribeToLiveGPS } from "../../services/locationService";
+import { requestDeviceLocationPermission, requestNotificationPermission, publishDriverLocation, subscribeToLiveGPS, getLiveGPSCoordinates } from "../../services/locationService";
 import { stopBusLocation } from "../../services/trackingService";
 import { startTrip, stopTrip, getDriverDashboard } from "../../services/driverService";
 import type { DriverDashboardData } from "../../services/types";
@@ -473,7 +473,7 @@ export default function DriverDashboard({
 
     const activeShares = Object.values(sharing).filter(Boolean).length;
 
-    // Real-time GPS location broadcasting whenever driver has active sharing enabled
+    // Real-time GPS location broadcasting (5-second periodic update) whenever driver has active sharing enabled
     useEffect(() => {
         if (activeShares <= 0) return;
 
@@ -487,8 +487,19 @@ export default function DriverDashboard({
             cleanupGPS = unsub;
         });
 
+        // 5-second guaranteed interval heartbeat
+        const timer5s = setInterval(async () => {
+            try {
+                const loc = await getLiveGPSCoordinates();
+                if (loc) {
+                    publishDriverLocation(currentBusId, loc);
+                }
+            } catch (_) {}
+        }, 5000);
+
         return () => {
             cleanupGPS?.();
+            clearInterval(timer5s);
             stopBusLocation(currentBusId).catch(() => undefined);
         };
     }, [activeShares, activeBusId]);

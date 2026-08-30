@@ -109,7 +109,24 @@ export default function LiveTrackingParentsPage({ onBuy }: { onBuy: () => void }
             }
         });
 
-        // 3. Smooth position interpolation (60fps Lerp — Swiggy/Rapido style)
+        // 3. 5-Second Periodic Database Polling Sync
+        const poll5s = setInterval(() => {
+            getBusLocation(targetBusId).then((loc) => {
+                if (loc && loc.latitude && loc.longitude) {
+                    const next: [number, number] = [loc.longitude, loc.latitude];
+                    liveTarget.current = next;
+                    setBusSpeed(loc.speed ?? 0);
+                    setBusOnline(loc.is_live ?? true);
+                    setLastUpdateTime(new Date(loc.updated_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
+                    if (!liveDisplay.current) {
+                        liveDisplay.current = next;
+                        setLiveBusCoord(next);
+                    }
+                }
+            }).catch(() => {});
+        }, 5000);
+
+        // 4. Smooth position interpolation (60fps Lerp — Swiggy/Rapido style)
         const animation = setInterval(() => {
             const target = liveTarget.current;
             if (!target) return;
@@ -121,18 +138,11 @@ export default function LiveTrackingParentsPage({ onBuy }: { onBuy: () => void }
             });
         }, 50);
 
-        // 4. Offline detection: if no update for 30s, mark bus offline
-        const offlineCheck = setInterval(() => {
-            if (lastUpdateTime !== "Just now" && lastUpdateTime !== "—") {
-                // Keep current state — last known time is shown
-            }
-        }, 30000);
-
         return () => {
             unsubLocal();
             unsubSupabase();
+            clearInterval(poll5s);
             clearInterval(animation);
-            clearInterval(offlineCheck);
         };
     }, [canTrack, targetBusId]);
 

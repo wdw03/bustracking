@@ -42,38 +42,23 @@ function calculateDistanceMeters(lat1: number, lon1: number, lat2: number, lon2:
 }
 
 /**
- * Swiggy / Zomato / Rapido Style Adaptive Location Publishing
- * - Local UI updates instantly (0ms latency, 60fps smooth animation)
- * - Server updates occur ONLY when vehicle moves >= 3 meters OR >= 3.5s elapsed
- * - Eliminates 90%+ server load while standing in traffic or at bus stops
+ * Real-Time GPS Location Publishing (5-Second Database Delay / Interval)
+ * - Local driver UI updates smoothly
+ * - Supabase Database updates sync every 5 seconds (5000ms) with real GPS coordinates
  */
 export function publishDriverLocation(driverBusId: string, location: LocationData) {
-    // 1. Update in-memory stream for local UI immediately (0ms)
+    if (!driverBusId) return;
+
+    // 1. Update in-memory stream for local UI immediately
     liveDriverLocations.set(driverBusId, location);
     liveLocationListeners.get(driverBusId)?.forEach((listener) => listener(location));
 
-    if (!driverBusId) return;
-
     const now = Date.now();
     const lastTime = lastDbUpdateTimes.get(driverBusId) ?? 0;
-    const lastPos = lastDbPositions.get(driverBusId);
     const timeElapsedMs = now - lastTime;
 
-    let distanceMovedMeters = 0;
-    if (lastPos) {
-        distanceMovedMeters = calculateDistanceMeters(
-            lastPos.lat, lastPos.lng,
-            location.latitude, location.longitude
-        );
-    }
-
-    // Swiggy/Zomato Filter:
-    // Update DB ONLY if vehicle moved >= 3 meters OR at least 3.5 seconds passed
-    // If vehicle is completely stationary (< 1m movement) and time < 10s, skip DB write to save 90% DB load!
-    const shouldUpdateDb =
-        !lastPos ||
-        (distanceMovedMeters >= 3.0 && timeElapsedMs >= 1500) ||
-        timeElapsedMs >= 3500;
+    // Send to Supabase Database every 5 seconds (5000ms delay interval) or first fix
+    const shouldUpdateDb = !lastDbPositions.has(driverBusId) || timeElapsedMs >= 5000;
 
     if (shouldUpdateDb) {
         lastDbUpdateTimes.set(driverBusId, now);
@@ -86,7 +71,7 @@ export function publishDriverLocation(driverBusId: string, location: LocationDat
             location.speed ?? 0,
             0,
             location.accuracy ?? 0
-        ).catch((err) => console.warn("Supabase adaptive updateBusLocation error:", err));
+        ).catch((err) => console.warn("Supabase 5s updateBusLocation error:", err));
     }
 }
 
@@ -202,9 +187,16 @@ export async function getLiveGPSCoordinates(): Promise<LocationData> {
 export async function subscribeToLiveGPS(onLocation: (location: LocationData) => void, onError?: (error: unknown) => void): Promise<() => void> {
     if (Platform.OS === "web") {
         if (typeof navigator === "undefined" || !navigator.geolocation) { onError?.(new Error("Geolocation is unavailable on this device.")); return () => undefined; }
-        const watchId = navigator.geolocation.watchPosition((position) => onLocation(toLocationData(position)), (error) => onError?.(error), { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 });
+        const watchId = navigator.geolocation.watchPosition(
+            (position) => onLocation(toLocationData(position)),
+            (error) => onError?.(error),
+            { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+        );
         return () => navigator.geolocation.clearWatch(watchId);
     }
-    const subscription = await Location.watchPositionAsync({ accuracy: Location.Accuracy.High, timeInterval: 1000, distanceInterval: 1 }, (position) => onLocation(toLocationData(position)));
+    const subscription = await Location.watchPositionAsync(
+        { accuracy: Location.Accuracy.High, timeInterval: 5000, distanceInterval: 1 },
+        (position) => onLocation(toLocationData(position))
+    );
     return () => subscription.remove();
 }

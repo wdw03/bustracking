@@ -84,6 +84,22 @@ export default function LiveTrackingPage({ onBack, initialBusId }: { onBack: () 
             };
         });
 
+        // 5-Second Periodic Database Polling Sync
+        const poll5s = setInterval(async () => {
+            try {
+                const { data } = await supabase.from("bus_live_locations").select("bus_id, latitude, longitude, is_live");
+                if (data) {
+                    data.forEach((loc: any) => {
+                        if (loc.latitude && loc.longitude) {
+                            const coord: [number, number] = [loc.longitude, loc.latitude];
+                            liveTargets.current[loc.bus_id] = coord;
+                            if (loc.is_live) driverFeeds.current.add(loc.bus_id);
+                        }
+                    });
+                }
+            } catch (_) {}
+        }, 5000);
+
         const timer = setInterval(() => {
             setLivePositions((current) => {
                 const next = { ...current };
@@ -102,6 +118,7 @@ export default function LiveTrackingPage({ onBack, initialBusId }: { onBack: () 
 
         return () => {
             cleanups.forEach((cleanup) => cleanup());
+            clearInterval(poll5s);
             clearInterval(timer);
         };
     }, [buses, schoolCoordinate]);
