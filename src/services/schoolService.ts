@@ -60,12 +60,37 @@ export async function updateSchoolProfile(
     delete sanitized.admin_user_id;
     delete sanitized.status;
 
+    // Step 1: Try update_school_profile RPC (security definer)
+    try {
+      const { data: rpcData, error: rpcErr } = await supabase.rpc("update_school_profile", {
+        p_school_id: schoolId,
+        p_name: sanitized.name || null,
+        p_principal_name: sanitized.principal_name || null,
+        p_email: sanitized.email || null,
+        p_address: sanitized.address || null,
+        p_city: sanitized.city || null,
+        p_state: sanitized.state || null,
+        p_pincode: sanitized.pincode || null,
+      });
+
+      if (!rpcErr && rpcData?.success) {
+        if (updates.principal_name?.trim()) {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            await supabase.from("profiles").update({ full_name: updates.principal_name.trim() }).eq("id", user.id);
+          }
+        }
+        return { success: true, data: sanitized as School };
+      }
+    } catch (_) {}
+
+    // Step 2: Direct update on schools table
     let { data, error } = await supabase
       .from("schools")
       .update(sanitized)
       .eq("id", schoolId);
 
-    // Fallback: If update by ID didn't match (e.g. mock/stale ID), try update by admin_user_id or phone
+    // Fallback: If update by ID didn't match, try update by admin_user_id or phone
     if (error) {
       console.warn("updateSchoolProfile error by ID, trying fallback:", error);
       const { data: { user } } = await supabase.auth.getUser();
