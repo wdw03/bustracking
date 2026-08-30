@@ -1,8 +1,7 @@
 import React, { useMemo, useState } from "react";
-import { Alert, KeyboardAvoidingView, Linking, Platform, ScrollView, Text, TextInput, View, BackHandler } from "react-native";
+import { Alert, KeyboardAvoidingView, Linking, Platform, ScrollView, Text, TextInput, View, BackHandler, Modal } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import DateTimePicker from "@react-native-community/datetimepicker";
 
 import {
     Card, Chip, DStudent, FONT, InfoRow, PageHeader, Press,
@@ -15,6 +14,196 @@ const emptyForm: FormState = {
     name: "", admissionNo: "", rollNo: "", klass: "", section: "", gender: "Male", dob: "",
     parentName: "", parentPhone: "", busId: null,
 };
+
+const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const DAY_LABELS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+
+function CalendarPickerModal({
+    visible,
+    currentDateStr,
+    onClose,
+    onSelectDate,
+}: {
+    visible: boolean;
+    currentDateStr: string;
+    onClose: () => void;
+    onSelectDate: (formatted: string) => void;
+}) {
+    const { INK, CARD_BG, BORDER, ACCENT, ACCENT_SOFT, ACCENT_DEEP, MUTED, FAINT, isDark } = useTheme();
+
+    const parseInitialDate = () => {
+        if (!currentDateStr || currentDateStr === "—" || currentDateStr === "Not added") {
+            return { year: 2016, month: 0, day: 1 };
+        }
+        const d = new Date(currentDateStr);
+        if (!isNaN(d.getTime())) {
+            return { year: d.getFullYear(), month: d.getMonth(), day: d.getDate() };
+        }
+        return { year: 2016, month: 0, day: 1 };
+    };
+
+    const initial = parseInitialDate();
+    const [viewYear, setViewYear] = useState(initial.year);
+    const [viewMonth, setViewMonth] = useState(initial.month);
+    const [selectedDay, setSelectedDay] = useState(initial.day);
+    const [mode, setMode] = useState<"calendar" | "year">("calendar");
+
+    // Days in current month
+    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+    const firstDayOfWeek = new Date(viewYear, viewMonth, 1).getDay();
+
+    const prevMonth = () => {
+        if (viewMonth === 0) {
+            setViewMonth(11);
+            setViewYear((y) => y - 1);
+        } else {
+            setViewMonth((m) => m - 1);
+        }
+    };
+
+    const nextMonth = () => {
+        if (viewMonth === 11) {
+            setViewMonth(0);
+            setViewYear((y) => y + 1);
+        } else {
+            setViewMonth((m) => m + 1);
+        }
+    };
+
+    const handleConfirm = () => {
+        const formatted = `${selectedDay} ${MONTH_SHORT[viewMonth]} ${viewYear}`;
+        onSelectDate(formatted);
+        onClose();
+    };
+
+    const yearsList = [];
+    const currentYear = new Date().getFullYear();
+    for (let y = currentYear; y >= 2000; y--) {
+        yearsList.push(y);
+    }
+
+    return (
+        <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+            <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.55)", justifyContent: "center", alignItems: "center", padding: ms(20) }}>
+                <View style={{ width: "100%", maxWidth: ms(340), backgroundColor: CARD_BG, borderRadius: ms(22), padding: ms(18), borderWidth: 1, borderColor: BORDER, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8 }}>
+                    {/* Header */}
+                    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: ms(12) }}>
+                        <Press onPress={() => setMode(mode === "calendar" ? "year" : "calendar")} style={{ flexDirection: "row", alignItems: "center", gap: ms(6), backgroundColor: ACCENT_SOFT, paddingHorizontal: ms(12), paddingVertical: ms(6), borderRadius: ms(12) }}>
+                            <Text style={{ fontFamily: FONT.display, fontSize: ms(14), color: INK }}>
+                                {MONTH_NAMES[viewMonth]} {viewYear}
+                            </Text>
+                            <Ionicons name={mode === "year" ? "chevron-up" : "chevron-down"} size={ms(14)} color={ACCENT_DEEP} />
+                        </Press>
+                        <View style={{ flexDirection: "row", gap: ms(4) }}>
+                            <Press onPress={prevMonth} style={{ width: ms(34), height: ms(34), borderRadius: ms(10), backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#F3F4F6", alignItems: "center", justifyContent: "center" }}>
+                                <Ionicons name="chevron-back" size={ms(16)} color={INK} />
+                            </Press>
+                            <Press onPress={nextMonth} style={{ width: ms(34), height: ms(34), borderRadius: ms(10), backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#F3F4F6", alignItems: "center", justifyContent: "center" }}>
+                                <Ionicons name="chevron-forward" size={ms(16)} color={INK} />
+                            </Press>
+                        </View>
+                    </View>
+
+                    {mode === "year" ? (
+                        /* Year Grid Selector */
+                        <ScrollView style={{ height: ms(220) }} showsVerticalScrollIndicator={false}>
+                            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: ms(8), justifyContent: "center", paddingVertical: ms(6) }}>
+                                {yearsList.map((y) => (
+                                    <Press
+                                        key={y}
+                                        onPress={() => {
+                                            setViewYear(y);
+                                            setMode("calendar");
+                                        }}
+                                        style={{
+                                            width: ms(65),
+                                            paddingVertical: ms(8),
+                                            borderRadius: ms(12),
+                                            backgroundColor: viewYear === y ? ACCENT : (isDark ? "rgba(255,255,255,0.06)" : "#F8F9FA"),
+                                            alignItems: "center",
+                                            borderWidth: 1,
+                                            borderColor: viewYear === y ? ACCENT_DEEP : BORDER,
+                                        }}
+                                    >
+                                        <Text style={{ fontFamily: viewYear === y ? FONT.display : FONT.regular, fontSize: ms(12.5), color: INK }}>{y}</Text>
+                                    </Press>
+                                ))}
+                            </View>
+                        </ScrollView>
+                    ) : (
+                        /* Calendar Grid */
+                        <View>
+                            {/* Day labels */}
+                            <View style={{ flexDirection: "row", marginBottom: ms(6) }}>
+                                {DAY_LABELS.map((d, i) => (
+                                    <View key={i} style={{ flex: 1, alignItems: "center" }}>
+                                        <Text style={{ fontFamily: FONT.semibold, fontSize: ms(11), color: i === 0 ? "#EF4444" : FAINT }}>{d}</Text>
+                                    </View>
+                                ))}
+                            </View>
+
+                            {/* Days grid */}
+                            <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
+                                {/* Empty offset slots */}
+                                {Array.from({ length: firstDayOfWeek }).map((_, i) => (
+                                    <View key={`empty-${i}`} style={{ width: `${100 / 7}%`, height: ms(36) }} />
+                                ))}
+                                {/* Days in month */}
+                                {Array.from({ length: daysInMonth }).map((_, i) => {
+                                    const dayNum = i + 1;
+                                    const isSelected = selectedDay === dayNum;
+                                    return (
+                                        <Press
+                                            key={`day-${dayNum}`}
+                                            onPress={() => setSelectedDay(dayNum)}
+                                            style={{
+                                                width: `${100 / 7}%`,
+                                                height: ms(36),
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                            }}
+                                        >
+                                            <View
+                                                style={{
+                                                    width: ms(30),
+                                                    height: ms(30),
+                                                    borderRadius: ms(15),
+                                                    backgroundColor: isSelected ? ACCENT : "transparent",
+                                                    alignItems: "center",
+                                                    justifyContent: "center",
+                                                }}
+                                            >
+                                                <Text style={{ fontFamily: isSelected ? FONT.display : FONT.regular, fontSize: ms(12.5), color: isSelected ? INK : INK }}>
+                                                    {dayNum}
+                                                </Text>
+                                            </View>
+                                        </Press>
+                                    );
+                                })}
+                            </View>
+                        </View>
+                    )}
+
+                    {/* Selected preview & Action Buttons */}
+                    <View style={{ marginTop: ms(14), paddingTop: ms(10), borderTopWidth: 1, borderTopColor: BORDER, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                        <Text style={{ fontFamily: FONT.semibold, fontSize: ms(12), color: MUTED }}>
+                            {selectedDay} {MONTH_SHORT[viewMonth]} {viewYear}
+                        </Text>
+                        <View style={{ flexDirection: "row", gap: ms(8) }}>
+                            <Press onPress={onClose} style={{ paddingHorizontal: ms(12), paddingVertical: ms(8), borderRadius: ms(12), backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "#F3F4F6" }}>
+                                <Text style={{ fontFamily: FONT.semibold, fontSize: ms(12), color: MUTED }}>Cancel</Text>
+                            </Press>
+                            <Press onPress={handleConfirm} style={{ paddingHorizontal: ms(16), paddingVertical: ms(8), borderRadius: ms(12), backgroundColor: ACCENT }}>
+                                <Text style={{ fontFamily: FONT.display, fontSize: ms(12), color: INK }}>Set Date</Text>
+                            </Press>
+                        </View>
+                    </View>
+                </View>
+            </View>
+        </Modal>
+    );
+}
 
 export default function StudentManagementPage({ onBack }: { onBack: () => void }) {
     const insets = useSafeAreaInsets();
@@ -51,17 +240,6 @@ export default function StudentManagementPage({ onBack }: { onBack: () => void }
 
     const [isSaving, setIsSaving] = useState(false);
     const [showDatePicker, setShowDatePicker] = useState(false);
-
-    const parseDateForPicker = (dob: string): Date => {
-        if (!dob || dob === "—" || dob === "Not added") return new Date(2010, 0, 1);
-        const parsed = new Date(dob);
-        return isNaN(parsed.getTime()) ? new Date(2010, 0, 1) : parsed;
-    };
-
-    const formatDate = (date: Date): string => {
-        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
-    };
 
     const update = (key: keyof FormState, value: string | null) => setForm((current) => ({ ...current, [key]: value }));
 
@@ -147,19 +325,12 @@ export default function StudentManagementPage({ onBack }: { onBack: () => void }
                                     <Ionicons name="calendar" size={ms(16)} color={FAINT} />
                                     <Text style={{ flex: 1, fontFamily: FONT.regular, fontSize: ms(13), color: form.dob && form.dob !== "—" && form.dob !== "Not added" ? INK : FAINT }}>{form.dob && form.dob !== "—" && form.dob !== "Not added" ? form.dob : "Choose date"}</Text>
                                 </Press>
-                                {showDatePicker && (
-                                    <DateTimePicker
-                                        value={parseDateForPicker(form.dob)}
-                                        mode="date"
-                                        display={Platform.OS === "ios" ? "spinner" : "calendar"}
-                                        maximumDate={new Date()}
-                                        minimumDate={new Date(2000, 0, 1)}
-                                        onChange={(event, selectedDate) => {
-                                            setShowDatePicker(Platform.OS === "ios");
-                                            if (selectedDate) update("dob", formatDate(selectedDate));
-                                        }}
-                                    />
-                                )}
+                                <CalendarPickerModal
+                                    visible={showDatePicker}
+                                    currentDateStr={form.dob}
+                                    onClose={() => setShowDatePicker(false)}
+                                    onSelectDate={(formatted) => update("dob", formatted)}
+                                />
                             </View>
                         </View>
                         <View style={{ flexDirection: "row", gap: ms(10) }}>
