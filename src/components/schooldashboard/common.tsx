@@ -889,7 +889,22 @@ export function SchoolDataProvider({ children }: { children: React.ReactNode }) 
                 const formattedPhone = raw10 ? (cleanPhone.startsWith("+") ? cleanPhone : `+91${raw10}`) : "";
                 const expYears = parseInt(driver.experience.replace(/\D/g, "")) || 0;
 
-                // 1. Find the driver row in drivers table
+                // 1. Try RPC first for SECURITY DEFINER update across tables
+                try {
+                    const { error: rpcErr } = await supabase.rpc("update_driver_details", {
+                        p_driver_id: driver.id,
+                        p_name: driver.name.trim(),
+                        p_phone: formattedPhone || null,
+                        p_license: driver.license || null,
+                        p_experience: expYears,
+                        p_bus_id: driver.busId || null,
+                    });
+                    if (!rpcErr) {
+                        return { success: true };
+                    }
+                } catch (_) {}
+
+                // 2. Direct table update fallback
                 let driverUserId: string | null = null;
                 const { data: existingD } = await supabase
                     .from("drivers")
@@ -927,7 +942,7 @@ export function SchoolDataProvider({ children }: { children: React.ReactNode }) 
                     }
                 }
 
-                // 2. Update driver's name in profiles table
+                // 3. Update driver's name in profiles table
                 if (driverUserId) {
                     await supabase.from("profiles").update({
                         full_name: driver.name.trim(),
@@ -941,7 +956,7 @@ export function SchoolDataProvider({ children }: { children: React.ReactNode }) 
                     }).or(`phone.eq.${formattedPhone},phone.eq.${cleanPhone},phone.eq.${raw10}`);
                 }
 
-                // 3. Update or sync authorized_contacts
+                // 4. Update or sync authorized_contacts
                 if (raw10 && schoolId) {
                     await supabase.from("authorized_contacts").upsert({
                         school_id: schoolId,
