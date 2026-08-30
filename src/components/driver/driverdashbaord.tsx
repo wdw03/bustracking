@@ -353,7 +353,8 @@ export default function DriverDashboard({
                 if (res.profile?.phone) DRIVER.phone = res.profile.phone;
                 if (res.driver?.license_number) DRIVER.license = res.driver.license_number;
             }
-        }).catch((err) => console.warn("DriverDashboard live fetch fallback:", err));
+        }).catch((err) => console.warn("DriverDashboard live fetch fallback:", err))
+          .finally(() => { if (isMounted) setIsLoadingData(false); });
         return () => { isMounted = false; };
     }, []);
 
@@ -372,12 +373,6 @@ export default function DriverDashboard({
     // Start offline until the driver explicitly grants real device location.
     const [online, setOnline] = useState(false);
     const [isLoadingData, setIsLoadingData] = useState(true);
-
-    useEffect(() => {
-        setIsLoadingData(true);
-        const timer = setTimeout(() => setIsLoadingData(false), 350);
-        return () => clearTimeout(timer);
-    }, [tab]);
     const [searchQuery, setSearchQuery] = useState("");
     const [busSearchQuery, setBusSearchQuery] = useState("");
     const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -493,6 +488,26 @@ export default function DriverDashboard({
 
                     {/* Ultra-compact stats cards */}
                     <View style={{ flexDirection: "row", gap: 6, marginTop: ms(8) }}>
+                        {isLoadingData ? (
+                            <>
+                                <Card style={{ flex: 1, alignItems: "center", paddingVertical: ms(10), paddingHorizontal: ms(4) }}>
+                                    <SkeletonItem width={ms(30)} height={ms(30)} borderRadius={ms(10)} />
+                                    <SkeletonItem width={ms(20)} height={ms(15)} borderRadius={ms(4)} style={{ marginTop: ms(6) }} />
+                                    <SkeletonItem width={ms(50)} height={ms(9)} borderRadius={ms(3)} style={{ marginTop: ms(4) }} />
+                                </Card>
+                                <Card style={{ flex: 1, alignItems: "center", paddingVertical: ms(10), paddingHorizontal: ms(4) }}>
+                                    <SkeletonItem width={ms(30)} height={ms(30)} borderRadius={ms(10)} />
+                                    <SkeletonItem width={ms(20)} height={ms(15)} borderRadius={ms(4)} style={{ marginTop: ms(6) }} />
+                                    <SkeletonItem width={ms(50)} height={ms(9)} borderRadius={ms(3)} style={{ marginTop: ms(4) }} />
+                                </Card>
+                                <Card style={{ flex: 1, alignItems: "center", paddingVertical: ms(10), paddingHorizontal: ms(4) }}>
+                                    <SkeletonItem width={ms(30)} height={ms(30)} borderRadius={ms(10)} />
+                                    <SkeletonItem width={ms(20)} height={ms(15)} borderRadius={ms(4)} style={{ marginTop: ms(6) }} />
+                                    <SkeletonItem width={ms(50)} height={ms(9)} borderRadius={ms(3)} style={{ marginTop: ms(4) }} />
+                                </Card>
+                            </>
+                        ) : (
+                            <>
                         <Card style={{ flex: 1, alignItems: "center", paddingVertical: ms(6), paddingHorizontal: ms(4) }}>
                             <IconChip name="school" bg={ACCENT_SOFT} color={ACCENT_DEEP} box={30} size={14} />
                             <Text style={{ fontFamily: FONT.displayHeavy, fontSize: ms(15), color: INK, marginTop: 2 }}>{SCHOOLS.length}</Text>
@@ -508,6 +523,8 @@ export default function DriverDashboard({
                             <Text style={{ fontFamily: FONT.displayHeavy, fontSize: ms(15), color: INK, marginTop: 2 }}>{activeShares}</Text>
                             <Text style={{ fontFamily: FONT.semibold, fontSize: ms(9.5), color: MUTED }}>Live Sharing</Text>
                         </Card>
+                            </>
+                        )}
                     </View>
                 </View>
             )}
@@ -1137,7 +1154,9 @@ export default function DriverDashboard({
                 >
                     <VideoView player={profilePlayer} style={{ width: "100%", height: "100%" }} contentFit="cover" nativeControls={false} />
                 </View>
-                <Text style={{ fontFamily: FONT.displayHeavy, fontSize: ms(18), color: INK, marginTop: ms(10) }}>{activeDriverName}</Text>
+                <Text style={{ fontFamily: FONT.displayHeavy, fontSize: ms(18), color: INK, marginTop: ms(10) }}>
+                    {isLoadingData ? <SkeletonItem width={ms(120)} height={ms(18)} borderRadius={ms(6)} /> : activeDriverName}
+                </Text>
                 <View style={{ flexDirection: "row", gap: 8, marginTop: 6 }}>
                     <View style={{ backgroundColor: ACCENT_SOFT, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3, borderWidth: 1, borderColor: ACCENT_LINE }}>
                         <Text style={{ fontFamily: FONT.semibold, fontSize: ms(11), color: ACCENT_DEEP }}>Driver · {DRIVER.driverId}</Text>
@@ -1149,7 +1168,7 @@ export default function DriverDashboard({
                 </View>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 8 }}>
                     <Ionicons name="card-outline" size={ms(12)} color={MUTED} />
-                    <Text style={{ fontFamily: FONT.regular, fontSize: ms(12), color: MUTED }}>{activeDriverLicense}</Text>
+                    {isLoadingData ? <SkeletonItem width={ms(140)} height={ms(12)} borderRadius={ms(4)} /> : <Text style={{ fontFamily: FONT.regular, fontSize: ms(12), color: MUTED }}>{activeDriverLicense}</Text>}
                 </View>
             </Card>
 
@@ -1243,8 +1262,17 @@ export default function DriverDashboard({
                     <VideoView player={avatarPlayer} style={{ width: "100%", height: "100%" }} contentFit="cover" nativeControls={false} />
                 </View>
                 <View style={{ flex: 1 }}>
-                    <Text style={{ fontFamily: FONT.displayHeavy, fontSize: ms(14.5), color: INK }} numberOfLines={1}>{DRIVER.name}</Text>
-                    <Text style={{ fontFamily: FONT.semibold, fontSize: ms(10.5), color: "#00000088" }}>ID: {DRIVER.driverId}</Text>
+                    {isLoadingData ? (
+                        <>
+                            <SkeletonItem width="70%" height={ms(14)} borderRadius={ms(5)} />
+                            <SkeletonItem width="40%" height={ms(10)} borderRadius={ms(4)} style={{ marginTop: ms(4) }} />
+                        </>
+                    ) : (
+                        <>
+                            <Text style={{ fontFamily: FONT.displayHeavy, fontSize: ms(14.5), color: INK }} numberOfLines={1}>{activeDriverName}</Text>
+                            <Text style={{ fontFamily: FONT.semibold, fontSize: ms(10.5), color: "#00000088" }}>ID: {DRIVER.driverId}</Text>
+                        </>
+                    )}
                 </View>
                 <Press onPress={async () => {
                     if (online) { setOnline(false); setSharing({}); return; }
