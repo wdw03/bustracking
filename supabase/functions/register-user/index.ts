@@ -557,6 +557,8 @@ serve(async (req: Request) => {
       const emailAlias = `${raw10}@bustracker.com`;
       const password = body.password || "Kumar@123";
       const relation = body.relation || "guardian";
+      const parentEmail = body.email || "";
+      const parentAddress = body.address || "";
 
       // 1. Check authorized_contacts table
       const { data: contacts, error: contactError } = await supabaseAdmin
@@ -601,12 +603,20 @@ serve(async (req: Request) => {
         );
       }
 
-      // 3. Create or update auth user in Supabase Auth
+      // 3. Create or update auth user in Supabase Auth with all parent details
       let parentUserId: string;
       const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
       const existing = existingUsers?.users?.find(
         (u) => u.phone === formattedPhone || u.phone === cleanDigits || u.phone === `91${raw10}` || u.email === emailAlias
       );
+
+      const userMeta = {
+        full_name,
+        role: "parent",
+        relation,
+        email: parentEmail || null,
+        address: parentAddress || null,
+      };
 
       if (existing) {
         parentUserId = existing.id;
@@ -614,7 +624,7 @@ serve(async (req: Request) => {
           password,
           email: emailAlias,
           email_confirm: true,
-          user_metadata: { full_name, role: "parent" },
+          user_metadata: userMeta,
         });
       } else {
         const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
@@ -623,7 +633,7 @@ serve(async (req: Request) => {
           password,
           email_confirm: true,
           phone_confirm: true,
-          user_metadata: { full_name, role: "parent" },
+          user_metadata: userMeta,
         });
 
         if (createError || !newUser?.user) {
@@ -658,6 +668,14 @@ serve(async (req: Request) => {
             relationship: relation ? relation.toLowerCase() : "guardian",
             is_primary: true,
           }, { onConflict: "child_id,parent_user_id" });
+
+          // Update child pickup address if parent specified address
+          if (parentAddress) {
+            await supabaseAdmin.from("children").update({
+              pickup_address: parentAddress,
+            }).eq("id", contact.child_id).is("pickup_address", null);
+          }
+
           childrenLinked++;
         }
         await supabaseAdmin.from("authorized_contacts").update({
@@ -676,14 +694,21 @@ serve(async (req: Request) => {
         trial_end: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       }, { onConflict: "user_id,school_id" });
 
-      // 7. Audit log
+      // 7. Audit log with complete metadata
       await supabaseAdmin.from("audit_logs").insert({
         actor_user_id: parentUserId,
         school_id: schoolId,
         action: "register_parent",
         entity_type: "profile",
         entity_id: parentUserId,
-        metadata: { phone: formattedPhone, full_name, children_linked: childrenLinked },
+        metadata: {
+          phone: formattedPhone,
+          full_name,
+          relation,
+          email: parentEmail,
+          address: parentAddress,
+          children_linked: childrenLinked,
+        },
       });
 
       return new Response(

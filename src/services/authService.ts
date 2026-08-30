@@ -191,7 +191,14 @@ export async function checkPhoneAuthorization(
 }
 
 /** Register parent (server validates authorized_contacts + creates trial + auth user) */
-export async function registerParent(phone: string, fullName: string, password?: string, relation?: string): Promise<ApiResult<any>> {
+export async function registerParent(
+  phone: string,
+  fullName: string,
+  password?: string,
+  relation?: string,
+  email?: string,
+  address?: string
+): Promise<ApiResult<any>> {
   const cleanDigits = phone.replace(/\D/g, "");
   const raw10 = cleanDigits.slice(-10);
   const formatted = phone.startsWith("+") ? phone : `+91${raw10}`;
@@ -202,6 +209,8 @@ export async function registerParent(phone: string, fullName: string, password?:
     full_name: fullName,
     password: password || "Kumar@123",
     relation: relation || "guardian",
+    email: email || undefined,
+    address: address || undefined,
   });
 
   if (!result.success) return { success: false, error: result.error || "Registration failed." };

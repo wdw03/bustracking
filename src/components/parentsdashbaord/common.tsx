@@ -143,6 +143,13 @@ export function ParentDataProvider({ children }: { children: React.ReactNode }) 
                 if ((res as any)?.school?.name) {
                     STUDENT.school = (res as any).school.name;
                 }
+                const { data: { user: currentUser } } = await supabase.auth.getUser();
+                if (currentUser?.user_metadata) {
+                    if (currentUser.user_metadata.full_name) PARENT.name = currentUser.user_metadata.full_name;
+                    if (currentUser.user_metadata.relation) PARENT.relation = currentUser.user_metadata.relation;
+                    if (currentUser.user_metadata.email) PARENT.email = currentUser.user_metadata.email;
+                    if (currentUser.user_metadata.address) PARENT.address = currentUser.user_metadata.address;
+                }
                 if (res?.profile) {
                     PARENT.name = res.profile.full_name || PARENT.name;
                     PARENT.phone = res.profile.phone || PARENT.phone;

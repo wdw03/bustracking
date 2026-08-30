@@ -440,6 +440,8 @@ export default function OtpVerification({
                     const extras = {
                         password: signupData?.password,
                         relation: signupData?.relation,
+                        email: signupData?.email,
+                        address: signupData?.address,
                         license_number: signupData?.licenseNumber,
                         license_expiry: signupData?.licenseExpiry,
                         experience_years: signupData?.experienceYears,

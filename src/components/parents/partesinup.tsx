@@ -59,7 +59,7 @@ const RELATIONS: { key: Relation; icon: keyof typeof Ionicons.glyphMap }[] = [
     { key: "Other", icon: "people-outline" },
 ];
 
-type FieldKey = "fullName" | "password" | "confirmPassword";
+type FieldKey = "fullName" | "email" | "address" | "password" | "confirmPassword";
 
 type FieldConfig = {
     key: FieldKey;
@@ -71,17 +71,19 @@ type FieldConfig = {
 };
 
 const STEP_META = [
-    { title: "Parent Profile", subtitle: "Your name & relation with child", icon: "people-outline" as const },
+    { title: "Parent Profile", subtitle: "Your name, relation & address", icon: "people-outline" as const },
     { title: "Security", subtitle: "Create a strong password", icon: "lock-closed-outline" as const },
 ];
 
 const STEP_FIELDS: FieldConfig[][] = [
     [
-        { key: "fullName", label: "Parent Full Name", placeholder: "Enter your full name", icon: "person-outline", autoCapitalize: "words" },
+        { key: "fullName", label: "Parent Full Name *", placeholder: "e.g. Rajesh Kumar", icon: "person-outline", autoCapitalize: "words" },
+        { key: "email", label: "Email Address (Optional)", placeholder: "e.g. rajesh@gmail.com", icon: "mail-outline", autoCapitalize: "none" },
+        { key: "address", label: "Home / Drop Address (Optional)", placeholder: "e.g. Flat 204, Green Valley", icon: "home-outline", autoCapitalize: "sentences" },
     ],
     [
-        { key: "password", label: "Password", placeholder: "Create password (min 6)", icon: "lock-closed-outline", secure: true },
-        { key: "confirmPassword", label: "Confirm Password", placeholder: "Re-enter password", icon: "checkmark-done-outline", secure: true },
+        { key: "password", label: "Password *", placeholder: "Create password (min 6)", icon: "lock-closed-outline", secure: true },
+        { key: "confirmPassword", label: "Confirm Password *", placeholder: "Re-enter password", icon: "checkmark-done-outline", secure: true },
     ],
 ];
 
@@ -89,12 +91,21 @@ const STEP_FIELDS: FieldConfig[][] = [
 function validateField(key: FieldKey, value: string, all: Record<FieldKey, string>): string | null {
     switch (key) {
         case "fullName": return value.trim().length >= 3 ? null : "Enter your full name";
+        case "email": return !value || value.includes("@") ? null : "Enter a valid email";
+        case "address": return null;
         case "password": return value.length >= 6 ? null : "Min 6 characters";
         case "confirmPassword": return value === all.password && value.length > 0 ? null : "Passwords do not match";
     }
 }
 
-export type ParentSignupData = { fullName: string; relation: Relation; password: string; confirmPassword: string };
+export type ParentSignupData = {
+    fullName: string;
+    relation: Relation;
+    email?: string;
+    address?: string;
+    password: string;
+    confirmPassword: string;
+};
 
 type ParentSignupPageProps = {
     onBack?: () => void;
@@ -306,7 +317,7 @@ export default function ParentSignupPage({ onBack, onSubmit }: ParentSignupPageP
     });
 
     /* ── Form State ── */
-    const [data, setData] = useState<Record<FieldKey, string>>({ fullName: "", password: "", confirmPassword: "" });
+    const [data, setData] = useState<Record<FieldKey, string>>({ fullName: "", email: "", address: "", password: "", confirmPassword: "" });
     const [relation, setRelation] = useState<Relation | null>(null);
     const [relationError, setRelationError] = useState(false);
     const [errors, setErrors] = useState<Partial<Record<FieldKey, string | null>>>({});

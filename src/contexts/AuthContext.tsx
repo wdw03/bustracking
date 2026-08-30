@@ -548,7 +548,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     let result;
     if (action === "register_parent") {
-      result = await registerParent(formattedPhone, fullName, password, extras?.relation);
+      result = await registerParent(
+        formattedPhone,
+        fullName,
+        password,
+        extras?.relation,
+        extras?.email,
+        extras?.address
+      );
     } else {
       result = await registerDriver(
         formattedPhone,
