@@ -150,13 +150,15 @@ export default function PersonalDetail({ onBack }: { onBack?: () => void }) {
             try {
                 const { data: { user } } = await supabase.auth.getUser();
                 if (user) {
+                    const cleanExp = parseInt(data.experience.replace(/\D/g, "")) || 0;
                     await supabase.from("profiles").update({
-                        full_name: data.name,
+                        full_name: data.name.trim(),
                         updated_at: new Date().toISOString(),
                     }).eq("id", user.id);
 
                     await supabase.from("drivers").update({
-                        license_number: data.license,
+                        license_number: data.license.trim(),
+                        experience_years: cleanExp,
                         updated_at: new Date().toISOString(),
                     }).eq("user_id", user.id);
                 }

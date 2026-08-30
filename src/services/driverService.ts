@@ -174,3 +174,39 @@ export async function getDriverTripHistory(driverId: string, limit = 20) {
   if (error || !data) return [];
   return data;
 }
+
+// ── Update Driver Profile ──
+
+export async function updateDriverProfile(updates: {
+  name?: string;
+  phone?: string;
+  license_number?: string;
+  experience_years?: number;
+  assigned_bus_id?: string | null;
+}): Promise<ApiResult<void>> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, error: "Authentication required" };
+
+    if (updates.name || updates.phone) {
+      const pUpdates: any = { updated_at: new Date().toISOString() };
+      if (updates.name) pUpdates.full_name = updates.name.trim();
+      if (updates.phone) {
+        const clean = updates.phone.replace(/[^0-9+]/g, "");
+        pUpdates.phone = clean.startsWith("+") ? clean : `+91${clean.replace(/^0+/, "")}`;
+      }
+      await supabase.from("profiles").update(pUpdates).eq("id", user.id);
+    }
+
+    const dUpdates: any = { updated_at: new Date().toISOString() };
+    if (updates.license_number !== undefined) dUpdates.license_number = updates.license_number.trim();
+    if (updates.experience_years !== undefined) dUpdates.experience_years = updates.experience_years;
+    if (updates.assigned_bus_id !== undefined) dUpdates.assigned_bus_id = updates.assigned_bus_id;
+
+    await supabase.from("drivers").update(dUpdates).eq("user_id", user.id);
+
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, error: e?.message || "Failed to update driver details" };
+  }
+}

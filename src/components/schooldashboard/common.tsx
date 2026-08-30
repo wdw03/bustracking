@@ -884,21 +884,74 @@ export function SchoolDataProvider({ children }: { children: React.ReactNode }) 
             try {
                 setDrivers((current) => current.map((d) => d.id === driver.id ? driver : d));
 
-                await supabase.from("drivers").update({
-                    assigned_bus_id: driver.busId || null,
-                    license_number: driver.license || null,
-                    experience_years: parseInt(driver.experience) || 0,
-                    updated_at: new Date().toISOString(),
-                }).eq("id", driver.id);
+                const cleanPhone = (driver.phone || "").replace(/[^0-9+]/g, "");
+                const raw10 = cleanPhone.replace(/\D/g, "").slice(-10);
+                const formattedPhone = raw10 ? (cleanPhone.startsWith("+") ? cleanPhone : `+91${raw10}`) : "";
+                const expYears = parseInt(driver.experience.replace(/\D/g, "")) || 0;
 
-                if (driver.phone) {
-                    const phone = driver.phone.replace(/[^0-9+]/g, "");
-                    const formatted = phone.startsWith("+") ? phone : `+91${phone}`;
-                    await supabase.from("authorized_contacts").update({
-                        phone: formatted,
+                // 1. Find the driver row in drivers table
+                let driverUserId: string | null = null;
+                const { data: existingD } = await supabase
+                    .from("drivers")
+                    .select("id, user_id")
+                    .eq("id", driver.id)
+                    .maybeSingle();
+
+                if (existingD) {
+                    driverUserId = existingD.user_id;
+                    await supabase.from("drivers").update({
+                        assigned_bus_id: driver.busId || null,
+                        license_number: driver.license || null,
+                        experience_years: expYears,
+                        is_active: true,
                         updated_at: new Date().toISOString(),
                     }).eq("id", driver.id);
+                } else if (raw10) {
+                    // Try finding driver profile by phone
+                    const { data: prof } = await supabase
+                        .from("profiles")
+                        .select("id")
+                        .or(`phone.eq.${formattedPhone},phone.eq.${cleanPhone},phone.eq.${raw10}`)
+                        .eq("role", "driver")
+                        .maybeSingle();
+
+                    if (prof) {
+                        driverUserId = prof.id;
+                        await supabase.from("drivers").update({
+                            assigned_bus_id: driver.busId || null,
+                            license_number: driver.license || null,
+                            experience_years: expYears,
+                            is_active: true,
+                            updated_at: new Date().toISOString(),
+                        }).eq("user_id", prof.id);
+                    }
                 }
+
+                // 2. Update driver's name in profiles table
+                if (driverUserId) {
+                    await supabase.from("profiles").update({
+                        full_name: driver.name.trim(),
+                        ...(formattedPhone ? { phone: formattedPhone } : {}),
+                        updated_at: new Date().toISOString(),
+                    }).eq("id", driverUserId);
+                } else if (raw10) {
+                    await supabase.from("profiles").update({
+                        full_name: driver.name.trim(),
+                        updated_at: new Date().toISOString(),
+                    }).or(`phone.eq.${formattedPhone},phone.eq.${cleanPhone},phone.eq.${raw10}`);
+                }
+
+                // 3. Update or sync authorized_contacts
+                if (raw10 && schoolId) {
+                    await supabase.from("authorized_contacts").upsert({
+                        school_id: schoolId,
+                        phone: formattedPhone,
+                        contact_type: "driver" as const,
+                        is_registered: true,
+                        updated_at: new Date().toISOString(),
+                    }, { onConflict: "school_id,phone,contact_type" });
+                }
+
                 return { success: true };
             } catch (e: any) {
                 console.warn("updateDriver error:", e);
