@@ -25,7 +25,7 @@ export default function ProfileParentsPage({
     const { INK, MUTED, FAINT, BORDER, CARD_BG, PAGE_BG, ACCENT, ACCENT_DEEP, ACCENT_SOFT, GREEN, GREEN_SOFT, BLUE, BLUE_SOFT, RED, RED_SOFT, PURPLE, PURPLE_SOFT, ORANGE, ORANGE_SOFT, isDark } = useTheme();
     const settings = useSettings();
     const sub = useSubscription();
-    const { homeAddress, setHomeAddress, setHomeCoordinate, isLoading } = useParentData();
+    const { homeAddress, setHomeAddress, setHomeCoordinate, isLoading, dataVersion } = useParentData();
     const [addressDraft, setAddressDraft] = useState(homeAddress);
     const [addressSaved, setAddressSaved] = useState(true);
     const [locating, setLocating] = useState(false);
@@ -142,15 +142,17 @@ export default function ProfileParentsPage({
                         </View>
                         <View style={{ flex: 1 }}>
                             <Text style={{ fontFamily: FONT.display, fontSize: ms(15), color: INK }}>{STUDENT.name}</Text>
-                            <Text style={{ fontFamily: FONT.regular, fontSize: ms(11.5), color: MUTED, marginTop: 1 }}>Admission No. {STUDENT.admissionNo}</Text>
+                            <Text style={{ fontFamily: FONT.regular, fontSize: ms(11.5), color: MUTED, marginTop: 1 }}>
+                                {STUDENT.admissionNo && STUDENT.admissionNo !== "—" ? `Admission No. ${STUDENT.admissionNo}` : `Roll No. ${STUDENT.rollNo || "—"}`}
+                            </Text>
                         </View>
                     </View>
                     <InfoRow label="Class / Section" value={`${STUDENT.className} · ${STUDENT.section}`} />
-                    <InfoRow label="Roll No." value={STUDENT.rollNo} />
-                    <InfoRow label="School" value={STUDENT.school} />
-                    <InfoRow label="Assigned Bus" value={`${BUS.number} · ${BUS.vehicleNumber}`} />
-                    <InfoRow label="Assigned Driver" value={BUS.driver} />
-                    <InfoRow label="Blood Group" value={STUDENT.bloodGroup} />
+                    <InfoRow label="Roll No." value={STUDENT.rollNo || "—"} />
+                    <InfoRow label="School" value={STUDENT.school || "—"} />
+                    <InfoRow label="Assigned Bus" value={BUS.vehicleNumber && BUS.vehicleNumber !== "—" && BUS.vehicleNumber !== BUS.number ? `${BUS.number} · ${BUS.vehicleNumber}` : (BUS.number || "—")} />
+                    <InfoRow label="Assigned Driver" value={BUS.driver || "—"} />
+                    <InfoRow label="Blood Group" value={STUDENT.bloodGroup || "—"} />
                 </View>
             )}
 

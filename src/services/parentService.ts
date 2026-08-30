@@ -47,62 +47,79 @@ export async function getParentDashboard(): Promise<ParentDashboardData | null> 
         }
       }
 
-      // Query linked children — try full columns first, fallback to basic
-      let cpRows: any[] | null = null;
-      const fullSelect = `
-        child_id, relationship, is_primary,
-        children:child_id(
-          id, full_name, class, section, roll_number,
-          admission_number, blood_group, gender, date_of_birth,
-          pickup_address, assigned_bus_id, photo_url, is_active,
-          buses:assigned_bus_id(id, bus_number, route_name, capacity, vehicle_number,
-            driver:driver_id(id, full_name, phone)
-          ),
-          schools:school_id(id, name, phone, address)
-        )
-      `;
-      const basicSelect = `
-        child_id, relationship, is_primary,
-        children:child_id(
-          id, full_name, class, section, roll_number,
-          pickup_address, assigned_bus_id, photo_url, is_active,
-          buses:assigned_bus_id(id, bus_number, route_name, capacity),
-          schools:school_id(id, name, phone, address)
-        )
-      `;
+      // Query linked children with valid foreign key joins
+      const { data: cpRows, error: cpErr } = await supabase
+        .from("child_parents")
+        .select(`
+          child_id, relationship, is_primary,
+          children:child_id(
+            id, full_name, class, section, roll_number,
+            admission_number, blood_group, gender, date_of_birth,
+            pickup_address, assigned_bus_id, photo_url, is_active,
+            schools:school_id(id, name, phone, address, city),
+            buses:assigned_bus_id(id, bus_number, route_name, capacity, model)
+          )
+        `)
+        .eq("parent_user_id", user.id);
 
-      const res1 = await supabase.from("child_parents").select(fullSelect).eq("parent_user_id", user.id);
-      if (res1.error && res1.error.message?.includes("column")) {
-        const res2 = await supabase.from("child_parents").select(basicSelect).eq("parent_user_id", user.id);
-        cpRows = res2.data;
-      } else {
-        cpRows = res1.data;
+      if (cpErr) {
+        console.warn("getParentDashboard child_parents error:", cpErr);
       }
 
-      const childrenList = (cpRows || [])
-        .map((r: any) => r.children)
-        .filter(Boolean)
-        .map((c: any) => ({
+      // Collect all bus IDs to fetch drivers
+      const rawChildren = (cpRows || []).map((r: any) => r.children).filter(Boolean);
+      const busIds = rawChildren.map((c: any) => c.assigned_bus_id).filter(Boolean);
+      const driverMap = new Map<string, { name: string; phone: string; experience: string; license: string }>();
+
+      if (busIds.length > 0) {
+        const { data: driverRows } = await supabase
+          .from("drivers")
+          .select("id, assigned_bus_id, license_number, experience_years, profiles:user_id(id, full_name, phone)")
+          .in("assigned_bus_id", busIds)
+          .eq("is_active", true);
+
+        if (driverRows) {
+          for (const d of driverRows as any[]) {
+            if (d.assigned_bus_id) {
+              const p = d.profiles;
+              driverMap.set(d.assigned_bus_id, {
+                name: p?.full_name || "Assigned Driver",
+                phone: p?.phone || "",
+                experience: d.experience_years ? `${d.experience_years} yrs exp` : "Experienced",
+                license: d.license_number || "",
+              });
+            }
+          }
+        }
+      }
+
+      const childrenList = rawChildren.map((c: any) => {
+        const drv = c.assigned_bus_id ? driverMap.get(c.assigned_bus_id) : null;
+        return {
           id: c.id,
-          full_name: c.full_name,
-          class: c.class,
-          section: c.section,
-          roll_number: c.roll_number,
+          full_name: c.full_name || "Student",
+          class: c.class || "",
+          section: c.section || "",
+          roll_number: c.roll_number || "",
           admission_number: c.admission_number || "",
           blood_group: c.blood_group || "",
-          assigned_bus_id: c.assigned_bus_id,
+          gender: c.gender || "",
+          date_of_birth: c.date_of_birth || "",
+          assigned_bus_id: c.assigned_bus_id || null,
           bus_number: c.buses?.bus_number || "Bus",
-          route_name: c.buses?.route_name || "Route",
-          vehicle_number: c.buses?.vehicle_number || "",
-          driver_name: c.buses?.driver?.full_name || "",
-          driver_phone: c.buses?.driver?.phone || "",
+          route_name: c.buses?.route_name || "Standard Route",
+          vehicle_number: c.buses?.model || c.buses?.bus_number || "",
+          driver_name: drv?.name || "Assigned Driver",
+          driver_phone: drv?.phone || "",
+          driver_exp: drv?.experience || "",
           school_name: c.schools?.name || "",
           school_phone: c.schools?.phone || "",
           school_address: c.schools?.address || "",
           photo_url: c.photo_url || null,
-        }));
+        };
+      });
 
-      const firstSchool = (cpRows || []).map((r: any) => r.children?.schools).find(Boolean);
+      const firstSchool = rawChildren.map((c: any) => c.schools).find(Boolean);
 
       const { data: prof } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
       const { data: sub } = await supabase.from("subscriptions").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(1).maybeSingle();
