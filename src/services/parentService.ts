@@ -56,8 +56,11 @@ export async function getParentDashboard(): Promise<ParentDashboardData | null> 
           is_primary,
           children:child_id(
             id, full_name, class, section, roll_number,
+            admission_number, blood_group,
             pickup_address, assigned_bus_id, photo_url, is_active,
-            buses:assigned_bus_id(id, bus_number, route_name, capacity),
+            buses:assigned_bus_id(id, bus_number, route_name, capacity, vehicle_number,
+              driver:driver_id(id, full_name, phone)
+            ),
             schools:school_id(id, name, phone, address)
           )
         `)
@@ -72,9 +75,17 @@ export async function getParentDashboard(): Promise<ParentDashboardData | null> 
           class: c.class,
           section: c.section,
           roll_number: c.roll_number,
+          admission_number: c.admission_number || "",
+          blood_group: c.blood_group || "",
           assigned_bus_id: c.assigned_bus_id,
           bus_number: c.buses?.bus_number || "Bus",
           route_name: c.buses?.route_name || "Route",
+          vehicle_number: c.buses?.vehicle_number || "",
+          driver_name: c.buses?.driver?.full_name || "",
+          driver_phone: c.buses?.driver?.phone || "",
+          school_name: c.schools?.name || "",
+          school_phone: c.schools?.phone || "",
+          school_address: c.schools?.address || "",
           photo_url: c.photo_url || null,
         }));
 

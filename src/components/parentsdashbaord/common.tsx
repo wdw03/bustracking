@@ -129,22 +129,33 @@ export function ParentDataProvider({ children }: { children: React.ReactNode }) 
 
                 const res = await getParentDashboard();
                 if (res && res.children && res.children.length > 0) {
-                    const firstChild = res.children[0];
+                    const firstChild = res.children[0] as any;
                     if (firstChild.full_name) STUDENT.name = firstChild.full_name;
                     if (firstChild.class) STUDENT.className = `Class ${firstChild.class}`;
                     if (firstChild.section) STUDENT.section = firstChild.section;
-                    if ((firstChild as any).roll_number) STUDENT.rollNo = (firstChild as any).roll_number;
-                    if ((firstChild as any).assigned_bus_id || (firstChild as any).bus_id) {
-                        BUS.id = (firstChild as any).assigned_bus_id || (firstChild as any).bus_id;
+                    if (firstChild.roll_number) STUDENT.rollNo = String(firstChild.roll_number);
+                    if (firstChild.admission_number) STUDENT.admissionNo = String(firstChild.admission_number);
+                    if (firstChild.blood_group) STUDENT.bloodGroup = firstChild.blood_group;
+
+                    // School name — from child's school join OR top-level school
+                    if (firstChild.school_name) {
+                        STUDENT.school = firstChild.school_name;
                     }
-                    if (firstChild.bus_number) {
-                        BUS.number = firstChild.bus_number;
+
+                    // Bus info
+                    if (firstChild.assigned_bus_id || firstChild.bus_id) {
+                        BUS.id = firstChild.assigned_bus_id || firstChild.bus_id;
                     }
-                    if (firstChild.route_name) {
-                        BUS.route = firstChild.route_name;
-                    }
+                    if (firstChild.bus_number) BUS.number = firstChild.bus_number;
+                    if (firstChild.route_name) BUS.route = firstChild.route_name;
+                    if (firstChild.vehicle_number) BUS.vehicleNumber = firstChild.vehicle_number;
+
+                    // Driver info from bus join
+                    if (firstChild.driver_name) BUS.driver = firstChild.driver_name;
+                    if (firstChild.driver_phone) BUS.driverPhone = firstChild.driver_phone;
                 }
-                if ((res as any)?.school?.name) {
+                // Fallback: school from top-level response
+                if (!STUDENT.school && (res as any)?.school?.name) {
                     STUDENT.school = (res as any).school.name;
                 }
                 const { data: { user: currentUser } } = await supabase.auth.getUser();
