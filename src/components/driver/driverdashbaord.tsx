@@ -37,7 +37,7 @@
      />
    ========================================================================== */
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     Alert,
     Animated,
@@ -135,10 +135,30 @@ type School = {
     buses: Bus[];
 };
 
-const SCHOOLS: School[] = [];
-
-const TOTAL_BUSES = SCHOOLS.reduce((n, s) => n + s.buses.length, 0);
-const ALL_BUSES = SCHOOLS.flatMap((s) => s.buses.map((b) => ({ ...b, school: s })));
+const DEFAULT_SCHOOL: School = {
+    id: "38bbeaa3-8e42-468c-a26e-0b82e0d34e3d",
+    name: "Delhi Public School",
+    code: "SCH-001",
+    address: "Haraya faridabad pali sukhi nahar near by",
+    principal: "Dr. Saransh Kumar",
+    contact: "+918789968980",
+    email: "hqsavan@gmail.com",
+    shift: "Morning Shift (7:00 AM - 2:30 PM)",
+    route: "Standard Route",
+    buses: [
+        {
+            id: "c2cb29c3-83e5-4805-b863-563c22de354e",
+            number: "BUS121",
+            model: "School Bus",
+            capacity: "32 seats",
+            partner: "Helper Staff",
+            partnerPhone: "+918789968980",
+            pickupTime: "07:30 AM",
+            stops: 8,
+            route: "Standard Route",
+        }
+    ],
+};
 
 /* ─────────────────────────── Props ─────────────────────────── */
 export type Tab = "home" | "schools" | "bus" | "profile";
@@ -361,7 +381,42 @@ export default function DriverDashboard({
     const activeDriverName = profile?.full_name || driverData?.profile?.full_name || DRIVER.name;
     const activeDriverPhone = profile?.phone || driverData?.profile?.phone || DRIVER.phone;
     const activeDriverLicense = driverData?.driver?.license_number || DRIVER.license;
-    const activeBusId = profile?.assigned_bus_id || driverData?.bus?.id || "b1";
+    const activeBusId = profile?.assigned_bus_id || driverData?.bus?.id || "c2cb29c3-83e5-4805-b863-563c22de354e";
+
+    const liveSchool: School = useMemo(() => {
+        const rawS = driverData?.school as any;
+        const rawB = driverData?.bus as any;
+
+        const assignedBus: Bus = rawB ? {
+            id: rawB.id || DEFAULT_SCHOOL.buses[0].id,
+            number: rawB.bus_number || "BUS121",
+            model: rawB.model || "School Bus",
+            capacity: `${rawB.capacity || 32} seats`,
+            partner: "Helper Staff",
+            partnerPhone: rawS?.phone || "+918789968980",
+            pickupTime: "07:30 AM",
+            stops: 8,
+            route: rawB.route_name || "Standard Route",
+        } : DEFAULT_SCHOOL.buses[0];
+
+        return {
+            id: rawS?.id || DEFAULT_SCHOOL.id,
+            name: rawS?.name || DEFAULT_SCHOOL.name,
+            code: "SCH-001",
+            address: rawS?.address || DEFAULT_SCHOOL.address,
+            principal: rawS?.principal_name || DEFAULT_SCHOOL.principal,
+            contact: rawS?.phone || DEFAULT_SCHOOL.contact,
+            email: rawS?.email || DEFAULT_SCHOOL.email,
+            shift: "Morning Shift (7:00 AM - 2:30 PM)",
+            route: rawB?.route_name || DEFAULT_SCHOOL.route,
+            buses: [assignedBus],
+        };
+    }, [driverData, activeDriverName, activeDriverPhone]);
+
+    const liveSchools: School[] = useMemo(() => [liveSchool], [liveSchool]);
+    const liveBuses: (Bus & { school: School })[] = useMemo(() => {
+        return liveSchools.flatMap((s) => s.buses.map((b) => ({ ...b, school: s })));
+    }, [liveSchools]);
 
     const [tab, setTabState] = useState<Tab>(initialTab);
 
@@ -382,14 +437,14 @@ export default function DriverDashboard({
     /* DEDICATED per-school location sharing map: schoolId -> on/off */
     const [sharing, setSharing] = useState<Record<string, boolean>>({});
 
-    const filteredSchools = SCHOOLS.filter(
+    const filteredSchools = liveSchools.filter(
         (s) =>
             s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             s.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
             s.route.toLowerCase().includes(searchQuery.toLowerCase()),
     );
 
-    const filteredBuses = ALL_BUSES.filter(
+    const filteredBuses = liveBuses.filter(
         (b) =>
             b.number.toLowerCase().includes(busSearchQuery.toLowerCase()) ||
             b.school.name.toLowerCase().includes(busSearchQuery.toLowerCase()) ||
@@ -510,12 +565,12 @@ export default function DriverDashboard({
                             <>
                         <Card style={{ flex: 1, alignItems: "center", paddingVertical: ms(6), paddingHorizontal: ms(4) }}>
                             <IconChip name="school" bg={ACCENT_SOFT} color={ACCENT_DEEP} box={30} size={14} />
-                            <Text style={{ fontFamily: FONT.displayHeavy, fontSize: ms(15), color: INK, marginTop: 2 }}>{SCHOOLS.length}</Text>
+                            <Text style={{ fontFamily: FONT.displayHeavy, fontSize: ms(15), color: INK, marginTop: 2 }}>{liveSchools.length}</Text>
                             <Text style={{ fontFamily: FONT.semibold, fontSize: ms(9.5), color: MUTED }}>Total Schools</Text>
                         </Card>
                         <Card style={{ flex: 1, alignItems: "center", paddingVertical: ms(6), paddingHorizontal: ms(4) }}>
                             <IconChip name="bus" bg={BLUE_SOFT} color={BLUE} box={30} size={14} />
-                            <Text style={{ fontFamily: FONT.displayHeavy, fontSize: ms(15), color: INK, marginTop: 2 }}>{TOTAL_BUSES}</Text>
+                            <Text style={{ fontFamily: FONT.displayHeavy, fontSize: ms(15), color: INK, marginTop: 2 }}>{liveBuses.length}</Text>
                             <Text style={{ fontFamily: FONT.semibold, fontSize: ms(9.5), color: MUTED }}>Total Buses</Text>
                         </Card>
                         <Card style={{ flex: 1, alignItems: "center", paddingVertical: ms(6), paddingHorizontal: ms(4) }}>
@@ -665,7 +720,7 @@ export default function DriverDashboard({
             <View style={{ flex: 1 }}>
                 {!hideSchoolHero && (
                     <View style={{ paddingHorizontal: ms(20) }}>
-                        <HeroVideo player={schoolPlayer} badge={`Assigned to ${SCHOOLS.length} schools`} height={125} />
+                        <HeroVideo player={schoolPlayer} badge={`Assigned to ${liveSchools.length} ${liveSchools.length > 1 ? "schools" : "school"}`} height={125} />
                     </View>
                 )}
 
@@ -891,7 +946,7 @@ export default function DriverDashboard({
             <View style={{ flex: 1 }}>
                 {!hideBusHero && (
                     <View style={{ paddingHorizontal: ms(20) }}>
-                        <HeroVideo player={busPlayer} badge={`${TOTAL_BUSES} buses assigned to you`} height={125} />
+                        <HeroVideo player={busPlayer} badge={`${liveBuses.length} ${liveBuses.length > 1 ? "buses" : "bus"} assigned to you`} height={125} />
                     </View>
                 )}
 
@@ -998,7 +1053,7 @@ export default function DriverDashboard({
                                             <Text style={{ fontFamily: FONT.semibold, fontSize: ms(13.5), color: INK, letterSpacing: 0.4 }}>{b.number}</Text>
                                             <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 2 }}>
                                                 <Ionicons name="person-outline" size={ms(10)} color={MUTED} />
-                                                <Text style={{ fontFamily: FONT.regular, fontSize: ms(10.5), color: MUTED }}>Driver: {DRIVER.name}</Text>
+                                                <Text style={{ fontFamily: FONT.regular, fontSize: ms(10.5), color: MUTED }}>Driver: {activeDriverName}</Text>
                                             </View>
                                             <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 1 }}>
                                                 <Ionicons name="school-outline" size={ms(10)} color={MUTED} />

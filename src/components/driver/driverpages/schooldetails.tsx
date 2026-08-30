@@ -28,12 +28,12 @@ const { width } = Dimensions.get("window");
 const ms = (s: number) => Math.round((width / 390) * s);
 
 const SCHOOL = {
-    name: "Green Valley School",
-    code: "GVS-2024-113",
-    address: "Plot 7, Knowledge Park, Sector 62, Noida, Uttar Pradesh 201301",
-    principal: "Dr. Meena Sharma",
-    contact: "+91 120 456 7890",
-    email: "office@greenvalley.edu.in",
+    name: "Delhi Public School",
+    code: "SCH-001",
+    address: "Haraya faridabad pali sukhi nahar near by",
+    principal: "Dr. Saransh Kumar",
+    contact: "+918789968980",
+    email: "hqsavan@gmail.com",
     logo: null as any,
 };
 

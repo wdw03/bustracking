@@ -27,14 +27,14 @@ const ms = (s: number) => Math.round((width / 390) * s);
 const schoolBusIcon = require("../../../../assets/expo.icon/Assets/3d-yellow-school-bus-vehicle-transport-icon-education-design-kids-passenger-transportation-school-elements-back-to-school-concept-3d-render-illustration-png.webp");
 
 const BUS = {
-    number: "DL01AB1234",
-    route: "Route A",
-    model: "Tata Starbus 32-Seater",
+    number: "BUS121",
+    route: "Standard Route",
+    model: "School Bus 32-Seater",
     capacity: "32 students",
-    driver: "Rajesh Kumar",
-    helper: "Suresh Yadav",
-    insuranceValid: "Mar 2027",
-    fitnessValid: "Aug 2026",
+    driver: "Ramesh Singh",
+    helper: "Helper Staff",
+    insuranceValid: "Active",
+    fitnessValid: "Active",
     gpsDevice: "Installed & Active",
     image: schoolBusIcon,
 };
