@@ -19,6 +19,7 @@ import {
 } from "../common";
 import { subscribeToDriverLocation } from "../../../services/locationService";
 import { subscribeToBusLocation } from "../../../services/trackingService";
+import { supabase } from "../../../services/supabase";
 
 /* Free vector style — OpenFreeMap (OpenStreetMap data), no API key */
 const MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
@@ -49,6 +50,23 @@ export default function LiveTrackingPage({ onBack, initialBusId }: { onBack: () 
     const motionPhase = useRef(0);
 
     useEffect(() => {
+        // Load initial real GPS coordinates for all buses
+        (async () => {
+            try {
+                const { data } = await supabase.from("bus_live_locations").select("bus_id, latitude, longitude, is_live");
+                if (data) {
+                    data.forEach((loc: any) => {
+                        if (loc.latitude && loc.longitude) {
+                            const coord: [number, number] = [loc.longitude, loc.latitude];
+                            liveTargets.current[loc.bus_id] = coord;
+                            setLivePositions((p) => ({ ...p, [loc.bus_id]: coord }));
+                            if (loc.is_live) driverFeeds.current.add(loc.bus_id);
+                        }
+                    });
+                }
+            } catch (_) {}
+        })();
+
         const cleanups = buses.map((bus) => {
             const unsubLocal = subscribeToDriverLocation(bus.id, (location) => {
                 liveTargets.current[bus.id] = [location.longitude, location.latitude];
@@ -65,23 +83,27 @@ export default function LiveTrackingPage({ onBack, initialBusId }: { onBack: () 
                 unsubRealtime();
             };
         });
+
         const timer = setInterval(() => {
-            motionPhase.current += 0.045;
             setLivePositions((current) => {
                 const next = { ...current };
-                buses.forEach((bus, index) => {
+                buses.forEach((bus) => {
                     const base = BUS_COORDS[bus.id] ?? schoolCoordinate;
-                    if (!driverFeeds.current.has(bus.id) && bus.status === "Running") {
-                        liveTargets.current[bus.id] = [base[0] + Math.sin(motionPhase.current + index) * 0.0008, base[1] + Math.cos(motionPhase.current + index) * 0.00055];
-                    }
                     const target = liveTargets.current[bus.id] ?? base;
-                    const previous = current[bus.id] ?? base;
-                    next[bus.id] = [previous[0] + (target[0] - previous[0]) * 0.16, previous[1] + (target[1] - previous[1]) * 0.16];
+                    const previous = current[bus.id] ?? target;
+                    next[bus.id] = [
+                        previous[0] + (target[0] - previous[0]) * 0.18,
+                        previous[1] + (target[1] - previous[1]) * 0.18,
+                    ];
                 });
                 return next;
             });
         }, 50);
-        return () => { cleanups.forEach((cleanup) => cleanup()); clearInterval(timer); };
+
+        return () => {
+            cleanups.forEach((cleanup) => cleanup());
+            clearInterval(timer);
+        };
     }, [buses, schoolCoordinate]);
 
     /* If initialBusId is set, auto-select that bus */

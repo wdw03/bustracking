@@ -17,18 +17,41 @@ export async function updateBusLocation(
   heading: number = 0,
   accuracy: number = 0
 ): Promise<ApiResult<void>> {
-  const { data, error } = await supabase.rpc("update_bus_location", {
-    p_bus_id: busId,
-    p_lat: latitude,
-    p_lng: longitude,
-    p_speed: speed,
-    p_heading: heading,
-    p_accuracy: accuracy,
-  });
+  try {
+    const { data, error } = await supabase.rpc("update_bus_location", {
+      p_bus_id: busId,
+      p_lat: latitude,
+      p_lng: longitude,
+      p_speed: speed,
+      p_heading: heading,
+      p_accuracy: accuracy,
+    });
 
-  if (error) return { success: false, error: error.message };
-  if (data && !data.success) return { success: false, error: data.error?.message || "Location update failed" };
-  return { success: true };
+    if (!error && data?.success !== false) {
+      return { success: true };
+    }
+  } catch (_) {}
+
+  // Direct upsert fallback
+  try {
+    const { error: upsertErr } = await supabase
+      .from("bus_live_locations")
+      .upsert({
+        bus_id: busId,
+        latitude,
+        longitude,
+        speed,
+        heading,
+        accuracy,
+        is_live: true,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "bus_id" });
+
+    if (upsertErr) return { success: false, error: upsertErr.message };
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, error: e?.message || "Location update failed" };
+  }
 }
 
 // ── Driver: Stop Broadcasting Location ──

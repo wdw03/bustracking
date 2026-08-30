@@ -39,7 +39,8 @@ export default function LiveTrackingParentsPage({ onBuy }: { onBuy: () => void }
     const t = useTheme();
     const { INK, MUTED, BORDER, CARD_BG, PAGE_BG, ACCENT, ACCENT_DEEP, ACCENT_SOFT, GREEN, GREEN_SOFT, BLUE, BLUE_SOFT, RED, RED_SOFT, isDark } = t;
     const { canTrack } = useSubscription();
-    const { homeAddress, homeCoordinate, setHomeAddress, setHomeCoordinate, addNotification } = useParentData();
+    const { homeAddress, homeCoordinate, setHomeAddress, setHomeCoordinate, addNotification, bus } = useParentData();
+    const targetBusId = bus?.id || BUS.id;
 
     const [followBus, setFollowBus] = useState(true);
     const [mapZoom, setMapZoom] = useState(14.6);
@@ -63,25 +64,25 @@ export default function LiveTrackingParentsPage({ onBuy }: { onBuy: () => void }
     // On mount: fetch last known bus location from DB
     useEffect(() => {
         if (!canTrack) return;
-        getBusLocation(BUS.id).then((loc) => {
+        getBusLocation(targetBusId).then((loc) => {
             if (loc && loc.latitude && loc.longitude) {
                 const coord: [number, number] = [loc.longitude, loc.latitude];
                 liveTarget.current = coord;
                 liveDisplay.current = coord;
                 setLiveBusCoord(coord);
                 setBusSpeed(loc.speed ?? 0);
-                setBusOnline(true);
+                setBusOnline(loc.is_live ?? true);
                 setLastUpdateTime(new Date(loc.updated_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }));
             }
         }).catch(() => {});
-    }, [canTrack]);
+    }, [canTrack, targetBusId]);
 
     // Real-time bus tracking feed via Supabase Realtime & in-memory stream
     useEffect(() => {
         if (!canTrack) return;
 
         // 1. In-memory listener (same device — driver app running locally)
-        const unsubLocal = subscribeToDriverLocation(BUS.id, (location) => {
+        const unsubLocal = subscribeToDriverLocation(targetBusId, (location) => {
             const next: [number, number] = [location.longitude, location.latitude];
             liveTarget.current = next;
             setBusSpeed(location.speed ?? 0);
@@ -94,12 +95,12 @@ export default function LiveTrackingParentsPage({ onBuy }: { onBuy: () => void }
         });
 
         // 2. Supabase Realtime subscription for cross-device updates (production)
-        const unsubSupabase = subscribeToBusLocation(BUS.id, (location) => {
+        const unsubSupabase = subscribeToBusLocation(targetBusId, (location) => {
             if (location.latitude && location.longitude) {
                 const next: [number, number] = [location.longitude, location.latitude];
                 liveTarget.current = next;
                 setBusSpeed(location.speed ?? 0);
-                setBusOnline(true);
+                setBusOnline(location.is_live ?? true);
                 setLastUpdateTime(new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }));
                 if (!liveDisplay.current) {
                     liveDisplay.current = next;
@@ -133,7 +134,7 @@ export default function LiveTrackingParentsPage({ onBuy }: { onBuy: () => void }
             clearInterval(animation);
             clearInterval(offlineCheck);
         };
-    }, [canTrack]);
+    }, [canTrack, targetBusId]);
 
     useEffect(() => () => {
         if (zoomGestureTimer.current) clearTimeout(zoomGestureTimer.current);

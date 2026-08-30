@@ -1336,6 +1336,7 @@ export default function DriverDashboard({
                     if (!granted) { Alert.alert("Location permission required", "Allow location access before going online."); return; }
                     await requestNotificationPermission();
                     setOnline(true);
+                    setSharing({ [liveSchool.id]: true });
                 }} label={online ? "Go offline" : "Go online"}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#FFFFFF", borderRadius: 999, paddingHorizontal: ms(8), paddingVertical: ms(5) }}>
                         <View style={{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: online ? GREEN : FAINT }} />
