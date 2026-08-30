@@ -12,7 +12,7 @@ import type { ParentDashboardData, BusLiveLocation, ApiResult } from "./types";
 export async function getParentDashboard(): Promise<ParentDashboardData | null> {
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    
+
     // Step 1: Try RPC
     const { data: rpcData, error: rpcError } = await supabase.rpc("get_parent_dashboard");
     if (!rpcError && rpcData && Array.isArray((rpcData as any).children) && (rpcData as any).children.length > 0) {
@@ -47,24 +47,37 @@ export async function getParentDashboard(): Promise<ParentDashboardData | null> 
         }
       }
 
-      // Query linked children
-      const { data: cpRows } = await supabase
-        .from("child_parents")
-        .select(`
-          child_id,
-          relationship,
-          is_primary,
-          children:child_id(
-            id, full_name, class, section, roll_number,
-            admission_number, blood_group,
-            pickup_address, assigned_bus_id, photo_url, is_active,
-            buses:assigned_bus_id(id, bus_number, route_name, capacity, vehicle_number,
-              driver:driver_id(id, full_name, phone)
-            ),
-            schools:school_id(id, name, phone, address)
-          )
-        `)
-        .eq("parent_user_id", user.id);
+      // Query linked children — try full columns first, fallback to basic
+      let cpRows: any[] | null = null;
+      const fullSelect = `
+        child_id, relationship, is_primary,
+        children:child_id(
+          id, full_name, class, section, roll_number,
+          admission_number, blood_group, gender, date_of_birth,
+          pickup_address, assigned_bus_id, photo_url, is_active,
+          buses:assigned_bus_id(id, bus_number, route_name, capacity, vehicle_number,
+            driver:driver_id(id, full_name, phone)
+          ),
+          schools:school_id(id, name, phone, address)
+        )
+      `;
+      const basicSelect = `
+        child_id, relationship, is_primary,
+        children:child_id(
+          id, full_name, class, section, roll_number,
+          pickup_address, assigned_bus_id, photo_url, is_active,
+          buses:assigned_bus_id(id, bus_number, route_name, capacity),
+          schools:school_id(id, name, phone, address)
+        )
+      `;
+
+      const res1 = await supabase.from("child_parents").select(fullSelect).eq("parent_user_id", user.id);
+      if (res1.error && res1.error.message?.includes("column")) {
+        const res2 = await supabase.from("child_parents").select(basicSelect).eq("parent_user_id", user.id);
+        cpRows = res2.data;
+      } else {
+        cpRows = res1.data;
+      }
 
       const childrenList = (cpRows || [])
         .map((r: any) => r.children)

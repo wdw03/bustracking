@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Alert, KeyboardAvoidingView, Linking, Platform, ScrollView, Text, TextInput, View, BackHandler } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 import {
     Card, Chip, DStudent, FONT, InfoRow, PageHeader, Press,
@@ -49,6 +50,18 @@ export default function StudentManagementPage({ onBack }: { onBack: () => void }
     }, [formStudent, selected]);
 
     const [isSaving, setIsSaving] = useState(false);
+    const [showDatePicker, setShowDatePicker] = useState(false);
+
+    const parseDateForPicker = (dob: string): Date => {
+        if (!dob || dob === "—" || dob === "Not added") return new Date(2010, 0, 1);
+        const parsed = new Date(dob);
+        return isNaN(parsed.getTime()) ? new Date(2010, 0, 1) : parsed;
+    };
+
+    const formatDate = (date: Date): string => {
+        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+    };
 
     const update = (key: keyof FormState, value: string | null) => setForm((current) => ({ ...current, [key]: value }));
 
@@ -128,7 +141,26 @@ export default function StudentManagementPage({ onBack }: { onBack: () => void }
                         <Field icon="document-text" label="Admission number *" value={form.admissionNo} onChangeText={(value) => update("admissionNo", value)} placeholder="e.g. ADM-2026-0107" autoCapitalize="characters" />
                         <View style={{ flexDirection: "row", gap: ms(10) }}>
                             <View style={{ flex: 1 }}><Field icon="list" label="Roll no." value={form.rollNo} onChangeText={(value) => update("rollNo", value)} placeholder="e.g. 12" keyboardType="number-pad" /></View>
-                            <View style={{ flex: 1 }}><Field icon="calendar" label="Date of birth" value={form.dob} onChangeText={(value) => update("dob", value)} placeholder="DD Mon YYYY" /></View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ fontFamily: FONT.semibold, fontSize: ms(12), color: INK, marginBottom: 6 }}>Date of birth</Text>
+                                <Press onPress={() => setShowDatePicker(true)} style={{ height: ms(48), borderRadius: ms(14), borderWidth: 1, borderColor: BORDER, backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "#FCFCFD", flexDirection: "row", alignItems: "center", paddingHorizontal: ms(12), gap: 8 }}>
+                                    <Ionicons name="calendar" size={ms(16)} color={FAINT} />
+                                    <Text style={{ flex: 1, fontFamily: FONT.regular, fontSize: ms(13), color: form.dob && form.dob !== "—" && form.dob !== "Not added" ? INK : FAINT }}>{form.dob && form.dob !== "—" && form.dob !== "Not added" ? form.dob : "Choose date"}</Text>
+                                </Press>
+                                {showDatePicker && (
+                                    <DateTimePicker
+                                        value={parseDateForPicker(form.dob)}
+                                        mode="date"
+                                        display={Platform.OS === "ios" ? "spinner" : "calendar"}
+                                        maximumDate={new Date()}
+                                        minimumDate={new Date(2000, 0, 1)}
+                                        onChange={(event, selectedDate) => {
+                                            setShowDatePicker(Platform.OS === "ios");
+                                            if (selectedDate) update("dob", formatDate(selectedDate));
+                                        }}
+                                    />
+                                )}
+                            </View>
                         </View>
                         <View style={{ flexDirection: "row", gap: ms(10) }}>
                             <View style={{ flex: 1 }}><Field icon="book" label="Class *" value={form.klass} onChangeText={(value) => update("klass", value)} placeholder="e.g. V" autoCapitalize="characters" /></View>

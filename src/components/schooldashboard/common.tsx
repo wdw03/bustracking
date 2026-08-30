@@ -549,13 +549,13 @@ export function SchoolDataProvider({ children }: { children: React.ReactNode }) 
                         return {
                             id: c.id,
                             name: c.full_name,
-                            admissionNo: c.roll_number || "—",
-                            studentId: c.roll_number || "—",
+                            admissionNo: c.admission_number || c.roll_number || "—",
+                            studentId: c.admission_number || c.roll_number || "—",
                             rollNo: c.roll_number || "—",
                             klass: c.class || "—",
                             section: c.section || "—",
-                            gender: "—",
-                            dob: "—",
+                            gender: c.gender || "—",
+                            dob: c.date_of_birth || "—",
                             parentName: parentInfo?.full_name || "Guardian",
                             parentPhone: parentPhone,
                             busId: c.assigned_bus_id || null,
@@ -646,15 +646,34 @@ export function SchoolDataProvider({ children }: { children: React.ReactNode }) 
                 }
                 if (!sid) return { success: false, error: "School account not identified." };
 
-                const { data: childData, error: childErr } = await supabase.from("children").insert({
+                // Try inserting with new columns first, fallback without them
+                let childData: any = null;
+                let childErr: any = null;
+                const insertPayload: Record<string, any> = {
                     school_id: sid,
-                    full_name: student.name,
-                    roll_number: student.admissionNo || student.rollNo || null,
-                    class: student.klass || null,
-                    section: student.section || null,
+                    full_name: student.name || "Unnamed Student",
+                    roll_number: student.rollNo && student.rollNo !== "—" ? student.rollNo : null,
+                    class: student.klass && student.klass !== "—" ? student.klass : null,
+                    section: student.section && student.section !== "—" ? student.section : null,
                     assigned_bus_id: student.busId || null,
                     is_active: true,
-                }).select("id").single();
+                };
+                // Add optional columns (may not exist in all schemas)
+                if (student.admissionNo && student.admissionNo !== "—") insertPayload.admission_number = student.admissionNo;
+                if (student.dob && student.dob !== "Not added" && student.dob !== "—") insertPayload.date_of_birth = student.dob;
+                if (student.gender && student.gender !== "—") insertPayload.gender = student.gender;
+
+                const res1 = await supabase.from("children").insert(insertPayload).select("id").single();
+                if (res1.error && (res1.error.message?.includes("column") || res1.error.message?.includes("structure"))) {
+                    // Retry without new columns
+                    const { admission_number, date_of_birth, gender, ...basic } = insertPayload;
+                    const res2 = await supabase.from("children").insert(basic).select("id").single();
+                    childData = res2.data;
+                    childErr = res2.error;
+                } else {
+                    childData = res1.data;
+                    childErr = res1.error;
+                }
 
                 if (childErr || !childData) {
                     console.warn("children insert error:", childErr);
@@ -687,18 +706,28 @@ export function SchoolDataProvider({ children }: { children: React.ReactNode }) 
         updateStudent: async (student) => {
             try {
                 setStudents((current) => current.map((item) => item.id === student.id ? student : item));
-                const { error } = await supabase.from("children").update({
+                const updatePayload: Record<string, any> = {
                     full_name: student.name,
-                    class: student.klass || null,
-                    section: student.section || null,
-                    roll_number: student.admissionNo || student.rollNo || null,
+                    class: student.klass && student.klass !== "—" ? student.klass : null,
+                    section: student.section && student.section !== "—" ? student.section : null,
+                    roll_number: student.rollNo && student.rollNo !== "—" ? student.rollNo : null,
                     assigned_bus_id: student.busId || null,
                     updated_at: new Date().toISOString(),
-                }).eq("id", student.id);
+                };
+                // Add optional columns (may not exist in all schemas)
+                if (student.admissionNo && student.admissionNo !== "—") updatePayload.admission_number = student.admissionNo;
+                if (student.dob && student.dob !== "Not added" && student.dob !== "—") updatePayload.date_of_birth = student.dob;
+                if (student.gender && student.gender !== "—") updatePayload.gender = student.gender;
 
-                if (error) {
-                    console.warn("updateStudent error:", error);
-                    return { success: false, error: error.message };
+                let updateRes = await supabase.from("children").update(updatePayload).eq("id", student.id);
+                if (updateRes.error && (updateRes.error.message?.includes("column") || updateRes.error.message?.includes("structure"))) {
+                    const { admission_number, date_of_birth, gender, ...basic } = updatePayload;
+                    updateRes = await supabase.from("children").update(basic).eq("id", student.id);
+                }
+
+                if (updateRes.error) {
+                    console.warn("updateStudent error:", updateRes.error);
+                    return { success: false, error: updateRes.error.message };
                 }
 
                 if (student.parentPhone && student.parentPhone !== "—" && schoolId) {
