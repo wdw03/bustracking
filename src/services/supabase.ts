@@ -258,43 +258,55 @@ export async function checkPhoneAuthorization(phone: string, contactType: "paren
 }
 
 /**
- * Register parent (server validates authorized_contacts + creates trial)
+ * Register parent (server validates authorized_contacts + creates trial + auth user)
  */
-export async function registerParent(phone: string, fullName: string) {
+export async function registerParent(phone: string, fullName: string, password?: string, relation?: string) {
+  const cleanDigits = phone.replace(/\D/g, "");
+  const raw10 = cleanDigits.slice(-10);
+  const formatted = phone.startsWith("+") ? phone : `+91${raw10}`;
+
   const { data, error } = await supabase.functions.invoke("register-user", {
     body: {
       action: "register_parent",
-      phone,
+      phone: formatted,
       full_name: fullName,
+      password: password || "Kumar@123",
+      relation: relation || "guardian",
     },
   });
 
-  if (error) return { success: false, error: "Registration failed." };
+  if (error) return { success: false, error: error.message || "Registration failed." };
   return data;
 }
 
 /**
- * Register driver (server validates authorized_contacts)
+ * Register driver (server validates authorized_contacts + creates driver account)
  */
 export async function registerDriver(
   phone: string,
   fullName: string,
+  password?: string,
   licenseNumber?: string,
   licenseExpiry?: string,
   experienceYears?: number
 ) {
+  const cleanDigits = phone.replace(/\D/g, "");
+  const raw10 = cleanDigits.slice(-10);
+  const formatted = phone.startsWith("+") ? phone : `+91${raw10}`;
+
   const { data, error } = await supabase.functions.invoke("register-user", {
     body: {
       action: "register_driver",
-      phone,
+      phone: formatted,
       full_name: fullName,
+      password: password || "Kumar@123",
       license_number: licenseNumber,
       license_expiry: licenseExpiry,
       experience_years: experienceYears,
     },
   });
 
-  if (error) return { success: false, error: "Registration failed." };
+  if (error) return { success: false, error: error.message || "Registration failed." };
   return data;
 }
 

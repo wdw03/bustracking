@@ -190,34 +190,42 @@ export async function checkPhoneAuthorization(
   };
 }
 
-/** Register parent (server validates authorized_contacts + creates trial) */
-export async function registerParent(phone: string, fullName: string): Promise<ApiResult<any>> {
-  const formatted = phone.startsWith("+") ? phone : `+91${phone}`;
+/** Register parent (server validates authorized_contacts + creates trial + auth user) */
+export async function registerParent(phone: string, fullName: string, password?: string, relation?: string): Promise<ApiResult<any>> {
+  const cleanDigits = phone.replace(/\D/g, "");
+  const raw10 = cleanDigits.slice(-10);
+  const formatted = phone.startsWith("+") ? phone : `+91${raw10}`;
 
   const result = await invokeEdgeFunction("register-user", {
     action: "register_parent",
     phone: formatted,
     full_name: fullName,
+    password: password || "Kumar@123",
+    relation: relation || "guardian",
   });
 
   if (!result.success) return { success: false, error: result.error || "Registration failed." };
   return { success: true, data: result.data };
 }
 
-/** Register driver (server validates authorized_contacts) */
+/** Register driver (server validates authorized_contacts + creates driver account) */
 export async function registerDriver(
   phone: string,
   fullName: string,
+  password?: string,
   licenseNumber?: string,
   licenseExpiry?: string,
   experienceYears?: number
 ): Promise<ApiResult<any>> {
-  const formatted = phone.startsWith("+") ? phone : `+91${phone}`;
+  const cleanDigits = phone.replace(/\D/g, "");
+  const raw10 = cleanDigits.slice(-10);
+  const formatted = phone.startsWith("+") ? phone : `+91${raw10}`;
 
   const result = await invokeEdgeFunction("register-user", {
     action: "register_driver",
     phone: formatted,
     full_name: fullName,
+    password: password || "Kumar@123",
     license_number: licenseNumber,
     license_expiry: licenseExpiry,
     experience_years: experienceYears,

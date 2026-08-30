@@ -437,11 +437,13 @@ export default function OtpVerification({
                 } else if (signupRole === "parent" || signupRole === "driver") {
                     const action = signupRole === "parent" ? "register_parent" : "register_driver";
                     const fullName = signupData?.fullName || signupData?.name || "User";
-                    const extras = signupRole === "driver" ? {
+                    const extras = {
+                        password: signupData?.password,
+                        relation: signupData?.relation,
                         license_number: signupData?.licenseNumber,
                         license_expiry: signupData?.licenseExpiry,
                         experience_years: signupData?.experienceYears,
-                    } : undefined;
+                    };
 
                     const regResult = await completeRegistration(action, phoneNumber, fullName, extras);
                     if (!regResult.success) {

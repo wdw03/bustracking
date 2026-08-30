@@ -452,6 +452,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
+      // If parent, ensure any authorized children are linked to child_parents
+      if (prof?.role === "parent" || !prof || prof.role === ("" as any)) {
+        try {
+          const cleanUserPhone = (authUser.phone || cleanPhone).replace(/\D/g, "");
+          const formattedUserPhone = cleanUserPhone.startsWith("+") ? cleanUserPhone : `+91${cleanUserPhone.slice(-10)}`;
+          const raw10 = cleanUserPhone.slice(-10);
+
+          const { data: contacts } = await supabase
+            .from("authorized_contacts")
+            .select("id, child_id, school_id")
+            .or(`phone.eq.${formattedUserPhone},phone.eq.${cleanUserPhone},phone.eq.${raw10}`)
+            .eq("contact_type", "parent");
+
+          if (contacts && contacts.length > 0) {
+            for (const c of contacts) {
+              if (c.child_id) {
+                await supabase.from("child_parents").upsert({
+                  child_id: c.child_id,
+                  parent_user_id: authUser.id,
+                  relationship: "guardian",
+                  is_primary: true,
+                }, { onConflict: "child_id,parent_user_id" });
+              }
+            }
+          }
+        } catch (e) {
+          console.warn("Parent auto-link on login:", e);
+        }
+      }
+
       setSession(res.data.session);
       setUser(authUser);
       await persistSession(res.data.session);
@@ -492,21 +522,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // ── Complete registration (after OTP verified) ──
+  // ── Refresh helpers ──
+  const refreshSubscription = useCallback(async () => {
+    const sub = await fetchSubscription();
+    setSubscription(sub);
+  }, []);
+
+  const refreshProfile = useCallback(async () => {
+    if (!user) return;
+    const prof = await fetchProfile(user.id);
+    setProfile(prof);
+  }, [user]);
+
+  // ── Complete registration (after OTP verified) ──
   const completeRegistration = useCallback(async (
     action: "register_parent" | "register_driver",
     phone: string,
     fullName: string,
     extras?: Record<string, any>
   ) => {
-    const formattedPhone = phone.startsWith("+") ? phone : `+91${phone}`;
+    const cleanDigits = phone.replace(/\D/g, "");
+    const raw10 = cleanDigits.slice(-10);
+    const formattedPhone = phone.startsWith("+") ? phone : `+91${raw10}`;
+    const password = extras?.password || "Kumar@123";
 
     let result;
     if (action === "register_parent") {
-      result = await registerParent(formattedPhone, fullName);
+      result = await registerParent(formattedPhone, fullName, password, extras?.relation);
     } else {
       result = await registerDriver(
         formattedPhone,
         fullName,
+        password,
         extras?.license_number,
         extras?.license_expiry,
         extras?.experience_years,
@@ -517,12 +564,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { success: false, error: result?.error || "Registration failed" };
     }
 
+    // Auto-login newly registered user with saved credentials
+    try {
+      await login(formattedPhone, password);
+    } catch (e) {
+      console.warn("Auto-login post registration warning:", e);
+    }
+
     // Refresh profile & subscription after registration
     await refreshProfile();
     await refreshSubscription();
 
     return { success: true };
-  }, []);
+  }, [login, refreshProfile, refreshSubscription]);
 
   // ── Logout ──
   const handleLogout = useCallback(async () => {
@@ -538,18 +592,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Clear all persisted session data
     await clearSession();
   }, []);
-
-  // ── Refresh helpers ──
-  const refreshSubscription = useCallback(async () => {
-    const sub = await fetchSubscription();
-    setSubscription(sub);
-  }, []);
-
-  const refreshProfile = useCallback(async () => {
-    if (!user) return;
-    const prof = await fetchProfile(user.id);
-    setProfile(prof);
-  }, [user]);
 
   // ── Debug info for developer tools / session inspection ──
   const getSessionDebugInfo = useCallback(async () => {

@@ -254,19 +254,21 @@ serve(async (req: Request) => {
 
       // Create Admin Auth account if password provided
       if (password && password.length >= 6) {
-        const emailAlias = adminEmail && adminEmail.includes("@") ? adminEmail : `${cleanDigits}@bustracker.com`;
+        const emailAlias = `${raw10}@bustracker.com`;
 
         // Check if user already exists in auth.users
         const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
         const existing = existingUsers?.users?.find(
-          (u) => u.phone === formattedPhone || u.phone === cleanDigits || u.email === emailAlias
+          (u) => u.phone === formattedPhone || u.phone === cleanDigits || u.phone === `91${raw10}` || u.email === emailAlias || (adminEmail && u.email === adminEmail)
         );
 
         if (existing) {
           adminUserId = existing.id;
           await supabaseAdmin.auth.admin.updateUserById(adminUserId, {
             password,
-            user_metadata: { full_name: adminName || schoolName, role: "school_admin" },
+            email: emailAlias,
+            email_confirm: true,
+            user_metadata: { full_name: adminName || schoolName, role: "school_admin", admin_email: adminEmail || null },
           });
         } else {
           const { data: newUser, error: createAuthError } = await supabaseAdmin.auth.admin.createUser({
@@ -275,7 +277,7 @@ serve(async (req: Request) => {
             password,
             email_confirm: true,
             phone_confirm: true,
-            user_metadata: { full_name: adminName || schoolName, role: "school_admin" },
+            user_metadata: { full_name: adminName || schoolName, role: "school_admin", admin_email: adminEmail || null },
           });
 
           if (!createAuthError && newUser?.user) {
@@ -355,33 +357,186 @@ serve(async (req: Request) => {
       );
     }
 
-    // ── For register_parent & register_driver: require authenticated user ──
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
+    // ════════════════════════════════════════════
+    // ACTION: approve_school (Super Admin privileged approval)
+    // ════════════════════════════════════════════
+    if (action === "approve_school") {
+      const { school_id } = body;
+      if (!school_id) {
+        return new Response(
+          JSON.stringify({ success: false, error: { code: "BAD_REQUEST", message: "Missing school_id." } }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // 1. Update school status to 'approved'
+      const { data: school, error: schoolErr } = await supabaseAdmin
+        .from("schools")
+        .update({
+          status: "approved",
+          approved_at: new Date().toISOString(),
+        })
+        .eq("id", school_id)
+        .select()
+        .single();
+
+      if (schoolErr || !school) {
+        return new Response(
+          JSON.stringify({ success: false, error: { code: "DB_ERROR", message: schoolErr?.message || "School not found." } }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // 2. Activate school members
+      await supabaseAdmin
+        .from("school_members")
+        .update({ is_active: true })
+        .eq("school_id", school_id);
+
+      // 3. Activate school admin profile
+      if (school.admin_user_id) {
+        await supabaseAdmin
+          .from("profiles")
+          .update({ is_active: true })
+          .eq("id", school.admin_user_id);
+      } else if (school.phone) {
+        const cleanDigits = school.phone.replace(/\D/g, "");
+        const raw10 = cleanDigits.slice(-10);
+        const formattedPhone = school.phone.startsWith("+") ? school.phone : `+91${raw10}`;
+        await supabaseAdmin
+          .from("profiles")
+          .update({ is_active: true })
+          .or(`phone.eq.${formattedPhone},phone.eq.${cleanDigits},phone.eq.${raw10}`);
+      }
+
+      // 4. Insert audit log
+      await supabaseAdmin.from("audit_logs").insert({
+        action: "school_approved",
+        entity_type: "school",
+        entity_id: school_id,
+        metadata: { school_name: school.name, approved_at: new Date().toISOString() },
+      });
+
       return new Response(
-        JSON.stringify({ success: false, error: { code: "UNAUTHORIZED", message: "Missing authorization header." } }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: true, message: "School approved and admin activated." }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const supabaseUser = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
+    // ════════════════════════════════════════════
+    // ACTION: reset_password (Update password for verified phone)
+    // ════════════════════════════════════════════
+    if (action === "reset_password") {
+      const { password: newPassword } = body;
+      if (!phone || !newPassword || newPassword.length < 6) {
+        return new Response(
+          JSON.stringify({ success: false, error: { code: "BAD_REQUEST", message: "Missing phone or invalid password (min 6 characters)." } }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
 
-    const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
-    if (userError || !user) {
+      const cleanDigits = phone.replace(/\D/g, "");
+      const raw10 = cleanDigits.slice(-10);
+      const formattedPhone = phone.startsWith("+") ? phone : `+91${raw10}`;
+      const emailAlias = `${raw10}@bustracker.com`;
+
+      // Find user in auth.users
+      const { data: usersData } = await supabaseAdmin.auth.admin.listUsers();
+      let targetUser = usersData?.users?.find(
+        (u) => u.phone === formattedPhone || u.phone === cleanDigits || u.phone === `91${raw10}` || u.email === emailAlias
+      );
+
+      // If not found in listUsers, check profiles table
+      if (!targetUser) {
+        const { data: prof } = await supabaseAdmin
+          .from("profiles")
+          .select("id")
+          .or(`phone.eq.${formattedPhone},phone.eq.${cleanDigits},phone.eq.${raw10}`)
+          .limit(1)
+          .maybeSingle();
+
+        if (prof?.id) {
+          const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(prof.id);
+          if (authUser?.user) {
+            targetUser = authUser.user;
+          }
+        }
+      }
+
+      if (!targetUser) {
+        return new Response(
+          JSON.stringify({ success: false, error: { code: "USER_NOT_FOUND", message: "Account not found for this mobile number." } }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Update user password and ensure email alias is set
+      const { error: updateAuthErr } = await supabaseAdmin.auth.admin.updateUserById(targetUser.id, {
+        password: newPassword,
+        email: emailAlias,
+        email_confirm: true,
+      });
+
+      if (updateAuthErr) {
+        return new Response(
+          JSON.stringify({ success: false, error: { code: "UPDATE_FAILED", message: updateAuthErr.message } }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       return new Response(
-        JSON.stringify({ success: false, error: { code: "UNAUTHORIZED", message: "Invalid session." } }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: true, message: "Password updated successfully." }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    if (!action || !phone || !full_name) {
+    // ════════════════════════════════════════════
+    // ACTION: check_phone_exists (Check if account exists for Forgot Password)
+    // ════════════════════════════════════════════
+    if (action === "check_phone_exists") {
+      if (!phone) {
+        return new Response(
+          JSON.stringify({ success: false, error: { code: "BAD_REQUEST", message: "Missing phone." } }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const cleanDigits = phone.replace(/\D/g, "");
+      const raw10 = cleanDigits.slice(-10);
+      const formattedPhone = phone.startsWith("+") ? phone : `+91${raw10}`;
+
+      // Check profiles or schools
+      const { data: prof } = await supabaseAdmin
+        .from("profiles")
+        .select("id, full_name, role, is_active")
+        .or(`phone.eq.${formattedPhone},phone.eq.${cleanDigits},phone.eq.${raw10}`)
+        .limit(1)
+        .maybeSingle();
+
+      if (prof) {
+        return new Response(
+          JSON.stringify({ success: true, exists: true, name: prof.full_name, role: prof.role }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const { data: school } = await supabaseAdmin
+        .from("schools")
+        .select("id, name, status")
+        .or(`phone.eq.${formattedPhone},phone.eq.${cleanDigits},phone.eq.${raw10}`)
+        .limit(1)
+        .maybeSingle();
+
+      if (school) {
+        return new Response(
+          JSON.stringify({ success: true, exists: true, name: school.name, role: "school_admin" }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       return new Response(
-        JSON.stringify({ success: false, error: { code: "BAD_REQUEST", message: "Missing required fields: action, phone, full_name." } }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, exists: false, error: { code: "NOT_FOUND", message: "No account found with this mobile number." } }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -389,47 +544,158 @@ serve(async (req: Request) => {
     // ACTION: register_parent
     // ════════════════════════════════════════════
     if (action === "register_parent") {
+      if (!phone || !full_name) {
+        return new Response(
+          JSON.stringify({ success: false, error: { code: "BAD_REQUEST", message: "Missing phone or full_name." } }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       const cleanDigits = phone.replace(/\D/g, "");
       const raw10 = cleanDigits.slice(-10);
       const formattedPhone = phone.startsWith("+") ? phone : `+91${raw10}`;
+      const emailAlias = `${raw10}@bustracker.com`;
+      const password = body.password || "Kumar@123";
+      const relation = body.relation || "guardian";
 
-      // Check if another profile already has this phone
-      const { data: existingProfile } = await supabaseAdmin
-        .from("profiles")
-        .select("id, role, full_name")
+      // 1. Check authorized_contacts table
+      const { data: contacts, error: contactError } = await supabaseAdmin
+        .from("authorized_contacts")
+        .select("*")
         .or(`phone.eq.${formattedPhone},phone.eq.${cleanDigits},phone.eq.${raw10}`)
-        .limit(1)
-        .maybeSingle();
+        .eq("contact_type", "parent");
 
-      if (existingProfile && existingProfile.id !== user.id) {
+      if (contactError || !contacts || contacts.length === 0) {
         return new Response(
           JSON.stringify({
             success: false,
             error: {
-              code: "ALREADY_REGISTERED",
-              message: "This mobile number is already registered to another account.",
+              code: "NOT_AUTHORIZED",
+              message: "Your mobile number is not authorized by the school. Please contact your child's school.",
             },
           }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
-      // Server-side call to database function (all validation inside PostgreSQL)
-      const { data, error } = await supabaseAdmin.rpc("register_parent", {
-        p_phone: formattedPhone,
-        p_full_name: full_name,
-      });
+      const schoolId = contacts[0].school_id;
 
-      if (error) {
-        console.error("register_parent error:", error);
+      // 2. Check school is approved
+      const { data: school } = await supabaseAdmin
+        .from("schools")
+        .select("id, name, status")
+        .eq("id", schoolId)
+        .eq("status", "approved")
+        .maybeSingle();
+
+      if (!school) {
         return new Response(
-          JSON.stringify({ success: false, error: { code: "INTERNAL_ERROR", message: "Registration failed." } }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({
+            success: false,
+            error: {
+              code: "SCHOOL_NOT_APPROVED",
+              message: "Your school is not yet approved on the platform.",
+            },
+          }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
+      // 3. Create or update auth user in Supabase Auth
+      let parentUserId: string;
+      const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
+      const existing = existingUsers?.users?.find(
+        (u) => u.phone === formattedPhone || u.phone === cleanDigits || u.phone === `91${raw10}` || u.email === emailAlias
+      );
+
+      if (existing) {
+        parentUserId = existing.id;
+        await supabaseAdmin.auth.admin.updateUserById(parentUserId, {
+          password,
+          email: emailAlias,
+          email_confirm: true,
+          user_metadata: { full_name, role: "parent" },
+        });
+      } else {
+        const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+          phone: formattedPhone,
+          email: emailAlias,
+          password,
+          email_confirm: true,
+          phone_confirm: true,
+          user_metadata: { full_name, role: "parent" },
+        });
+
+        if (createError || !newUser?.user) {
+          console.error("Create parent auth user error:", createError);
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: { code: "AUTH_ERROR", message: createError?.message || "Failed to create user account." },
+            }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        parentUserId = newUser.user.id;
+      }
+
+      // 4. Upsert profile table
+      await supabaseAdmin.from("profiles").upsert({
+        id: parentUserId,
+        phone: formattedPhone,
+        full_name,
+        role: "parent",
+        is_active: true,
+      }, { onConflict: "id" });
+
+      // 5. Link all children from authorized_contacts to child_parents
+      let childrenLinked = 0;
+      for (const contact of contacts) {
+        if (contact.child_id) {
+          await supabaseAdmin.from("child_parents").upsert({
+            child_id: contact.child_id,
+            parent_user_id: parentUserId,
+            relationship: relation ? relation.toLowerCase() : "guardian",
+            is_primary: true,
+          }, { onConflict: "child_id,parent_user_id" });
+          childrenLinked++;
+        }
+        await supabaseAdmin.from("authorized_contacts").update({
+          is_registered: true,
+          updated_at: new Date().toISOString(),
+        }).eq("id", contact.id);
+      }
+
+      // 6. Create 7-day free trial in subscriptions table
+      await supabaseAdmin.from("subscriptions").upsert({
+        user_id: parentUserId,
+        school_id: schoolId,
+        plan_type: "free_trial",
+        status: "trial",
+        trial_start: new Date().toISOString(),
+        trial_end: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      }, { onConflict: "user_id,school_id" });
+
+      // 7. Audit log
+      await supabaseAdmin.from("audit_logs").insert({
+        actor_user_id: parentUserId,
+        school_id: schoolId,
+        action: "register_parent",
+        entity_type: "profile",
+        entity_id: parentUserId,
+        metadata: { phone: formattedPhone, full_name, children_linked: childrenLinked },
+      });
+
       return new Response(
-        JSON.stringify(data),
+        JSON.stringify({
+          success: true,
+          data: {
+            user_id: parentUserId,
+            school_id: school.id,
+            school_name: school.name,
+            children_linked: childrenLinked,
+          },
+        }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -438,49 +704,146 @@ serve(async (req: Request) => {
     // ACTION: register_driver
     // ════════════════════════════════════════════
     if (action === "register_driver") {
+      if (!phone || !full_name) {
+        return new Response(
+          JSON.stringify({ success: false, error: { code: "BAD_REQUEST", message: "Missing phone or full_name." } }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       const cleanDigits = phone.replace(/\D/g, "");
       const raw10 = cleanDigits.slice(-10);
       const formattedPhone = phone.startsWith("+") ? phone : `+91${raw10}`;
+      const emailAlias = `${raw10}@bustracker.com`;
+      const password = body.password || "Kumar@123";
 
-      // Check if another profile already has this phone
-      const { data: existingProfile } = await supabaseAdmin
-        .from("profiles")
-        .select("id, role, full_name")
+      // 1. Check authorized_contacts table
+      const { data: contacts, error: contactError } = await supabaseAdmin
+        .from("authorized_contacts")
+        .select("*")
         .or(`phone.eq.${formattedPhone},phone.eq.${cleanDigits},phone.eq.${raw10}`)
-        .limit(1)
-        .maybeSingle();
+        .eq("contact_type", "driver");
 
-      if (existingProfile && existingProfile.id !== user.id) {
+      if (contactError || !contacts || contacts.length === 0) {
         return new Response(
           JSON.stringify({
             success: false,
             error: {
-              code: "ALREADY_REGISTERED",
-              message: "This mobile number is already registered to another account.",
+              code: "NOT_AUTHORIZED",
+              message: "Your mobile number has not been added by any school as a driver.",
             },
           }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
-      const { data, error } = await supabaseAdmin.rpc("register_driver", {
-        p_phone: formattedPhone,
-        p_full_name: full_name,
-        p_license_number: license_number || null,
-        p_license_expiry: license_expiry || null,
-        p_experience_years: experience_years || 0,
-      });
+      const schoolId = contacts[0].school_id;
 
-      if (error) {
-        console.error("register_driver error:", error);
+      // 2. Check school is approved
+      const { data: school } = await supabaseAdmin
+        .from("schools")
+        .select("id, name, status")
+        .eq("id", schoolId)
+        .eq("status", "approved")
+        .maybeSingle();
+
+      if (!school) {
         return new Response(
-          JSON.stringify({ success: false, error: { code: "INTERNAL_ERROR", message: "Registration failed." } }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({
+            success: false,
+            error: {
+              code: "SCHOOL_NOT_APPROVED",
+              message: "Your school is not yet approved on the platform.",
+            },
+          }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
+      // 3. Create or update auth user in Supabase Auth
+      let driverUserId: string;
+      const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
+      const existing = existingUsers?.users?.find(
+        (u) => u.phone === formattedPhone || u.phone === cleanDigits || u.phone === `91${raw10}` || u.email === emailAlias
+      );
+
+      if (existing) {
+        driverUserId = existing.id;
+        await supabaseAdmin.auth.admin.updateUserById(driverUserId, {
+          password,
+          email: emailAlias,
+          email_confirm: true,
+          user_metadata: { full_name, role: "driver" },
+        });
+      } else {
+        const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+          phone: formattedPhone,
+          email: emailAlias,
+          password,
+          email_confirm: true,
+          phone_confirm: true,
+          user_metadata: { full_name, role: "driver" },
+        });
+
+        if (createError || !newUser?.user) {
+          console.error("Create driver auth user error:", createError);
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: { code: "AUTH_ERROR", message: createError?.message || "Failed to create driver account." },
+            }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        driverUserId = newUser.user.id;
+      }
+
+      // 4. Upsert profile table
+      await supabaseAdmin.from("profiles").upsert({
+        id: driverUserId,
+        phone: formattedPhone,
+        full_name,
+        role: "driver",
+        is_active: true,
+      }, { onConflict: "id" });
+
+      // 5. Upsert driver record in drivers table
+      await supabaseAdmin.from("drivers").upsert({
+        school_id: schoolId,
+        user_id: driverUserId,
+        license_number: license_number || null,
+        license_expiry: license_expiry || null,
+        experience_years: experience_years || 0,
+        is_active: true,
+      }, { onConflict: "user_id" });
+
+      // 6. Mark authorized_contacts as registered
+      for (const contact of contacts) {
+        await supabaseAdmin.from("authorized_contacts").update({
+          is_registered: true,
+          updated_at: new Date().toISOString(),
+        }).eq("id", contact.id);
+      }
+
+      // 7. Audit log
+      await supabaseAdmin.from("audit_logs").insert({
+        actor_user_id: driverUserId,
+        school_id: schoolId,
+        action: "register_driver",
+        entity_type: "profile",
+        entity_id: driverUserId,
+        metadata: { phone: formattedPhone, full_name },
+      });
+
       return new Response(
-        JSON.stringify(data),
+        JSON.stringify({
+          success: true,
+          data: {
+            user_id: driverUserId,
+            school_id: school.id,
+            school_name: school.name,
+          },
+        }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

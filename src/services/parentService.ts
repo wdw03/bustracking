@@ -7,15 +7,102 @@
 import { supabase } from "./supabase";
 import type { ParentDashboardData, BusLiveLocation, ApiResult } from "./types";
 
-// ── Dashboard (single RPC call — returns all parent data securely) ──
+// ── Dashboard (returns all parent data securely with robust fallback) ──
 
 export async function getParentDashboard(): Promise<ParentDashboardData | null> {
-  const { data, error } = await supabase.rpc("get_parent_dashboard");
-  if (error || !data) {
-    console.warn("getParentDashboard error:", error);
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    // Step 1: Try RPC
+    const { data: rpcData, error: rpcError } = await supabase.rpc("get_parent_dashboard");
+    if (!rpcError && rpcData && Array.isArray((rpcData as any).children) && (rpcData as any).children.length > 0) {
+      return rpcData as ParentDashboardData;
+    }
+
+    // Step 2: Fallback query if RPC had no children or failed
+    if (user) {
+      const cleanPhone = (user.phone || "").replace(/\D/g, "");
+      const raw10 = cleanPhone.slice(-10);
+      const formattedPhone = user.phone ? (user.phone.startsWith("+") ? user.phone : `+91${raw10}`) : "";
+
+      // Ensure any authorized contact for this parent's phone is linked in child_parents
+      if (raw10) {
+        const { data: contacts } = await supabase
+          .from("authorized_contacts")
+          .select("id, child_id, school_id")
+          .or(`phone.eq.${formattedPhone},phone.eq.${cleanPhone},phone.eq.${raw10}`)
+          .eq("contact_type", "parent");
+
+        if (contacts && contacts.length > 0) {
+          for (const c of contacts) {
+            if (c.child_id) {
+              await supabase.from("child_parents").upsert({
+                child_id: c.child_id,
+                parent_user_id: user.id,
+                relationship: "guardian",
+                is_primary: true,
+              }, { onConflict: "child_id,parent_user_id" });
+            }
+          }
+        }
+      }
+
+      // Query linked children
+      const { data: cpRows } = await supabase
+        .from("child_parents")
+        .select(`
+          child_id,
+          relationship,
+          is_primary,
+          children:child_id(
+            id, full_name, class, section, roll_number,
+            pickup_address, assigned_bus_id, photo_url, is_active,
+            buses:assigned_bus_id(id, bus_number, route_name, capacity),
+            schools:school_id(id, name, phone, address)
+          )
+        `)
+        .eq("parent_user_id", user.id);
+
+      const childrenList = (cpRows || [])
+        .map((r: any) => r.children)
+        .filter(Boolean)
+        .map((c: any) => ({
+          id: c.id,
+          full_name: c.full_name,
+          class: c.class,
+          section: c.section,
+          roll_number: c.roll_number,
+          assigned_bus_id: c.assigned_bus_id,
+          bus_number: c.buses?.bus_number || "Bus",
+          route_name: c.buses?.route_name || "Route",
+          photo_url: c.photo_url || null,
+        }));
+
+      const firstSchool = (cpRows || []).map((r: any) => r.children?.schools).find(Boolean);
+
+      const { data: prof } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
+      const { data: sub } = await supabase.from("subscriptions").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(1).maybeSingle();
+
+      return {
+        profile: prof || {
+          id: user.id,
+          phone: formattedPhone || user.phone || "",
+          full_name: (user.user_metadata as any)?.full_name || "Parent",
+          avatar_url: null,
+          role: "parent",
+        },
+        children: childrenList,
+        school: firstSchool || (rpcData as any)?.school,
+        subscription: sub || (rpcData as any)?.subscription || { is_active: true, has_subscription: true },
+        unread_notifications: (rpcData as any)?.unread_notifications || 0,
+      } as any;
+    }
+
+    return (rpcData as ParentDashboardData) || null;
+  } catch (e) {
+    console.warn("getParentDashboard fallback error:", e);
     return null;
   }
-  return data as ParentDashboardData;
 }
 
 // ── Children List (with bus info) ──
