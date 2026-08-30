@@ -6,6 +6,14 @@
    Subscription page opens as a stacked page on top of any tab.
    ========================================================================== */
 
+/* ============================================================================
+   PARENT PORTAL — MAIN SHELL (header + pages + bottom navigation)
+   Copy to: src/components/parentsdashbaord/paratentshomedasbahord.tsx
+
+   Tabs: Home · Track · Alerts · History · Profile
+   Subscription page opens as a stacked page on top of any tab.
+   ========================================================================== */
+
 import React, { useEffect, useState } from "react";
 import { BackHandler, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -14,7 +22,7 @@ import { LinearGradient } from "expo-linear-gradient";
 
 import {
     BUS, Chip, FONT, PARENT, STUDENT, Press, ParentDataProvider, SettingsProvider, SubscriptionProvider,
-    ms, useSubscription, useTheme,
+    ms, useParentData, useSubscription, useTheme,
 } from "./common";
 
 import HomeParentsPage from "./pages/homeparetnsts";
@@ -43,12 +51,11 @@ function ParentsDashboardContent({ onLogout }: { onLogout?: () => void }) {
     const { INK, MUTED, FAINT, BORDER, CARD_BG, PAGE_BG, ACCENT, ACCENT_DEEP, ACCENT_SOFT, GREEN, GREEN_SOFT, RED, RED_SOFT, isDark } = useTheme();
     const insets = useSafeAreaInsets();
     const sub = useSubscription();
+    const { isLoading, dataVersion } = useParentData();
 
     const [tab, setTab] = useState<ParentTab>("home");
     const [showSubscription, setShowSubscription] = useState(false);
     const [showLocationPicker, setShowLocationPicker] = useState(false);
-
-    /* Android back: close subscription overlay first, then go home */
     useEffect(() => {
         const onBack = () => {
             if (showSubscription) { setShowSubscription(false); return true; }

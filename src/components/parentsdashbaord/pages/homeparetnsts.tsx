@@ -8,8 +8,8 @@ import { Alert, Animated, Linking, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import {
-    BUS, Chip, FONT, PARENT, STUDENT, SectionTitle, VIDEOS, VideoHero,
-    busStatusTone, ms, useSubscription, useTheme,
+    BUS, Chip, FONT, PARENT, STUDENT, SectionTitle, VIDEOS, VideoHero, SkeletonItem,
+    busStatusTone, ms, useParentData, useSubscription, useTheme,
 } from "../common";
 import { Press } from "../common";
 
@@ -25,6 +25,7 @@ export default function HomeParentsPage({
     const t = useTheme();
     const { INK, MUTED, FAINT, BORDER, CARD_BG, PAGE_BG, ACCENT, ACCENT_DEEP, ACCENT_SOFT, GREEN, GREEN_SOFT, BLUE, BLUE_SOFT, ORANGE, ORANGE_SOFT, PURPLE, PURPLE_SOFT, RED, isDark } = t;
     const sub = useSubscription();
+    const { isLoading, dataVersion } = useParentData();
     const st = busStatusTone(BUS.status, t);
 
     /* Staggered entrance */
@@ -94,6 +95,29 @@ export default function HomeParentsPage({
             {/* ── Student card ── */}
             <Animated.View style={fadeUp(anims[1])}>
                 <SectionTitle icon="school" title="My Child" />
+                {isLoading ? (
+                    /* ── Skeleton while data loads ── */
+                    <View style={{ backgroundColor: CARD_BG, borderRadius: ms(24), borderWidth: 1, borderColor: BORDER, padding: ms(16), shadowColor: "#000", shadowOpacity: isDark ? 0.3 : 0.06, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 6 }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: ms(12) }}>
+                            <SkeletonItem width={ms(56)} height={ms(56)} borderRadius={ms(20)} />
+                            <View style={{ flex: 1, gap: ms(6) }}>
+                                <SkeletonItem width="70%" height={ms(16)} borderRadius={ms(6)} />
+                                <SkeletonItem width="50%" height={ms(12)} borderRadius={ms(4)} />
+                                <SkeletonItem width="40%" height={ms(11)} borderRadius={ms(4)} />
+                            </View>
+                            <SkeletonItem width={ms(60)} height={ms(24)} borderRadius={999} />
+                        </View>
+                        <View style={{ height: 1, backgroundColor: BORDER, marginVertical: ms(12) }} />
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: ms(10) }}>
+                            <SkeletonItem width={ms(40)} height={ms(40)} borderRadius={ms(14)} />
+                            <View style={{ flex: 1, gap: ms(5) }}>
+                                <SkeletonItem width="60%" height={ms(13)} borderRadius={ms(4)} />
+                                <SkeletonItem width="80%" height={ms(11)} borderRadius={ms(4)} />
+                            </View>
+                            <SkeletonItem width={ms(70)} height={ms(32)} borderRadius={ms(12)} />
+                        </View>
+                    </View>
+                ) : (
                 <View style={{ backgroundColor: CARD_BG, borderRadius: ms(24), borderWidth: 1, borderColor: BORDER, padding: ms(16), shadowColor: "#000", shadowOpacity: isDark ? 0.3 : 0.06, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 6 }}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: ms(12) }}>
                         <View style={{ width: ms(56), height: ms(56), borderRadius: ms(20), backgroundColor: STUDENT.photoBg, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)" }}>
@@ -130,6 +154,7 @@ export default function HomeParentsPage({
                         </Press>
                     </View>
                 </View>
+                )}
             </Animated.View>
 
             {/* ── Quick actions ── */}

@@ -105,6 +105,8 @@ type ParentDataContextType = {
     setHomeCoordinate: (coordinate: ParentCoordinate) => void;
     notifications: ParentNotification[];
     addNotification: (notification: ParentNotification) => void;
+    isLoading: boolean;
+    dataVersion: number;
 };
 
 const ParentDataContext = createContext<ParentDataContextType | null>(null);
@@ -113,6 +115,8 @@ export function ParentDataProvider({ children }: { children: React.ReactNode }) 
     const [homeAddress, setHomeAddress] = useState(PARENT.address);
     const [homeCoordinate, setHomeCoordinate] = useState<ParentCoordinate>([77.379, 28.6178]);
     const [notifications, setNotifications] = useState<ParentNotification[]>(NOTIFICATIONS);
+    const [isLoading, setIsLoading] = useState(true);
+    const [dataVersion, setDataVersion] = useState(0);
 
     // Fetch parent dashboard data + real notifications from Supabase on mount
     useEffect(() => {
@@ -155,6 +159,12 @@ export function ParentDataProvider({ children }: { children: React.ReactNode }) 
                     PARENT.phone = res.profile.phone || PARENT.phone;
                 }
 
+                // Signal data is ready — bump version to force re-render in all consuming components
+                if (isMounted) {
+                    setDataVersion((v) => v + 1);
+                    setIsLoading(false);
+                }
+
                 // Fetch real notifications
                 const dbNotifs = await getNotifications(20);
                 if (isMounted && dbNotifs && dbNotifs.length > 0) {
@@ -190,6 +200,8 @@ export function ParentDataProvider({ children }: { children: React.ReactNode }) 
                 }
             } catch (err) {
                 console.warn("Parent data fetch fallback:", err);
+            } finally {
+                if (isMounted) setIsLoading(false);
             }
         };
 
@@ -204,7 +216,9 @@ export function ParentDataProvider({ children }: { children: React.ReactNode }) 
         setHomeCoordinate,
         notifications,
         addNotification: (notification) => setNotifications((current) => current.some((item) => item.id === notification.id) ? current : [notification, ...current]),
-    }), [homeAddress, homeCoordinate, notifications]);
+        isLoading,
+        dataVersion,
+    }), [homeAddress, homeCoordinate, notifications, isLoading, dataVersion]);
 
     return <ParentDataContext.Provider value={value}>{children}</ParentDataContext.Provider>;
 }
