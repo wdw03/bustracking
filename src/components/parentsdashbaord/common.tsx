@@ -43,32 +43,32 @@ export const VIDEOS = {
 
 /* ─────────────── Initial Parent & Student Schema Defaults ─────────────── */
 export const PARENT = {
-    name: "Parent",
-    phone: "",
-    email: "",
-    relation: "Parent",
-    address: "",
+    name: "Rajesh Roy",
+    phone: "+919599039942",
+    email: "rajesh.roy@gmail.com",
+    relation: "Father",
+    address: "Flat 204, Royal Palms, Sector 62, Noida",
 };
 
 export const STUDENT = {
-    name: "Student",
-    admissionNo: "",
-    className: "",
-    section: "",
-    school: "",
-    rollNo: "",
-    bloodGroup: "",
+    name: "Aditya Roy",
+    admissionNo: "ADM-2026-0107",
+    className: "Class V",
+    section: "A",
+    school: "Saransh",
+    rollNo: "102038047",
+    bloodGroup: "O+",
     photoBg: "#FFD500",
 };
 
 export const BUS = {
-    id: "",
-    number: "—",
-    vehicleNumber: "—",
-    route: "—",
-    driver: "—",
-    driverPhone: "",
-    driverExp: "",
+    id: "c2cb29c3-83e5-4805-b863-563c22de354e",
+    number: "BUS121",
+    vehicleNumber: "BUS121",
+    route: "Sector 62 Route",
+    driver: "Ramesh Singh",
+    driverPhone: "+919102765934",
+    driverExp: "7 yrs exp",
     status: "Offline" as "Online" | "Offline" | "Trip Started" | "Trip Completed",
     etaMin: 0,
     speed: 0,
@@ -107,11 +107,17 @@ type ParentDataContextType = {
     addNotification: (notification: ParentNotification) => void;
     isLoading: boolean;
     dataVersion: number;
+    student: typeof STUDENT;
+    bus: typeof BUS;
+    parent: typeof PARENT;
 };
 
 const ParentDataContext = createContext<ParentDataContextType | null>(null);
 
 export function ParentDataProvider({ children }: { children: React.ReactNode }) {
+    const [student, setStudent] = useState(STUDENT);
+    const [bus, setBus] = useState(BUS);
+    const [parent, setParent] = useState(PARENT);
     const [homeAddress, setHomeAddress] = useState(PARENT.address);
     const [homeCoordinate, setHomeCoordinate] = useState<ParentCoordinate>([77.379, 28.6178]);
     const [notifications, setNotifications] = useState<ParentNotification[]>(NOTIFICATIONS);
@@ -130,44 +136,55 @@ export function ParentDataProvider({ children }: { children: React.ReactNode }) 
                 const res = await getParentDashboard();
                 if (res && res.children && res.children.length > 0) {
                     const firstChild = res.children[0] as any;
-                    if (firstChild.full_name) STUDENT.name = firstChild.full_name;
-                    if (firstChild.class) STUDENT.className = `Class ${firstChild.class}`;
-                    if (firstChild.section) STUDENT.section = firstChild.section;
-                    if (firstChild.roll_number) STUDENT.rollNo = String(firstChild.roll_number);
-                    if (firstChild.admission_number) STUDENT.admissionNo = String(firstChild.admission_number);
-                    if (firstChild.blood_group) STUDENT.bloodGroup = firstChild.blood_group;
+                    
+                    const updatedStudent = {
+                        name: firstChild.full_name || STUDENT.name,
+                        className: firstChild.class ? `Class ${firstChild.class}` : STUDENT.className,
+                        section: firstChild.section || STUDENT.section,
+                        rollNo: firstChild.roll_number ? String(firstChild.roll_number) : STUDENT.rollNo,
+                        admissionNo: firstChild.admission_number ? String(firstChild.admission_number) : (firstChild.roll_number ? String(firstChild.roll_number) : STUDENT.admissionNo),
+                        bloodGroup: firstChild.blood_group || STUDENT.bloodGroup,
+                        school: firstChild.school_name || (res as any)?.school?.name || STUDENT.school,
+                        photoBg: STUDENT.photoBg,
+                    };
 
-                    // School name — from child's school join OR top-level school
-                    if (firstChild.school_name) {
-                        STUDENT.school = firstChild.school_name;
+                    const updatedBus = {
+                        ...BUS,
+                        id: firstChild.assigned_bus_id || firstChild.bus_id || BUS.id,
+                        number: firstChild.bus_number || BUS.number,
+                        route: firstChild.route_name || BUS.route,
+                        vehicleNumber: firstChild.vehicle_number || BUS.vehicleNumber,
+                        driver: firstChild.driver_name || BUS.driver,
+                        driverPhone: firstChild.driver_phone || BUS.driverPhone,
+                        driverExp: firstChild.driver_exp || BUS.driverExp,
+                    };
+
+                    Object.assign(STUDENT, updatedStudent);
+                    Object.assign(BUS, updatedBus);
+
+                    if (isMounted) {
+                        setStudent(updatedStudent);
+                        setBus(updatedBus);
                     }
-
-                    // Bus info
-                    if (firstChild.assigned_bus_id || firstChild.bus_id) {
-                        BUS.id = firstChild.assigned_bus_id || firstChild.bus_id;
-                    }
-                    if (firstChild.bus_number) BUS.number = firstChild.bus_number;
-                    if (firstChild.route_name) BUS.route = firstChild.route_name;
-                    if (firstChild.vehicle_number) BUS.vehicleNumber = firstChild.vehicle_number;
-
-                    // Driver info from bus join
-                    if (firstChild.driver_name) BUS.driver = firstChild.driver_name;
-                    if (firstChild.driver_phone) BUS.driverPhone = firstChild.driver_phone;
                 }
-                // Fallback: school from top-level response
-                if (!STUDENT.school && (res as any)?.school?.name) {
-                    STUDENT.school = (res as any).school.name;
-                }
+
                 const { data: { user: currentUser } } = await supabase.auth.getUser();
+                const updatedParent = { ...PARENT };
                 if (currentUser?.user_metadata) {
-                    if (currentUser.user_metadata.full_name) PARENT.name = currentUser.user_metadata.full_name;
-                    if (currentUser.user_metadata.relation) PARENT.relation = currentUser.user_metadata.relation;
-                    if (currentUser.user_metadata.email) PARENT.email = currentUser.user_metadata.email;
-                    if (currentUser.user_metadata.address) PARENT.address = currentUser.user_metadata.address;
+                    if (currentUser.user_metadata.full_name) updatedParent.name = currentUser.user_metadata.full_name;
+                    if (currentUser.user_metadata.relation) updatedParent.relation = currentUser.user_metadata.relation;
+                    if (currentUser.user_metadata.email) updatedParent.email = currentUser.user_metadata.email;
+                    if (currentUser.user_metadata.address) updatedParent.address = currentUser.user_metadata.address;
                 }
                 if (res?.profile) {
-                    PARENT.name = res.profile.full_name || PARENT.name;
-                    PARENT.phone = res.profile.phone || PARENT.phone;
+                    updatedParent.name = res.profile.full_name || updatedParent.name;
+                    updatedParent.phone = res.profile.phone || updatedParent.phone;
+                }
+
+                Object.assign(PARENT, updatedParent);
+                if (isMounted) {
+                    setParent(updatedParent);
+                    if (updatedParent.address) setHomeAddress(updatedParent.address);
                 }
 
                 // Signal data is ready — bump version to force re-render in all consuming components
@@ -229,7 +246,10 @@ export function ParentDataProvider({ children }: { children: React.ReactNode }) 
         addNotification: (notification) => setNotifications((current) => current.some((item) => item.id === notification.id) ? current : [notification, ...current]),
         isLoading,
         dataVersion,
-    }), [homeAddress, homeCoordinate, notifications, isLoading, dataVersion]);
+        student,
+        bus,
+        parent,
+    }), [homeAddress, homeCoordinate, notifications, isLoading, dataVersion, student, bus, parent]);
 
     return <ParentDataContext.Provider value={value}>{children}</ParentDataContext.Provider>;
 }

@@ -25,7 +25,10 @@ export default function ProfileParentsPage({
     const { INK, MUTED, FAINT, BORDER, CARD_BG, PAGE_BG, ACCENT, ACCENT_DEEP, ACCENT_SOFT, GREEN, GREEN_SOFT, BLUE, BLUE_SOFT, RED, RED_SOFT, PURPLE, PURPLE_SOFT, ORANGE, ORANGE_SOFT, isDark } = useTheme();
     const settings = useSettings();
     const sub = useSubscription();
-    const { homeAddress, setHomeAddress, setHomeCoordinate, isLoading, dataVersion } = useParentData();
+    const { homeAddress, setHomeAddress, setHomeCoordinate, isLoading, dataVersion, student, bus, parent } = useParentData();
+    const currentStudent = student || STUDENT;
+    const currentBus = bus || BUS;
+    const currentParent = parent || PARENT;
     const [addressDraft, setAddressDraft] = useState(homeAddress);
     const [addressSaved, setAddressSaved] = useState(true);
     const [locating, setLocating] = useState(false);
@@ -73,7 +76,7 @@ export default function ProfileParentsPage({
         Alert.alert("Permission status", `Location: ${location ? "Allowed" : "Not allowed"}\nNotifications: ${notifications ? "Allowed" : "Not allowed"}`, [{ text: "Open Settings", onPress: () => Linking.openSettings() }, { text: "Done" }]);
     };
 
-    const callDriver = () => Linking.openURL(`tel:${BUS.driverPhone.replace(/\s/g, "")}`).catch(() => Alert.alert("Call Driver", BUS.driverPhone));
+    const callDriver = () => Linking.openURL(`tel:${currentBus.driverPhone.replace(/\s/g, "")}`).catch(() => Alert.alert("Call Driver", currentBus.driverPhone));
     const info = (title: string, body: string) => Alert.alert(title, body, [{ text: "OK" }]);
 
     const InfoRow = ({ label, value }: { label: string; value: string }) => (
@@ -102,8 +105,8 @@ export default function ProfileParentsPage({
             <VideoHero
                 source={VIDEOS.profile}
                 height={150}
-                title={isLoading ? "Loading…" : PARENT.name}
-                subtitle={isLoading ? "Fetching your profile…" : `${PARENT.relation} of ${STUDENT.name} · ${STUDENT.school}`}
+                title={isLoading ? "Loading…" : currentParent.name}
+                subtitle={isLoading ? "Fetching your profile…" : `${currentParent.relation} of ${currentStudent.name} · ${currentStudent.school}`}
                 badge={
                     <Chip
                         text={sub.status === "active" ? `${sub.planName} Plan` : sub.status === "trial" ? `Trial · ${sub.trialDaysLeft}d` : "Expired"}
@@ -135,24 +138,24 @@ export default function ProfileParentsPage({
             ) : (
                 <View style={{ backgroundColor: CARD_BG, borderRadius: ms(20), borderWidth: 1, borderColor: BORDER, padding: ms(14) }}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: ms(12), marginBottom: ms(8) }}>
-                        <View style={{ width: ms(52), height: ms(52), borderRadius: ms(17), backgroundColor: STUDENT.photoBg, alignItems: "center", justifyContent: "center" }}>
+                        <View style={{ width: ms(52), height: ms(52), borderRadius: ms(17), backgroundColor: currentStudent.photoBg || "#FFD500", alignItems: "center", justifyContent: "center" }}>
                             <Text style={{ fontFamily: FONT.displayHeavy, fontSize: ms(18), color: "#111827" }}>
-                                {STUDENT.name.split(" ").map((n) => n[0]).join("")}
+                                {(currentStudent.name || "S").split(" ").map((n) => n[0]).join("")}
                             </Text>
                         </View>
                         <View style={{ flex: 1 }}>
-                            <Text style={{ fontFamily: FONT.display, fontSize: ms(15), color: INK }}>{STUDENT.name}</Text>
+                            <Text style={{ fontFamily: FONT.display, fontSize: ms(15), color: INK }}>{currentStudent.name}</Text>
                             <Text style={{ fontFamily: FONT.regular, fontSize: ms(11.5), color: MUTED, marginTop: 1 }}>
-                                {STUDENT.admissionNo && STUDENT.admissionNo !== "—" ? `Admission No. ${STUDENT.admissionNo}` : `Roll No. ${STUDENT.rollNo || "—"}`}
+                                {currentStudent.admissionNo && currentStudent.admissionNo !== "—" ? `Admission No. ${currentStudent.admissionNo}` : `Roll No. ${currentStudent.rollNo || "—"}`}
                             </Text>
                         </View>
                     </View>
-                    <InfoRow label="Class / Section" value={`${STUDENT.className} · ${STUDENT.section}`} />
-                    <InfoRow label="Roll No." value={STUDENT.rollNo || "—"} />
-                    <InfoRow label="School" value={STUDENT.school || "—"} />
-                    <InfoRow label="Assigned Bus" value={BUS.vehicleNumber && BUS.vehicleNumber !== "—" && BUS.vehicleNumber !== BUS.number ? `${BUS.number} · ${BUS.vehicleNumber}` : (BUS.number || "—")} />
-                    <InfoRow label="Assigned Driver" value={BUS.driver || "—"} />
-                    <InfoRow label="Blood Group" value={STUDENT.bloodGroup || "—"} />
+                    <InfoRow label="Class / Section" value={`${currentStudent.className} · ${currentStudent.section}`} />
+                    <InfoRow label="Roll No." value={currentStudent.rollNo || "—"} />
+                    <InfoRow label="School" value={currentStudent.school || "—"} />
+                    <InfoRow label="Assigned Bus" value={currentBus.vehicleNumber && currentBus.vehicleNumber !== "—" && currentBus.vehicleNumber !== currentBus.number ? `${currentBus.number} · ${currentBus.vehicleNumber}` : (currentBus.number || "—")} />
+                    <InfoRow label="Assigned Driver" value={currentBus.driver || "—"} />
+                    <InfoRow label="Blood Group" value={currentStudent.bloodGroup || "—"} />
                 </View>
             )}
 
@@ -170,10 +173,10 @@ export default function ProfileParentsPage({
                 </View>
             ) : (
                 <View style={{ backgroundColor: CARD_BG, borderRadius: ms(20), borderWidth: 1, borderColor: BORDER, padding: ms(14) }}>
-                    <InfoRow label="Name" value={PARENT.name} />
-                    <InfoRow label="Relation" value={PARENT.relation} />
-                    <InfoRow label="Phone" value={PARENT.phone} />
-                    <InfoRow label="Email" value={PARENT.email} />
+                    <InfoRow label="Name" value={currentParent.name} />
+                    <InfoRow label="Relation" value={currentParent.relation} />
+                    <InfoRow label="Phone" value={currentParent.phone} />
+                    <InfoRow label="Email" value={currentParent.email} />
                     <InfoRow label="Home Stop" value={homeAddress} />
                 </View>
             )}

@@ -25,8 +25,11 @@ export default function HomeParentsPage({
     const t = useTheme();
     const { INK, MUTED, FAINT, BORDER, CARD_BG, PAGE_BG, ACCENT, ACCENT_DEEP, ACCENT_SOFT, GREEN, GREEN_SOFT, BLUE, BLUE_SOFT, ORANGE, ORANGE_SOFT, PURPLE, PURPLE_SOFT, RED, isDark } = t;
     const sub = useSubscription();
-    const { isLoading, dataVersion } = useParentData();
-    const st = busStatusTone(BUS.status, t);
+    const { isLoading, dataVersion, student, bus, parent } = useParentData();
+    const currentStudent = student || STUDENT;
+    const currentBus = bus || BUS;
+    const currentParent = parent || PARENT;
+    const st = busStatusTone(currentBus.status, t);
 
     /* Staggered entrance */
     const anims = [useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current];
@@ -38,7 +41,7 @@ export default function HomeParentsPage({
         transform: [{ translateY: a.interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) }],
     });
 
-    const callDriver = () => Linking.openURL(`tel:${BUS.driverPhone.replace(/\s/g, "")}`).catch(() => Alert.alert("Call Driver", BUS.driverPhone));
+    const callDriver = () => Linking.openURL(`tel:${currentBus.driverPhone.replace(/\s/g, "")}`).catch(() => Alert.alert("Call Driver", currentBus.driverPhone));
     const callSchool = () => Alert.alert("School Transport Office", "+91 120 400 8899", [{ text: "OK" }]);
 
     const quickActions: { icon: keyof typeof Ionicons.glyphMap; label: string; color: string; soft: string; onPress: () => void }[] = [
@@ -55,9 +58,9 @@ export default function HomeParentsPage({
                 <VideoHero
                     source={VIDEOS.kidsBus}
                     height={185}
-                    title={`Good Morning, ${PARENT.name.split(" ")[0]}`}
-                    subtitle={`${STUDENT.name} is on ${BUS.number} · arriving in ~${BUS.etaMin} min`}
-                    badge={<Chip text={BUS.status} color={st.color} soft={st.soft} />}
+                    title={`Good Morning, ${(currentParent.name || "Parent").split(" ")[0]}`}
+                    subtitle={`${currentStudent.name} is on ${currentBus.number} · arriving in ~${currentBus.etaMin} min`}
+                    badge={<Chip text={currentBus.status} color={st.color} soft={st.soft} />}
                 />
             </Animated.View>
 
@@ -120,19 +123,19 @@ export default function HomeParentsPage({
                 ) : (
                 <View style={{ backgroundColor: CARD_BG, borderRadius: ms(24), borderWidth: 1, borderColor: BORDER, padding: ms(16), shadowColor: "#000", shadowOpacity: isDark ? 0.3 : 0.06, shadowRadius: 14, shadowOffset: { width: 0, height: 6 }, elevation: 6 }}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: ms(12) }}>
-                        <View style={{ width: ms(56), height: ms(56), borderRadius: ms(20), backgroundColor: STUDENT.photoBg, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)" }}>
+                        <View style={{ width: ms(56), height: ms(56), borderRadius: ms(20), backgroundColor: currentStudent.photoBg || "#FFD500", alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)" }}>
                             <Text style={{ fontFamily: FONT.displayHeavy, fontSize: ms(20), color: "#111827" }}>
-                                {STUDENT.name.split(" ").map((n) => n[0]).join("")}
+                                {(currentStudent.name || "S").split(" ").map((n) => n[0]).join("")}
                             </Text>
                         </View>
                         <View style={{ flex: 1, minWidth: 0 }}>
-                            <Text numberOfLines={1} style={{ fontFamily: FONT.display, fontSize: ms(16), color: INK }}>{STUDENT.name}</Text>
+                            <Text numberOfLines={1} style={{ fontFamily: FONT.display, fontSize: ms(16), color: INK }}>{currentStudent.name}</Text>
                             <Text numberOfLines={1} style={{ fontFamily: FONT.regular, fontSize: ms(12), color: MUTED, marginTop: 2 }}>
-                                {STUDENT.className} · Section {STUDENT.section}
+                                {currentStudent.className} · Section {currentStudent.section}
                             </Text>
-                            <Text numberOfLines={1} style={{ fontFamily: FONT.regular, fontSize: ms(11.5), color: FAINT, marginTop: 1 }}>{STUDENT.school}</Text>
+                            <Text numberOfLines={1} style={{ fontFamily: FONT.regular, fontSize: ms(11.5), color: FAINT, marginTop: 1 }}>{currentStudent.school}</Text>
                         </View>
-                        <Chip text={BUS.number} color={ACCENT_DEEP} soft={ACCENT_SOFT} />
+                        <Chip text={currentBus.number} color={ACCENT_DEEP} soft={ACCENT_SOFT} />
                     </View>
 
                     <View style={{ height: 1, backgroundColor: BORDER, marginVertical: ms(12) }} />
@@ -143,9 +146,9 @@ export default function HomeParentsPage({
                             <Ionicons name="bus" size={ms(19)} color={st.color} />
                         </View>
                         <View style={{ flex: 1, minWidth: 0 }}>
-                            <Text style={{ fontFamily: FONT.semibold, fontSize: ms(13), color: INK }}>{BUS.status} · ETA {BUS.etaMin} min</Text>
+                            <Text style={{ fontFamily: FONT.semibold, fontSize: ms(13), color: INK }}>{currentBus.status} · ETA {currentBus.etaMin} min</Text>
                             <Text numberOfLines={1} style={{ fontFamily: FONT.regular, fontSize: ms(11.5), color: MUTED, marginTop: 1 }}>
-                                {BUS.route} · Driver {BUS.driver}
+                                {currentBus.route} · Driver {currentBus.driver}
                             </Text>
                         </View>
                         <Press onPress={onTrackBus} style={{ flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: ACCENT, borderRadius: ms(12), paddingVertical: ms(8), paddingHorizontal: ms(12) }}>
