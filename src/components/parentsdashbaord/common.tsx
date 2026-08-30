@@ -51,13 +51,13 @@ export const PARENT = {
 };
 
 export const STUDENT = {
-    name: "Aditya Roy",
-    admissionNo: "ADM-2026-0107",
-    className: "Class V",
-    section: "A",
-    school: "Saransh",
-    rollNo: "102038047",
-    bloodGroup: "O+",
+    name: "Student",
+    admissionNo: "",
+    className: "",
+    section: "",
+    school: "",
+    rollNo: "",
+    bloodGroup: "",
     photoBg: "#FFD500",
 };
 
@@ -136,6 +136,13 @@ export function ParentDataProvider({ children }: { children: React.ReactNode }) 
                 const res = await getParentDashboard();
                 if (res && res.children && res.children.length > 0) {
                     const firstChild = res.children[0] as any;
+
+                    let resolvedSchoolName = firstChild.school_name || (res as any)?.school?.name || "";
+                    if (!resolvedSchoolName && (firstChild.school_id || firstChild.schools?.id)) {
+                        const sId = firstChild.school_id || firstChild.schools?.id;
+                        const { data: sch } = await supabase.from("schools").select("name").eq("id", sId).maybeSingle();
+                        if (sch?.name) resolvedSchoolName = sch.name;
+                    }
                     
                     const updatedStudent = {
                         name: firstChild.full_name || STUDENT.name,
@@ -144,7 +151,7 @@ export function ParentDataProvider({ children }: { children: React.ReactNode }) 
                         rollNo: firstChild.roll_number ? String(firstChild.roll_number) : STUDENT.rollNo,
                         admissionNo: firstChild.admission_number ? String(firstChild.admission_number) : (firstChild.roll_number ? String(firstChild.roll_number) : STUDENT.admissionNo),
                         bloodGroup: firstChild.blood_group || STUDENT.bloodGroup,
-                        school: firstChild.school_name || (res as any)?.school?.name || STUDENT.school,
+                        school: resolvedSchoolName || "",
                         photoBg: STUDENT.photoBg,
                     };
 
